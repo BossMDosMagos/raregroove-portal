@@ -59,6 +59,8 @@ function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
         payment_method: {
           card: cardNumberElement,
         },
+        // Adicionar return_url para redirecionamento 3D Secure se necessário
+        return_url: `${window.location.origin}/payment/success`,
       });
 
       if (error) {

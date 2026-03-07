@@ -41,20 +41,25 @@ const normalizedEmail = typeof payer?.email === 'string' ? payer.email.trim() : 
 const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
 const fallbackUrls = {
-  success: "http://localhost:5173/payment/success",
-  failure: "http://localhost:5173/payment/failure",
-  pending: "http://localhost:5173/payment/pending"
-};
+      success: "https://portalraregroove.com/payment/success",
+      failure: "https://portalraregroove.com/payment/failure",
+      pending: "https://portalraregroove.com/payment/pending"
+    };
 
-const incomingBackUrls = (back_urls && typeof back_urls === 'object') ? back_urls : {};
+    const incomingBackUrls = (back_urls && typeof back_urls === 'object') ? back_urls : {};
 
-const normalizeUrl = (value: unknown, fallback: string) => {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  if (!trimmed) return fallback;
-  if (!/^https?:\/\//i.test(trimmed)) return fallback;
-  return trimmed;
-};
+    const normalizeUrl = (value: unknown, fallback: string) => {
+      if (typeof value !== 'string') return fallback;
+      const trimmed = value.trim();
+      if (!trimmed) return fallback;
+      if (!/^https?:\/\//i.test(trimmed)) return fallback;
+      
+      // Se for localhost, troca para produção se não estiver em dev
+      if (trimmed.includes('localhost') && !trimmed.includes('5173')) {
+         return fallback;
+      }
+      return trimmed;
+    };
 
 const safeBackUrls = {
   success: normalizeUrl((incomingBackUrls as Record<string, unknown>).success, fallbackUrls.success),
