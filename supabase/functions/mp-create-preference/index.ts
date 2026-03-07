@@ -145,13 +145,12 @@ console.log("[mp-create-preference] auto_return habilitado:", auto_return === "a
 const idempotencyKey = `IDE-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
 // 🔔 NOTIFICATION URL (WEBHOOK)
-// AVISO: Se a URL falhar na validação do Mercado Pago (retornar erro), a criação da preferência falha.
-// Por enquanto, vamos remover para garantir que o checkout abra.
-// O frontend fará polling ou usaremos um webhook dedicado depois.
-// const notificationUrl = "https://hlfirfukbrisfpebaaur.supabase.co/functions/v1/process-transaction";
-// mpPayload.notification_url = notificationUrl;
+// Importante: Esta URL DEVE apontar para uma Edge Function pública e acessível
+// Não pode ser localhost nem o domínio do site frontend, tem que ser o backend do Supabase
+const notificationUrl = "https://hlfirfukbrisfpebaaur.supabase.co/functions/v1/process-transaction";
+mpPayload.notification_url = notificationUrl;
 
-// console.log("[mp-create-preference] notification_url:", notificationUrl);
+console.log("[mp-create-preference] notification_url configurada:", notificationUrl);
 
 const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
   method: "POST",

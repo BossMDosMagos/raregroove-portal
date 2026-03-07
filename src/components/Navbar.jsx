@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import logoRareGroove from '../assets/LogoRareGroove.png';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -157,13 +158,13 @@ export default function Navbar() {
           >
             {/* Logo completo no desktop */}
             <img 
-              src="/img/LogoRareGroove.png" 
+              src={logoRareGroove}
               alt="Rare Groove" 
               className="hidden md:block h-10 w-auto object-contain"
             />
             {/* Símbolo no mobile - usa a mesma imagem reduzida */}
             <img 
-              src="/img/LogoRareGroove.png" 
+              src={logoRareGroove}
               alt="Rare Groove" 
               className="md:hidden h-10 w-10 object-contain"
             />
