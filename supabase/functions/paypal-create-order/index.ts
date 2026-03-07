@@ -1,0 +1,110 @@
+// Supabase Edge Function para criar Ordem no PayPal
+// Deploy: supabase functions deploy paypal-create-order
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const PAYPAL_API_BASE = {
+  sandbox: 'https://api-m.sandbox.paypal.com',
+  production: 'https://api-m.paypal.com'
+}
+
+async function getPayPalAccessToken(clientId: string, clientSecret: string, mode: string) {
+  const base = mode === 'sandbox' ? PAYPAL_API_BASE.sandbox : PAYPAL_API_BASE.production
+  
+  const response = await fetch(`${base}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+    },
+    body: 'grant_type=client_credentials',
+  })
+
+  const data = await response.json()
+  return data.access_token
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { amount, currency, metadata, clientId, mode = 'sandbox' } = await req.json()
+    
+    // 🔒 COFRE INVISÍVEL: Buscar Secret Key dos Secrets
+    const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      throw new Error('PayPal credentials não fornecidas (Verifique PAYPAL_CLIENT_SECRET no servidor)')
+    }
+
+    // Obter access token
+    const accessToken = await getPayPalAccessToken(clientId, clientSecret, mode)
+
+    const base = mode === 'sandbox' ? PAYPAL_API_BASE.sandbox : PAYPAL_API_BASE.production
+    const customId = (metadata?.transactionId || metadata?.itemId || `RG-${Date.now()}`).toString().slice(0, 127)
+
+    // Criar ordem
+    const response = await fetch(`${base}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [
+          {
+            amount: {
+              currency_code: currency || 'BRL',
+              value: amount,
+            },
+            description: 'Compra RareGroove - Marketplace de Vinis Raros',
+            custom_id: customId,
+          },
+        ],
+        application_context: {
+          brand_name: 'RareGroove',
+          landing_page: 'BILLING',
+          user_action: 'PAY_NOW',
+          return_url: `${metadata.returnUrl || 'http://localhost:5173'}/payment/success`,
+          cancel_url: `${metadata.returnUrl || 'http://localhost:5173'}/payment/cancel`,
+        },
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao criar ordem PayPal')
+    }
+
+    return new Response(
+      JSON.stringify({
+        orderId: data.id,
+        status: data.status,
+        links: data.links,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
+    )
+  } catch (error) {
+    console.error('Erro ao criar ordem PayPal:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      },
+    )
+  }
+})

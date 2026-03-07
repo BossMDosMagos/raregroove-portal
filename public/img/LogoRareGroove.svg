@@ -1,0 +1,30 @@
+<svg width="640" height="180" viewBox="0 0 640 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F1D07A"/>
+      <stop offset="55%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#B68D1A"/>
+    </linearGradient>
+    <radialGradient id="vinyl" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(82 90) rotate(90) scale(72)">
+      <stop stop-color="#2A2A2A"/>
+      <stop offset="1" stop-color="#0E0E0E"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="640" height="180" rx="20" fill="transparent"/>
+
+  <g transform="translate(10 10)">
+    <circle cx="72" cy="80" r="68" fill="url(#vinyl)" stroke="#2F2F2F" stroke-width="2"/>
+    <circle cx="72" cy="80" r="50" stroke="#3A3A3A" stroke-width="1.5"/>
+    <circle cx="72" cy="80" r="34" stroke="#3A3A3A" stroke-width="1.5"/>
+    <circle cx="72" cy="80" r="18" fill="url(#gold)"/>
+    <circle cx="72" cy="80" r="4" fill="#111"/>
+
+    <path d="M56 44H76C90 44 100 51 100 64C100 73 94 80 84 83L102 116H88L72 86H68V116H56V44ZM68 54V76H76C83 76 88 72 88 65C88 58 83 54 76 54H68Z" fill="url(#gold)"/>
+  </g>
+
+  <g transform="translate(172 40)">
+    <text x="0" y="48" fill="url(#gold)" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="900" letter-spacing="2">RARE GROOVE</text>
+    <text x="2" y="88" fill="#9CA3AF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" letter-spacing="6">COFRE DIGITAL</text>
+  </g>
+</svg>

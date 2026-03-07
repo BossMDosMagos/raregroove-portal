@@ -1,0 +1,98 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* ===== PRINT STYLES PARA ETIQUETA A6 ===== */
+@media print {
+  * {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 105mm !important;
+    height: 148mm !important;
+    overflow: hidden;
+  }
+
+  @page {
+    size: A6 portrait;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #shipping-label-a6 {
+    width: 105mm !important;
+    height: 148mm !important;
+    margin: 0 !important;
+    padding: 8mm !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Ocultar elementos desnecessários na impressão */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ocultar barras de navegação, botões, etc. */
+  nav,
+  .navbar,
+  button,
+  .bg-blue-500\/10,
+  .bg-white\/5,
+  .rounded-2xl:not(#shipping-label-a6) {
+    display: none !important;
+  }
+
+  /* Forçar fundo branco */
+  body,
+  #root,
+  #shipping-label-a6 {
+    background-color: white !important;
+  }
+}
+

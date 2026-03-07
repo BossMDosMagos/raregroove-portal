@@ -1,0 +1,189 @@
+🧪 TESTE MERCADO PAGO - PASSO A PASSO
+=====================================
+
+## ✅ PRÉ-REQUISITOS CONCLUÍDOS
+
+- Edge Function `mp-create-preference` deployada no Supabase
+- Correções automáticas implementadas (PaymentSuccess.jsx)
+- Filtro duplo de segurança no catálogo (Catalogo.jsx)
+
+---
+
+## 📋 PASSO A PASSO DO TESTE
+
+### 1️⃣ ATIVAR MERCADO PAGO NO BANCO (30 segundos)
+
+1. Acesse: https://app.supabase.com
+2. Vá para: SQL Editor
+3. Abra o arquivo: **SQL-ATIVAR-MERCADOPAGO-SANDBOX.sql**
+4. Execute (Ctrl+Enter)
+5. ✅ Confirme: "Mercado Pago sandbox ativado para teste"
+
+---
+
+### 2️⃣ CRIAR UM ITEM DE TESTE (1 minuto)
+
+1. Acesse: http://localhost:5173
+2. Vá para: **Meu Acervo** ou **Listar Item**
+3. Crie um item novo:
+   - Título: **CD TESTE MP - R$ 2,00**
+   - Preço: **2.00**
+   - Artista: Qualquer
+   - Descrição: Teste Mercado Pago
+   - Imagem: Qualquer
+4. Clique: **SALVAR**
+
+---
+
+### 3️⃣ FAZER COMPRA COM MERCADO PAGO (2 minutos)
+
+1. Vá para: **Catálogo**
+2. Encontre o item: **CD TESTE MP - R$ 2,00**
+3. Clique em: **COMPRAR**
+
+**Na página de checkout:**
+- CEP: **01311100** (Av. Paulista, SP)
+- Clique: **BUSCAR**
+- Selecione um frete qualquer
+- Clique: **CONTINUAR PARA PAGAMENTO**
+
+---
+
+### 4️⃣ SELECIONAR MERCADO PAGO E PAGAR
+
+**Você verá:**
+- Opção de pagamento: **🎯 Mercado Pago**
+- Botão: **Pagar com Mercado Pago**
+
+**Clique no botão** e você será redirecionado para o checkout do Mercado Pago.
+
+⚠️ **IMPORTANTE (LOCALHOST):**
+- Como está rodando em localhost, o MP abrirá em **nova aba**
+- Você verá uma mensagem no portal pedindo para clicar "Já paguei, voltar ao portal" depois de pagar
+
+---
+
+### 5️⃣ NO CHECKOUT DO MERCADO PAGO
+
+**Use usuário de teste:**
+- Email: O que você configurou no painel Mercado Pago Developers
+- Senha: A senha do usuário de teste
+
+**Ou use cartão de teste direto:**
+- Se o MP pedir cartão diretamente:
+  - **Mastercard:** 5031 4332 1540 6351
+  - **Validade:** 11/25
+  - **CVV:** 123
+  - **Nome:** APRO (sempre aprova)
+
+---
+
+### 6️⃣ APÓS PAGAR NO MERCADO PAGO
+
+1. Você volta para uma página branca do MP
+2. **Volte para a aba do RareGroove**
+3. Clique no botão: **"Já paguei, voltar ao portal"**
+4. ✅ Você deve ver: **"Pagamento Confirmado!"**
+
+---
+
+### 7️⃣ VERIFICAR SE FUNCIONOU
+
+**No navegador:**
+- ✅ Página de sucesso exibida
+- ✅ Item deve sumir do catálogo
+- ✅ Item aparece em "Meu Acervo" como **VENDIDO**
+
+**No console (F12):**
+```
+[PaymentSuccess] Pagamento aprovado! Verificar transação existente...
+[PaymentSuccess] Verificando status do item...
+[PaymentSuccess] ✅ Status do item corrigido! (se necessário)
+```
+
+**No banco (Supabase SQL Editor):**
+```sql
+-- Ver o item vendido
+SELECT id, title, is_sold, status 
+FROM items 
+WHERE title ILIKE '%TESTE MP%'
+ORDER BY created_at DESC 
+LIMIT 1;
+
+-- Deve retornar:
+-- is_sold = true
+-- status = 'vendido'
+
+-- Ver a transação
+SELECT id, price, status, payment_method, created_at
+FROM transactions
+WHERE item_id IN (
+  SELECT id FROM items WHERE title ILIKE '%TESTE MP%'
+)
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- Deve ter status = 'pago' ou 'concluido'
+```
+
+---
+
+## 🐛 SE DER ERRO
+
+### Erro: "Access token do Mercado Pago não informado"
+**Solução:**
+```sql
+-- Verificar se as credenciais estão preenchidas
+SELECT mp_public_key_sandbox, mp_access_token_sandbox 
+FROM platform_settings WHERE id = 1;
+
+-- Se vazias, preencha no admin: http://localhost:5173/profile
+-- Ou diretamente no SQL (substituir pelos seus valores reais):
+UPDATE platform_settings 
+SET 
+  mp_public_key_sandbox = 'TEST-xxx',
+  mp_access_token_sandbox = 'TEST-xxx'
+WHERE id = 1;
+```
+
+### Erro: Item continua no catálogo após venda
+**Solução:**
+Agora deve ser corrigido automaticamente! Mas se ainda acontecer:
+```sql
+-- Executar correção manual
+UPDATE items 
+SET status = 'vendido' 
+WHERE is_sold = true AND status != 'vendido';
+```
+
+### Erro: "Erro ao criar preferência"
+**Solução:**
+1. Verificar se Edge Function foi deployada: `npx supabase functions deploy mp-create-preference --no-verify-jwt --use-api`
+2. Ver logs no Supabase Dashboard → Functions → mp-create-preference
+
+---
+
+## ✅ SUCESSO SE:
+
+- [ ] Página de checkout do MP abriu
+- [ ] Pagamento foi processado no MP
+- [ ] Voltou para o RareGroove com sucesso
+- [ ] Item sumiu do catálogo
+- [ ] Item aparece como vendido em "Meu Acervo"
+- [ ] Transação registrada no banco com status correto
+- [ ] Status do item sincronizado (`is_sold=true` e `status='vendido'`)
+
+---
+
+## 💡 DIFERENÇA ENTRE MP E STRIPE/PAYPAL
+
+| Aspecto | Mercado Pago | Stripe/PayPal |
+|---------|--------------|---------------|
+| **Checkout** | Abre página externa do MP | Stripe: inline / PayPal: botões |
+| **Retorno** | Manual no localhost | Automático |
+| **Webhook** | Não configurado | Stripe tem |
+| **Status** | Corrigido via PaymentSuccess | Direto via webhook |
+
+---
+
+🚀 **PRONTO PARA TESTAR! Execute o SQL e comece a compra.**

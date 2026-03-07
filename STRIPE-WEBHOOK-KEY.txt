@@ -1,0 +1,24 @@
+🔐 STRIPE WEBHOOK SIGNING SECRET
+================================
+
+Chave Webhook do Stripe:
+whsec_617c80405e81c1e3b96d54d67c9b7c4e85923a9ea9bfad8bd14a6762759fc8a1
+
+Data de Geração: 5 de março de 2026
+
+⚠️ IMPORTANTE:
+- Esta chave deve ser armazenada em .env como:
+  VITE_STRIPE_WEBHOOK_SECRET=whsec_617c80405e81c1e3b96d54d67c9b7c4e85923a9ea9bfad8bd14a6762759fc8a1
+
+- E também salva no Supabase (platform_settings) como:
+  stripe_webhook_secret_sandbox (para testes)
+  ou
+  stripe_webhook_secret_production (para produção)
+
+✅ Próximos Passos:
+1. Adicionar ao arquivo .env local
+2. Salvar no Supabase em platform_settings
+3. Usar em edge-function stripe-webhook
+
+Comando para visualizar no terminal:
+  stripe listen --forward-to localhost:5173/api/webhooks/stripe

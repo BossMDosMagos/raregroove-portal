@@ -1,0 +1,201 @@
+import React, { useEffect, useState } from 'react';
+import { X, Upload, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
+
+const emptyFormData = {
+  title: '',
+  artist: '',
+  price: '',
+  condition: 'MINT',
+  image_url: '',
+  allow_sale: true,
+  allow_swap: false,
+  file: null
+};
+
+export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit }) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState(emptyFormData);
+
+  useEffect(() => {
+    if (itemToEdit) {
+      setFormData({
+        title: itemToEdit.title || '',
+        artist: itemToEdit.artist || '',
+        price: itemToEdit.price != null ? String(itemToEdit.price) : '',
+        condition: itemToEdit.condition || 'MINT',
+        image_url: itemToEdit.image_url || '',
+        allow_sale: Boolean(itemToEdit.allow_sale),
+        allow_swap: Boolean(itemToEdit.allow_swap),
+        file: null
+      });
+    } else {
+      setFormData(emptyFormData);
+    }
+  }, [itemToEdit, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      let finalImageUrl = formData.image_url;
+
+      // 1. UPLOAD DA FOTO REAL (Se houver)
+      if (formData.file) {
+        const fileExt = formData.file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('items-images')
+          .upload(filePath, formData.file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('items-images')
+          .getPublicUrl(filePath);
+        
+        finalImageUrl = publicUrl;
+      }
+
+      const payload = {
+        title: formData.title,
+        artist: formData.artist,
+        price: parseFloat(formData.price) || 0,
+        condition: formData.condition,
+        image_url: finalImageUrl || '',
+        allow_sale: Boolean(formData.allow_sale),
+        allow_swap: Boolean(formData.allow_swap),
+        seller_id: user.id
+      };
+
+      if (itemToEdit) {
+        const { error: updateError } = await supabase
+          .from('items')
+          .update(payload)
+          .eq('id', itemToEdit.id);
+
+        if (updateError) throw updateError;
+        toast.success('ALTERAÇÕES SALVAS!', {
+          style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+        });
+      } else {
+        const { error: insertError } = await supabase.from('items').insert([payload]);
+        if (insertError) throw insertError;
+        toast.success('RELÍQUIA CADASTRADA!', {
+          style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+        });
+      }
+
+      if (onRefresh) onRefresh();
+      onClose();
+    } catch (error) {
+      console.error("Erro detalhado:", error);
+      toast.error('ERRO', {
+        description: error.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-[#0A0A0A] border border-[#D4AF37]/20 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-white/5 flex justify-between items-center">
+          <h2 className="text-[#D4AF37] font-black uppercase tracking-widest text-sm">
+            {itemToEdit ? 'EDITAR RELÍQUIA' : 'ANUNCIAR NOVO ITEM'}
+          </h2>
+          <button onClick={onClose} className="text-white/40 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Título do Álbum</label>
+              <input required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all" 
+                value={formData.title}
+                onChange={e => setFormData({...formData, title: e.target.value})} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Artista / Banda</label>
+              <input required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                value={formData.artist}
+                onChange={e => setFormData({...formData, artist: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Preço (R$)</label>
+              <input required type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                value={formData.price}
+                onChange={e => setFormData({...formData, price: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Estado</label>
+              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all appearance-none"
+                value={formData.condition}
+                onChange={e => setFormData({...formData, condition: e.target.value})}>
+                <option value="MINT">MINT (Novo)</option>
+                <option value="NM">Near Mint</option>
+                <option value="VG+">Very Good+</option>
+                <option value="VG">Very Good</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">URL da Capa do Álbum</label>
+              <input type="url" placeholder="https://..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                value={formData.image_url}
+                onChange={e => setFormData({...formData, image_url: e.target.value})} />
+            </div>
+
+            {/* Modalidade de Anúncio */}
+            <div className="col-span-2 flex gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" checked={formData.allow_sale} 
+                  onChange={e => setFormData({...formData, allow_sale: e.target.checked})}
+                  className="accent-[#D4AF37]" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">Disponível para Venda</span>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" checked={formData.allow_swap} 
+                  onChange={e => setFormData({...formData, allow_swap: e.target.checked})}
+                  className="accent-[#D4AF37]" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">Disponível para Troca</span>
+              </label>
+            </div>
+
+            {/* Upload de Imagem Real */}
+            <div className="col-span-2">
+              <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Foto Real da Relíquia</label>
+              <div className="mt-2 flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-white/10 border-dashed rounded-2xl cursor-pointer hover:bg-white/5 hover:border-[#D4AF37]/30 transition-all">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 text-white/20 mb-2" />
+                    <p className="text-[9px] text-white/40 uppercase font-black tracking-widest">
+                      {formData.file ? formData.file.name : "Clique para selecionar arquivo"}
+                    </p>
+                  </div>
+                  <input type="file" className="hidden" accept="image/*" 
+                    onChange={e => setFormData({...formData, file: e.target.files[0]})} />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button disabled={loading} className="w-full py-4 bg-[#D4AF37] text-black rounded-xl font-black uppercase tracking-[2px] text-xs hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center justify-center gap-2 mt-4">
+            {loading ? <Loader2 className="animate-spin" /> : (itemToEdit ? 'SALVAR ALTERACOES' : 'AUTENTICAR E PUBLICAR')}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

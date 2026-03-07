@@ -1,0 +1,169 @@
+🧪 GUIA DE TESTE - PAGAMENTO COM STRIPE
+========================================
+
+Status: ✅ SERVIDOR RODANDO
+- Frontend: http://localhost:5173
+- Stripe Listener: Ativo (capturando webhooks)
+
+═══════════════════════════════════════════════
+
+📋 PASSO 1: EXECUTAR SQL NO SUPABASE
+─────────────────────────────────────
+
+1. Acesse: https://app.supabase.com
+2. Selecione projeto: RareGroove
+3. Vá para: SQL Editor
+4. Cole o conteúdo de SQL-SALVAR-STRIPE-WEBHOOK.sql
+5. Clique em RUN
+
+✅ Esperado: "STRIPE WEBHOOK REGISTRADO COM SUCESSO!"
+
+═══════════════════════════════════════════════
+
+🛍️ PASSO 2: CRIAR ITEM DE TESTE
+────────────────────────────────
+
+1. Abra: http://localhost:5173
+2. Faça LOGIN (ou crie conta se necessário)
+3. Vá para: MEU ACERVO (ou "Listar Item")
+4. Crie um novo item:
+   - Título: "CD Teste - R$ 1,00"
+   - Preço: 1.00
+   - Descrição: Teste de pagamento
+   - Imagem: Qualquer uma
+   - Clique: SALVAR
+
+✅ Esperado: Item criado e visível no catálogo
+
+═══════════════════════════════════════════════
+
+💳 PASSO 3: FAZER COMPRA DE TESTE
+─────────────────────────────────
+
+1. Vá para: CATÁLOGO
+2. Procure por: "CD Teste - R$ 1,00"
+3. Clique em: COMPRAR
+4. Você verá página de CHECKOUT:
+   - CEP: 01311100 (Av. Paulista, SP)
+   - Clique: BUSCAR
+   - Selecione um frete
+   - Clique: CONTINUAR PARA PAGAMENTO
+
+═══════════════════════════════════════════════
+
+💰 PASSO 4: PAGAR COM CARTÃO DE TESTE
+──────────────────────────────────────
+
+Na página de pagamento, use cartão de TESTE:
+
+  Número:  4242 4242 4242 4242
+  Validade: 12/27
+  CVC:     123
+  Nome:    Teste Silva
+
+⚠️ Importante:
+- Use estes dados EXATOS
+- Stripe reconhecerá como cartão de teste
+- Não será cobrado nenhum valor real
+
+Clique em: PAGAR
+
+═══════════════════════════════════════════════
+
+🔔 PASSO 5: MONITORAR EVENTOS
+────────────────────────────
+
+Você verá eventos do Stripe em TEMPO REAL:
+
+Terminal (Stripe Listener):
+├─ payment_intent.created
+├─ payment_intent.succeeded        ← Sucesso!
+└─ charge.succeeded
+
+Console do Navegador (F12):
+├─ Requisição POST a /api/webhooks/stripe
+├─ Resposta 200 OK
+└─ Redirecionamento para página de sucesso
+
+═══════════════════════════════════════════════
+
+✅ PASSO 6: VERIFICAR NO BANCO
+──────────────────────────────
+
+Execute no Supabase SQL Editor:
+
+-- Verificar transação criada
+SELECT 
+  id,
+  buyer_id,
+  seller_id,
+  amount,
+  status,
+  created_at
+FROM transactions
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- Resultado esperado:
+-- id: UUID aleatório
+-- amount: 1.00
+-- status: "completed"
+
+═══════════════════════════════════════════════
+
+🎉 SUCESSO SE:
+──────────────
+
+✅ Página de confirmação exibida
+✅ Transação registrada no banco
+✅ Item marcado como vendido
+✅ Webhook processado saldo atualizado
+✅ Notificações enviadas (comprador/vendedor)
+
+═══════════════════════════════════════════════
+
+❌ TROUBLESHOOTING
+──────────────────
+
+Se vir erro "Payment failed":
+1. Verifique se webhook secret está certo
+2. Verifique RLS policies no Supabase
+3. Veja logs: Supabase → Logs
+
+Se vir erro "Invalid CEP":
+1. Use sempre: 01311100
+2. Ou qualquer CEP válido brasileiro
+
+Se vir erro "Edge Function not found":
+1. Verificar se foi feito deploy:
+   supabase functions deploy stripe-create-payment-intent
+
+═══════════════════════════════════════════════
+
+💡 DICAS IMPORTANTE:
+────────────────────
+
+1. Mantenha DOIS terminais abertos:
+   - Terminal 1: npm run dev (frontend)
+   - Terminal 2: stripe listen (webhooks)
+
+2. Abra DevTools (F12) para ver logs:
+   - Console: mensagens da aplicação
+   - Network: requisições e webhooks
+   - Application: storage e cookies
+
+3. Para testar múltiplas vezes:
+   - Use CEPs diferentes
+   - Crie itens com preços variados
+   - Teste com 0.01 até 99.99
+
+═══════════════════════════════════════════════
+
+🚀 COMEÇAR TESTE AGORA:
+
+1. Acesse Supabase e execute o SQL
+2. Abra http://localhost:5173 no navegador
+3. Crie um item teste
+4. Faça a compra
+5. Pague com cartão 4242...
+6. Veja webhook chegar no terminal! ✨

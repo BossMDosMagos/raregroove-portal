@@ -1,0 +1,115 @@
+-- =============================================================================
+-- INSTRUÇÕES DE EXECUÇÃO - CORREÇÃO CRÍTICA DO FLUXO DE SAQUE
+-- =============================================================================
+-- Objetivo: Reservar saldo imediatamente quando saque é solicitado,
+--           impedindo solicitações duplicadas e fracionamento de saldo.
+--
+-- CORREÇÕES IMPLEMENTADAS:
+-- 1. get_user_financials() agora desconta saques EM ANÁLISE do saldo_disponível
+-- 2. create_withdrawal() validação reforçada contra duplicação
+-- 3. Saldo fica ZERADO enquanto saque estiver pendente/processando/concluído
+-- 4. Botão desabilita automaticamente no frontend quando não há saldo
+-- 5. Saldo volta quando saque é cancelado
+--
+-- =============================================================================
+-- ORDEM CORRETA DE EXECUÇÃO:
+-- =============================================================================
+
+-- PASSO 1: Corrigir a lógica de cálculo de saldo e criação de saque
+-- Execute o arquivo em Supabase:
+-- SQL-FIX-SALDO-RESERVADO-IMEDIATO.sql
+
+-- Esse arquivo:
+-- - Recria get_user_financials() com subtração de saques ativos
+-- - Recria create_withdrawal() com validação dupla
+-- - Cria índice UNIQUE para evitar duplicação
+-- - Protege contra race conditions
+
+-- PASSO 2: Habilitar RLS para DELETE de admin (opcional se não fez antes)
+-- Execute TODOS estes se não rodou antes:
+-- - SQL-FIX-RLS-SWAPS-ADMIN-DELETE.sql
+-- - SQL-FIX-RLS-TRANSACTIONS-ADMIN-DELETE.sql
+-- - SQL-FIX-RLS-WITHDRAWALS-ADMIN-DELETE.sql
+-- - SQL-FIX-RLS-WITHDRAWALS-ADMIN-UPDATE-PROOFS.sql
+-- - SQL-FIX-RLS-LEDGER-ADMIN-DELETE.sql
+
+-- PASSO 3: Atualizar front-end (JÁ FEITO)
+-- - src/components/FinancialComponents.jsx
+--   ✅ Botão com activeWithdrawal check
+--   ✅ Modal sem campo de valor (sempre total)
+--   ✅ Bloqueio de múltiplas solicitações
+--
+-- PASSO 4: Depois de executar o SQL:
+-- Testar fluxo completo:
+
+-- TEST 1: Verificar que get_user_financials subtrai corretamente
+SELECT 
+  f.saldo_disponivel as saldo_real,
+  (SELECT COALESCE(SUM(price), 0) FROM transactions WHERE seller_id = auth.uid() AND status = 'concluido') as vendas_concluidas,
+  (SELECT COALESCE(SUM(amount), 0) FROM withdrawals WHERE user_id = auth.uid() AND status IN ('pendente', 'processando', 'concluido')) as saques_bloqueados
+FROM get_user_financials(auth.uid()) f;
+
+-- TEST 2: Tentar criar 2 saques rapidamente (segundo deve falhar)
+SELECT * FROM create_withdrawal(auth.uid(), 100, '+55 11 99999-9999');
+-- Aguardar 1 segundo
+SELECT * FROM create_withdrawal(auth.uid(), 100, '+55 11 99999-9999');
+-- Resultado esperado: Primeiro retorna sucesso, segundo retorna erro "já possui saque em análise"
+
+-- TEST 3: Cancelar saque e verificar que saldo volta
+-- (No admin) cancelar o saque
+-- (No frontend) verificar que botão volta a funcionar
+
+-- TEST 4: Aprovar saque e verificar que saldo fica zerado permanentemente
+-- (No admin) aprovar o saque
+-- (No frontend) verificar que saldo continua zerado (até receber nova venda)
+
+-- =============================================================================
+-- FLUXO DE NEGÓCIO CORRIGIDO:
+-- =============================================================================
+--
+-- 1. SALDO INICIAL: R$ 135.00 (vendas concluídas)
+--    Botão: ATIVADO
+--
+-- 2. USUÁRIO CLICA "Solicitar Saque"
+--    → create_withdrawal() cria registro com status='pendente' e amount=R$ 135
+--    → get_user_financials() agora retorna: saldo_disponível = R$ 135 - R$ 135 = R$ 0
+--    → Frontend detecta activeWithdrawal e desabilita botão
+--
+-- 3. ADMIN VISUALIZA EM "Solicitações de Saque"
+--    Vê 1 solicitação pendente
+--
+-- 4. CENÁRIO A: ADMIN CANCELA
+--    → process_withdrawal() muda status para 'cancelado'
+--    → get_user_financials() agora retorna: saldo_disponível = R$ 135 - 0 = R$ 135
+--    → Frontend carrega e detecta activeWithdrawal=null, reabilita botão
+--    ✅ Usuário pode solicitar novo saque
+--
+-- 5. CENÁRIO B: ADMIN APROVA
+--    → process_withdrawal() muda status para 'concluido'
+--    → get_user_financials() agora retorna: saldo_disponível = R$ 135 - R$ 135 = R$ 0
+--    → Botão continua desativado
+--    → Saldo permanece R$ 0 (dinheiro foi pro PIX)
+--    ✅ Usuário recebe nova venda (R$ 50) → saldo sobe para R$ 50
+--    ✅ Botão volta a ativar, permite novo saque de R$ 50
+--
+-- =============================================================================
+-- INCONSISTÊNCIAS BLINDADAS:
+-- =============================================================================
+--
+-- ❌ ANTES: Usuário podia solicitar infinitos saques mesmo com saldo zerado
+-- ✅ DEPOIS: Índice UNIQUE + validação dupla + frontend check = impossível
+--
+-- ❌ ANTES: Saldo fracionado (R$ 100 do saque + R$ 35 em conta = R$ 135)
+-- ✅ DEPOIS: Saldo total reservado (R$ 0) enquanto saque em análise
+--
+-- ❌ ANTES: Botão habilitado mesmo com saque pendente
+-- ✅ DEPOIS: Frontend carrega activeWithdrawal e desabilita
+--
+-- ❌ ANTES: Saldo voltava após conclusão (dinheiro já saiu via PIX)
+-- ✅ DEPOIS: Saques concluídos também descontam (refletem realidade)
+--
+-- ❌ ANTES: Sem proteção contra race conditions (2x cliques simultâneos)
+-- ✅ DEPOIS: Índice UNIQUE parcial bloqueia tudo
+--
+-- =============================================================================
+
