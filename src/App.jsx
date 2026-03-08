@@ -33,71 +33,26 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminLoading, setAdminLoading] = useState(true); // Começa true para evitar race condition
+  const [adminLoading, setAdminLoading] = useState(true);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false); // Desativado loading inicial
 
+  /*
   useEffect(() => {
-    // 🚧 Buscar status de Manutenção do Banco
-    const checkMaintenance = async () => {
-      // Timeout de segurança: se o banco não responder em 3s, libera o site
-      const timeoutId = setTimeout(() => {
-         console.warn('Timeout verificando manutenção - liberando acesso');
-         setMaintenanceLoading(false);
-      }, 3000);
-
-      try {
-        const { data, error } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'maintenance_mode')
-          .single();
-        
-        clearTimeout(timeoutId);
-        
-        if (data?.value?.enabled) {
-          setMaintenanceMode(true);
-        } else {
-          setMaintenanceMode(false);
-        }
-      } catch (err) {
-        console.error('Erro ao verificar manutenção:', err);
-      } finally {
-        setMaintenanceLoading(false);
-      }
-    };
-
-    checkMaintenance();
-
-    // Ouvir mudanças em tempo real (para ativar/desativar na hora)
-    const channel = supabase
-      .channel('system_settings')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'system_settings', 
-        filter: "key=eq.maintenance_mode" 
-      }, (payload) => {
-        if (payload.new && payload.new.value) {
-          setMaintenanceMode(payload.new.value.enabled);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // 🚧 Lógica de Manutenção DESATIVADA TEMPORARIAMENTE (Loop Infinito)
+    setMaintenanceLoading(false);
   }, []);
+  */
 
   // MODO MANUTENÇÃO (Apenas Remoto - Banco de Dados)
-  // const isLocalMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === 'true'; // Removido para evitar conflitos de cache
-  const isMaintenanceActive = maintenanceMode;
+  const isMaintenanceActive = false; // Forçado para false
   
   // Rotas permitidas mesmo em manutenção (Login e Admin)
   const currentPath = window.location.pathname;
   const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
 
-  // 1. Evitar "flash" de conteúdo: Se estiver carregando config do banco, mostra tela preta com loading
+  /*
+  // 1. Evitar "flash" de conteúdo
   if (maintenanceLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center flex-col gap-4">
@@ -106,9 +61,9 @@ export default function App() {
       </div>
     );
   }
+  */
 
   // 2. Se estiver em manutenção E não for admin E não estiver em rota permitida
-  // Importante: Esperar adminLoading terminar para não bloquear admin por engano
   if (isMaintenanceActive && !loading && !adminLoading && !isAdmin && !isWhitelisted) {
     return <Maintenance />;
   }
