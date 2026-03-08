@@ -50,7 +50,8 @@ export default function AdminDashboard() {
       .upsert({ key: 'maintenance_mode', value: { enabled: newState } });
 
     if (error) {
-      toast.error('Erro ao atualizar modo manutenção');
+      console.error('Erro ao atualizar manutenção:', error);
+      toast.error('Erro ao atualizar modo manutenção: ' + (error.message || 'Erro desconhecido'));
     } else {
       setMaintenanceEnabled(newState);
       toast.success(newState ? 'MODO MANUTENÇÃO ATIVADO' : 'MODO MANUTENÇÃO DESATIVADO', {

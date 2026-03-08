@@ -35,6 +35,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
 
   useEffect(() => {
     // 🚧 Buscar status de Manutenção do Banco
@@ -51,6 +52,8 @@ export default function App() {
         }
       } catch (err) {
         console.error('Erro ao verificar manutenção:', err);
+      } finally {
+        setMaintenanceLoading(false);
       }
     };
 
@@ -84,7 +87,12 @@ export default function App() {
   const currentPath = window.location.pathname;
   const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
 
-  // Se estiver em manutenção E não for admin E não estiver em rota permitida
+  // 1. Evitar "flash" de conteúdo: Se estiver carregando config do banco, mostra tela preta
+  if (maintenanceLoading && !isLocalMaintenance) {
+    return <div className="min-h-screen bg-black text-white flex items-center justify-center"></div>;
+  }
+
+  // 2. Se estiver em manutenção E não for admin E não estiver em rota permitida
   if (isMaintenanceActive && !loading && !isAdmin && !isWhitelisted) {
     return <Maintenance />;
   }
