@@ -33,7 +33,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true); // Começa true para evitar race condition
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
 
@@ -108,7 +108,8 @@ export default function App() {
   }
 
   // 2. Se estiver em manutenção E não for admin E não estiver em rota permitida
-  if (isMaintenanceActive && !loading && !isAdmin && !isWhitelisted) {
+  // Importante: Esperar adminLoading terminar para não bloquear admin por engano
+  if (isMaintenanceActive && !loading && !adminLoading && !isAdmin && !isWhitelisted) {
     return <Maintenance />;
   }
 
