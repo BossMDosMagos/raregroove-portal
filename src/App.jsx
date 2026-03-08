@@ -89,16 +89,16 @@ export default function App() {
     };
   }, []);
 
-  // MODO MANUTENÇÃO (Local ou Remoto)
-  const isLocalMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === 'true';
-  const isMaintenanceActive = isLocalMaintenance || maintenanceMode;
+  // MODO MANUTENÇÃO (Apenas Remoto - Banco de Dados)
+  // const isLocalMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === 'true'; // Removido para evitar conflitos de cache
+  const isMaintenanceActive = maintenanceMode;
   
   // Rotas permitidas mesmo em manutenção (Login e Admin)
   const currentPath = window.location.pathname;
   const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
 
   // 1. Evitar "flash" de conteúdo: Se estiver carregando config do banco, mostra tela preta com loading
-  if (maintenanceLoading && !isLocalMaintenance) {
+  if (maintenanceLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center flex-col gap-4">
          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D4AF37]"></div>
