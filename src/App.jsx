@@ -27,12 +27,67 @@ import SwapSimulator from './pages/SwapSimulator';
 import Checkout from './pages/Checkout';
 import SwapPayment from './pages/SwapPayment';
 import PaymentSuccess from './pages/PaymentSuccess';
+import Maintenance from './pages/Maintenance';
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  useEffect(() => {
+    // 🚧 Buscar status de Manutenção do Banco
+    const checkMaintenance = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'maintenance_mode')
+          .single();
+        
+        if (data?.value?.enabled) {
+          setMaintenanceMode(true);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar manutenção:', err);
+      }
+    };
+
+    checkMaintenance();
+
+    // Ouvir mudanças em tempo real (para ativar/desativar na hora)
+    const channel = supabase
+      .channel('system_settings')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'system_settings', 
+        filter: "key=eq.maintenance_mode" 
+      }, (payload) => {
+        if (payload.new && payload.new.value) {
+          setMaintenanceMode(payload.new.value.enabled);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // MODO MANUTENÇÃO (Local ou Remoto)
+  const isLocalMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === 'true';
+  const isMaintenanceActive = isLocalMaintenance || maintenanceMode;
+  
+  // Rotas permitidas mesmo em manutenção (Login e Admin)
+  const currentPath = window.location.pathname;
+  const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
+
+  // Se estiver em manutenção E não for admin E não estiver em rota permitida
+  if (isMaintenanceActive && !loading && !isAdmin && !isWhitelisted) {
+    return <Maintenance />;
+  }
 
   useEffect(() => {
     // 🔐 Validar Cofre Invisível na startup

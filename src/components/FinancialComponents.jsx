@@ -279,9 +279,20 @@ export function TransactionRow({ transaction, type = 'sale', onTrackingAdded, on
                 </div>
                 
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[#D4AF37] font-black text-lg">
-                    R$ {parseFloat(transaction.price).toFixed(2)}
-                  </p>
+                  {type === 'sale' && transaction.net_amount ? (
+                    <>
+                      <p className="text-[#D4AF37] font-black text-lg" title="Valor Líquido a Receber">
+                        R$ {parseFloat(transaction.net_amount).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-white/40 line-through" title="Valor Bruto da Venda">
+                        R$ {parseFloat(transaction.price).toFixed(2)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[#D4AF37] font-black text-lg">
+                      R$ {parseFloat(transaction.price).toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
               

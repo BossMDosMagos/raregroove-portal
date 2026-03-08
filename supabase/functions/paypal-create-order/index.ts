@@ -74,8 +74,8 @@ serve(async (req) => {
           brand_name: 'RareGroove',
           landing_page: 'BILLING',
           user_action: 'PAY_NOW',
-          return_url: `${metadata.returnUrl || 'http://localhost:5173'}/payment/success`,
-          cancel_url: `${metadata.returnUrl || 'http://localhost:5173'}/payment/cancel`,
+          return_url: `${metadata.returnUrl || 'https://portalraregroove.com'}/payment/success`,
+          cancel_url: `${metadata.returnUrl || 'https://portalraregroove.com'}/payment/cancel`,
         },
       }),
     })

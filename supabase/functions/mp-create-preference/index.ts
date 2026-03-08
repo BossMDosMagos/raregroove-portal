@@ -12,7 +12,7 @@ if (req.method === 'OPTIONS') {
 }
 
   try {
-    const { item, items, payer, back_urls, external_reference, auto_return } = await req.json();
+    const { item, items, payer, back_urls, external_reference, auto_return, metadata } = await req.json();
 
     // 🔒 COFRE INVISÍVEL: Buscar token dos Secrets
     const accessToken = Deno.env.get('MP_ACCESS_TOKEN');
@@ -40,63 +40,39 @@ const quantity = Number(firstItem.quantity || 1);
 const normalizedEmail = typeof payer?.email === 'string' ? payer.email.trim() : '';
 const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
-const fallbackUrls = {
-      success: "https://portalraregroove.com/payment/success",
-      failure: "https://portalraregroove.com/payment/failure",
-      pending: "https://portalraregroove.com/payment/pending"
+    // 🚀 FORÇAR URLs DE PRODUÇÃO (Hardcoded para segurança)
+    // Ignoramos o que vem do frontend para evitar que localhost vaze para o Mercado Pago em produção.
+    const productionUrl = "https://portalraregroove.com";
+    
+    const safeBackUrls = {
+      success: `${productionUrl}/payment/success`,
+      failure: `${productionUrl}/payment/failure`,
+      pending: `${productionUrl}/payment/pending`
     };
 
-    const incomingBackUrls = (back_urls && typeof back_urls === 'object') ? back_urls : {};
+    console.log("[mp-create-preference] Forçando back_urls para produção:", safeBackUrls);
 
-    const normalizeUrl = (value: unknown, fallback: string) => {
-      if (typeof value !== 'string') return fallback;
-      const trimmed = value.trim();
-      if (!trimmed) return fallback;
-      if (!/^https?:\/\//i.test(trimmed)) return fallback;
-      
-      // Se for localhost, troca para produção se não estiver em dev
-      if (trimmed.includes('localhost') && !trimmed.includes('5173')) {
-         return fallback;
-      }
-      return trimmed;
+    // Auto-return sempre habilitado se for produção
+    const canUseAutoReturn = true; 
+    
+    const mpPayload: Record<string, unknown> = {
+      items: [
+        {
+          title: firstItem.title,
+          description: firstItem.description || firstItem.title,
+          quantity: quantity,
+          unit_price: unitPrice,
+          currency_id: "BRL" // Forçar BRL inicialmente
+        }
+      ],
+      payment_methods: {
+        excluded_payment_methods: [],
+        excluded_payment_types: [],
+        installments: 12
+      },
+      back_urls: safeBackUrls,
+      external_reference: external_reference || `REF-${Date.now()}`,
     };
-
-const safeBackUrls = {
-  success: normalizeUrl((incomingBackUrls as Record<string, unknown>).success, fallbackUrls.success),
-  failure: normalizeUrl((incomingBackUrls as Record<string, unknown>).failure, fallbackUrls.failure),
-  pending: normalizeUrl((incomingBackUrls as Record<string, unknown>).pending, fallbackUrls.pending),
-};
-
-const canUseAutoReturn = (() => {
-  try {
-    const parsed = new URL(safeBackUrls.success);
-    const isHttps = parsed.protocol === 'https:';
-    const host = parsed.hostname.toLowerCase();
-    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    return isHttps && !isLocalHost;
-  } catch {
-    return false;
-  }
-})();
-
-const mpPayload: Record<string, unknown> = {
-  items: [
-    {
-      title: firstItem.title,
-      description: firstItem.description || firstItem.title,
-      quantity: quantity,
-      unit_price: unitPrice,
-      currency_id: "BRL" // Forçar BRL inicialmente
-    }
-  ],
-  payment_methods: {
-    excluded_payment_methods: [],
-    excluded_payment_types: [],
-    installments: 12
-  },
-  back_urls: safeBackUrls,
-  external_reference: external_reference || `REF-${Date.now()}`,
-};
 
   if (auto_return === "approved" && canUseAutoReturn) {
     mpPayload.auto_return = "approved";
@@ -108,6 +84,13 @@ const mpPayload: Record<string, unknown> = {
       name: payer?.name || "Usuario",
       surname: payer?.surname || "Teste"
     };
+  }
+
+  // 🏷️ METADATA (Crucial para Webhook)
+  // Repassa os metadados recebidos para o Mercado Pago, permitindo recuperar buyerId, itemId, etc. no webhook.
+  if (metadata && typeof metadata === 'object') {
+    mpPayload.metadata = metadata;
+    console.log("[mp-create-preference] Metadata anexados à preferência:", JSON.stringify(metadata));
   }
 
   // ... (código existente) ...
@@ -161,11 +144,25 @@ const response = await fetch("https://api.mercadopago.com/checkout/preferences",
   },
   body: JSON.stringify(mpPayload),
 });
+
 const data = await response.json();
+
 if (!response.ok) {
-  console.error("[mp-create-preference] Erro do Mercado Pago:", JSON.stringify(data));
-  return new Response(JSON.stringify({ error: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+  console.error("[mp-create-preference] ❌ ERRO FATAL Mercado Pago:", {
+    status: response.status,
+    statusText: response.statusText,
+    errorBody: JSON.stringify(data, null, 2),
+    payloadSent: JSON.stringify(mpPayload, null, 2) // Log do payload para debug
+  });
+  
+  // Retornar erro detalhado para o frontend entender o que houve
+  return new Response(JSON.stringify({ 
+    error: "Erro na API do Mercado Pago", 
+    details: data,
+    status: response.status 
+  }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
 }
+
 return new Response(
   JSON.stringify({
     id: data.id,

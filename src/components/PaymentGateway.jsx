@@ -60,7 +60,7 @@ function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
           card: cardNumberElement,
         },
         // Adicionar return_url para redirecionamento 3D Secure se necessário
-        return_url: `${window.location.origin}/payment/success`,
+        return_url: `${window.location.origin.includes('localhost') ? 'https://portalraregroove.com' : window.location.origin}/payment/success`,
       });
 
       if (error) {
@@ -325,14 +325,21 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         payer: {
           email: metadata.buyerEmail
         },
+        // Back URLs agora são forçadas pelo backend para evitar localhost
         back_urls: {
           success: `${window.location.origin}/payment/success?${returnParams.toString()}`,
           failure: `${window.location.origin}/payment/failure?${returnParams.toString()}`,
           pending: `${window.location.origin}/payment/pending?${returnParams.toString()}`
         },
-        auto_return: isLocalDev ? undefined : 'approved',
+        auto_return: 'approved', // Sempre aprovado, backend trata se deve ou não usar
         external_reference: newExternalRef,
-        accessToken: config.accessToken
+        // IMPORTANTE: Passar metadata explicitamente para o backend do MP
+        metadata: {
+            ...metadata,
+            transaction_type: 'venda', // Forçar tipo para garantir
+            net_amount: metadata.netAmount, // Garantir snake_case se backend esperar
+            platform_fee: metadata.platformFee
+        }
       };
 
       console.log('📤 [MP] Body enviado para Edge Function:', {
@@ -340,7 +347,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         amount: requestBody.item.unit_price,
         buyerEmail: requestBody.payer.email,
         externalReference: requestBody.external_reference,
-        accessToken: requestBody.accessToken ? `${requestBody.accessToken.substring(0, 20)}...` : 'undefined'
+        hasMetadata: !!requestBody.metadata
       });
 
       const { data, error } = await supabase.functions.invoke('mp-create-preference', {

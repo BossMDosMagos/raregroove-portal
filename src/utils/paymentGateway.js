@@ -93,7 +93,12 @@ export const getGatewayConfig = async (selectedGateway) => {
       console.log('🔍 [paymentGateway] Mercado Pago config:', {
         hasPublicKey: !!config.publicKey,
         // ⚠️ Access Token NUNCA está no frontend
+        keyPrefix: config.publicKey ? config.publicKey.substring(0, 8) : 'MISSING'
       });
+      
+      if (config.publicKey && !config.publicKey.startsWith('APP_USR-')) {
+          console.warn('⚠️ AVISO CRÍTICO: Mercado Pago Public Key não parece ser de PRODUÇÃO (não começa com APP_USR-). O checkout pode falhar.');
+      }
     } else if (provider === 'paypal') {
       config.clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
       
@@ -198,6 +203,9 @@ export const initMercadoPago = async (publicKey) => {
 export const createMercadoPagoPreference = async (paymentData, config, currency = 'BRL') => {
   try {
     // Chamar Supabase Edge Function para criar preferência
+    // Garantir que a URL de retorno seja sempre a de produção se estivermos em localhost
+    const origin = window.location.origin.includes('localhost') ? 'https://portalraregroove.com' : window.location.origin;
+
     const { data, error } = await supabase.functions.invoke('mp-create-preference', {
       body: {
         items: [
@@ -213,9 +221,9 @@ export const createMercadoPagoPreference = async (paymentData, config, currency 
           name: paymentData.buyerName
         },
         back_urls: {
-          success: `${window.location.origin}/payment/success`,
-          failure: `${window.location.origin}/payment/failure`,
-          pending: `${window.location.origin}/payment/pending`
+          success: `${origin}/payment/success`,
+          failure: `${origin}/payment/failure`,
+          pending: `${origin}/payment/pending`
         },
         auto_return: 'approved',
         metadata: paymentData.metadata

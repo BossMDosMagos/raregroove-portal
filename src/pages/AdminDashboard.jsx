@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [ledgerDetailsModal, setLedgerDetailsModal] = useState(null);
   const [withdrawalDetailsModal, setWithdrawalDetailsModal] = useState(null);
   const [withdrawalDeleteModal, setWithdrawalDeleteModal] = useState(null);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
 
   const { formatCurrency, formatDate: formatDateLocale } = useI18n();
   const formatMoney = (value) => formatCurrency(value, 'BRL');
@@ -42,9 +43,34 @@ export default function AdminDashboard() {
     return formatDateLocale(value, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
+  const toggleMaintenance = async () => {
+    const newState = !maintenanceEnabled;
+    const { error } = await supabase
+      .from('system_settings')
+      .upsert({ key: 'maintenance_mode', value: { enabled: newState } });
+
+    if (error) {
+      toast.error('Erro ao atualizar modo manutenção');
+    } else {
+      setMaintenanceEnabled(newState);
+      toast.success(newState ? 'MODO MANUTENÇÃO ATIVADO' : 'MODO MANUTENÇÃO DESATIVADO', {
+        description: newState ? 'O site está inacessível para usuários comuns.' : 'O site está online novamente.'
+      });
+    }
+  };
+
   const fetchAdminData = async () => {
     setLoading(true);
     try {
+      // Buscar status de manutenção
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+      
+      if (settings?.value?.enabled) setMaintenanceEnabled(true);
+
       const { data, error } = await supabase
         .from('transactions')
         .select('id, price, total_amount, platform_fee, gateway_fee, net_amount, status, created_at, delivered_at, buyer_id, seller_id, item_id, transaction_type, items(title)')
@@ -389,6 +415,18 @@ export default function AdminDashboard() {
               Painel financeiro e custodial do cofre central
             </p>
           </div>
+          
+          <button
+            onClick={toggleMaintenance}
+            className={`flex items-center justify-center gap-2 border px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                maintenanceEnabled 
+                  ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/80' 
+                  : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/80'
+            }`}
+          >
+            {maintenanceEnabled ? <XCircle size={14} /> : <CheckCircle size={14} />}
+            {maintenanceEnabled ? 'Manutenção ATIVA' : 'Sistema Online'}
+          </button>
         </div>
 
         {/* Menu de Navegação Admin */}

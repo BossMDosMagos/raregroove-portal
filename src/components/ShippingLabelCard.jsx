@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { fetchDefaultAddress } from '../utils/addressService';
 import { toast } from 'sonner';
 import JsBarcode from 'jsbarcode';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -379,6 +379,7 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
               <img
                 src="/img/LogoRareGroove.png"
                 alt="Rare Groove"
+                crossOrigin="anonymous"
                 style={{ width: '30px', height: '30px', objectFit: 'contain' }}
               />
               <span style={{ fontSize: '9pt', fontWeight: '700', letterSpacing: '0.3px' }}>
@@ -546,12 +547,20 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
               pageBreakInside: 'avoid'
             }}>
               {portalUrl ? (
-                <QRCodeSVG
+                <QRCodeCanvas
                   ref={qrCodeRef}
                   value={`${portalUrl}/pedido/${shipping?.transaction_id || transactionId}`}
-                  size={28}
+                  size={75}
                   level="M"
                   includeMargin={false}
+                  imageSettings={{
+                     src: "/img/LogoRareGroove.png",
+                     x: undefined,
+                     y: undefined,
+                     height: 15,
+                     width: 15,
+                     excavate: true,
+                  }}
                   style={{ 
                     width: '75px', 
                     height: '75px',
