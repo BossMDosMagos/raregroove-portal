@@ -40,6 +40,12 @@ export default function App() {
   useEffect(() => {
     // 🚧 Buscar status de Manutenção do Banco
     const checkMaintenance = async () => {
+      // Timeout de segurança: se o banco não responder em 3s, libera o site
+      const timeoutId = setTimeout(() => {
+         console.warn('Timeout verificando manutenção - liberando acesso');
+         setMaintenanceLoading(false);
+      }, 3000);
+
       try {
         const { data, error } = await supabase
           .from('system_settings')
@@ -47,8 +53,12 @@ export default function App() {
           .eq('key', 'maintenance_mode')
           .single();
         
+        clearTimeout(timeoutId);
+        
         if (data?.value?.enabled) {
           setMaintenanceMode(true);
+        } else {
+          setMaintenanceMode(false);
         }
       } catch (err) {
         console.error('Erro ao verificar manutenção:', err);
@@ -87,9 +97,14 @@ export default function App() {
   const currentPath = window.location.pathname;
   const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
 
-  // 1. Evitar "flash" de conteúdo: Se estiver carregando config do banco, mostra tela preta
+  // 1. Evitar "flash" de conteúdo: Se estiver carregando config do banco, mostra tela preta com loading
   if (maintenanceLoading && !isLocalMaintenance) {
-    return <div className="min-h-screen bg-black text-white flex items-center justify-center"></div>;
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center flex-col gap-4">
+         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D4AF37]"></div>
+         <p className="text-xs text-[#D4AF37] uppercase tracking-widest">Carregando Sistema...</p>
+      </div>
+    );
   }
 
   // 2. Se estiver em manutenção E não for admin E não estiver em rota permitida
