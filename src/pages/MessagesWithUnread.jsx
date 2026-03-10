@@ -9,6 +9,7 @@ import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 export default function MessagesWithUnread() {
+  // Force refresh v1.1
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [archivedConversations, setArchivedConversations] = useState([]);
