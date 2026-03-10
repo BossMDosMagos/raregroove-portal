@@ -66,21 +66,9 @@ export default function PaymentSuccess() {
     try {
       setLoading(true);
 
-      console.log('[PaymentSuccess] Iniciando loadTransactionDetails', {
-        transactionId,
-        swapId,
-        paymentId,
-        paymentStatus,
-        returnItemId,
-        returnBuyerId,
-        returnSellerId
-      });
-
       if (transactionId) {
-        console.log('[PaymentSuccess] Carregando por transactionId:', transactionId);
         await loadTransactionById(transactionId);
       } else if (swapId) {
-        console.log('[PaymentSuccess] Carregando swap:', swapId);
         // Carregar detalhes do swap
         const { data: swapData, error: swapError } = await supabase
           .from('swaps')
@@ -96,161 +84,87 @@ export default function PaymentSuccess() {
 
         setTransaction(swapData);
       } else if (paymentStatus === 'approved' && paymentId && returnItemId && returnBuyerId) {
-        console.log('[PaymentSuccess] Pagamento aprovado! Verificar transação existente...');
-
-        const { data: existingTransaction, error: existingTransactionError } = await supabase
+        // Buscar transação existente pelo payment_id
+        const { data: existingTx } = await supabase
           .from('transactions')
           .select('id')
           .eq('payment_id', paymentId)
           .maybeSingle();
 
-        if (existingTransactionError) {
-          console.error('[PaymentSuccess] Erro ao verificar transação existente:', existingTransactionError);
-          throw existingTransactionError;
-        }
-
-        if (existingTransaction?.id) {
-          console.log('[PaymentSuccess] Transação já existe para payment_id:', paymentId, existingTransaction.id);
-          
-          // Verificar e corrigir status do item (garantir sincronização)
-          console.log('[PaymentSuccess] Verificando status do item:', returnItemId);
-          const { data: itemData } = await supabase
-            .from('items')
-            .select('is_sold, status')
-            .eq('id', returnItemId)
-            .single();
-          
-          if (itemData && (itemData.is_sold !== true || itemData.status !== 'vendido')) {
-            console.log('[PaymentSuccess] Item com status inconsistente. Corrigindo...');
-            await supabase
-              .from('items')
-              .update({
-                is_sold: true,
-                status: 'vendido',
-                sold_to_id: returnBuyerId,
-                sold_date: new Date().toISOString()
-              })
-              .eq('id', returnItemId);
-            console.log('[PaymentSuccess] ✅ Status do item corrigido!');
-          }
-          
-          await loadTransactionById(existingTransaction.id);
-          return;
-        }
-
-        // Buscar dados de endereço do comprador
-        const { data: buyerProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', returnBuyerId)
-          .single();
-
-        // Buscar dados de endereço do vendedor
-        const { data: sellerProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', returnSellerId)
-          .single();
-
-        // Construir objeto de endereço do destinatário (comprador)
-        const toAddress = {
-          logradouro: buyerProfile?.address || '',
-          numero: buyerProfile?.number || '',
-          complemento: buyerProfile?.complement || '',
-          bairro: buyerProfile?.neighborhood || '',
-          localidade: buyerProfile?.city || '',
-          uf: buyerProfile?.state || '',
-          cep: buyerProfile?.cep || ''
-        };
-
-        // Construir objeto de endereço do remetente (vendedor)
-        const fromAddress = {
-          logradouro: sellerProfile?.address || '',
-          numero: sellerProfile?.number || '',
-          complemento: sellerProfile?.complement || '',
-          bairro: sellerProfile?.neighborhood || '',
-          localidade: sellerProfile?.city || '',
-          uf: sellerProfile?.state || '',
-          cep: sellerProfile?.cep || ''
-        };
-
-        console.log('[PaymentSuccess] Transação não existe. Processando...');
-        console.log('[PaymentSuccess] Payload para process-transaction:', {
-          transactionType: 'venda',
-          buyerId: returnBuyerId,
-          sellerId: returnSellerId,
-          itemId: returnItemId,
-          itemPrice: returnItemPrice,
-          shippingCost: 0,
-          insuranceCost: 0,
-          platformFee: returnPlatformFee,
-          processingFee: returnProcessingFee,
-          gatewayFee: 0,
-          totalAmount: returnTotalAmount,
-          netAmount: returnItemPrice - returnPlatformFee,
-          paymentId: paymentId,
-          shippingData: {
-            fromAddress,
-            fromCep: sellerProfile?.cep || '00000-000',
-            toAddress,
-            toCep: buyerProfile?.cep || '00000-000',
-            carrier: 'correios'
-          },
-          paymentProvider,
-        });
-
-        const { data, error } = await supabase.functions.invoke('process-transaction', {
-          body: {
-            transactionType: 'venda',
-            buyerId: returnBuyerId,
-            sellerId: returnSellerId,
-            itemId: returnItemId,
-            itemPrice: returnItemPrice,
-            shippingCost: 0,
-            insuranceCost: 0,
-            platformFee: returnPlatformFee,
-            processingFee: returnProcessingFee,
-            gatewayFee: 0,
-            totalAmount: returnTotalAmount,
-            netAmount: returnItemPrice - returnPlatformFee,
-            paymentId: paymentId,
-            shippingData: {
-              fromAddress,
-              fromCep: sellerProfile?.cep || '00000-000',
-              toAddress,
-              toCep: buyerProfile?.cep || '00000-000',
-              carrier: 'correios'
-            },
-            paymentProvider,
-          }
-        });
-
-        if (error) {
-          console.error('[PaymentSuccess] ERRO ao invocar process-transaction:', error);
-          console.error('[PaymentSuccess] Erro completo:', JSON.stringify(error, null, 2));
-          throw error;
-        }
-
-        console.log('[PaymentSuccess] Resposta da edge function:', data);
-
-        if (data?.transactionId) {
-          console.log('[PaymentSuccess] Transação criada com sucesso:', data.transactionId);
-          await loadTransactionById(data.transactionId);
+        if (existingTx) {
+          await loadTransactionById(existingTx.id);
         } else {
-          console.warn('[PaymentSuccess] Edge function não retornou transactionId:', data);
+          // Buscar dados de endereço do comprador
+          const { data: buyerProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', returnBuyerId)
+            .single();
+
+          // Buscar dados de endereço do vendedor
+          const { data: sellerProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', returnSellerId)
+            .single();
+
+          // Construir objeto de endereço do destinatário (comprador)
+          const toAddress = {
+            logradouro: buyerProfile?.address || '',
+            numero: buyerProfile?.number || '',
+            complemento: buyerProfile?.complement || '',
+            bairro: buyerProfile?.neighborhood || '',
+            localidade: buyerProfile?.city || '',
+            uf: buyerProfile?.state || '',
+            cep: buyerProfile?.cep || ''
+          };
+
+          // Construir objeto de endereço do remetente (vendedor)
+          const fromAddress = {
+            logradouro: sellerProfile?.address || '',
+            numero: sellerProfile?.number || '',
+            complemento: sellerProfile?.complement || '',
+            bairro: sellerProfile?.neighborhood || '',
+            localidade: sellerProfile?.city || '',
+            uf: sellerProfile?.state || '',
+            cep: sellerProfile?.cep || ''
+          };
+
+          const { data, error } = await supabase.functions.invoke('process-transaction', {
+            body: {
+              transactionType: 'venda',
+              buyerId: returnBuyerId,
+              sellerId: returnSellerId,
+              itemId: returnItemId,
+              itemPrice: returnItemPrice,
+              shippingCost: 0,
+              insuranceCost: 0,
+              platformFee: returnPlatformFee,
+              processingFee: returnProcessingFee,
+              gatewayFee: 0,
+              totalAmount: returnTotalAmount,
+              netAmount: returnItemPrice - returnPlatformFee,
+              paymentId: paymentId,
+              shippingData: {
+                fromAddress,
+                fromCep: sellerProfile?.cep || '00000-000',
+                toAddress,
+                toCep: buyerProfile?.cep || '00000-000',
+                carrier: 'correios'
+              },
+              paymentProvider,
+            }
+          });
+
+          if (error) throw error;
+
+          if (data?.transactionId) {
+            await loadTransactionById(data.transactionId);
+          }
         }
-      } else {
-        console.warn('[PaymentSuccess] Condições não atendidas para processar:', {
-          hasPaymentStatus: !!paymentStatus,
-          paymentStatusValue: paymentStatus,
-          hasPaymentId: !!paymentId,
-          hasReturnItemId: !!returnItemId,
-          hasReturnBuyerId: !!returnBuyerId
-        });
       }
     } catch (error) {
-      console.error('[PaymentSuccess] ERRO CRÍTICO ao carregar detalhes:', error);
-      console.error('[PaymentSuccess] Stack:', error.stack);
+      console.error('Erro ao carregar detalhes:', error);
     } finally {
       setLoading(false);
     }

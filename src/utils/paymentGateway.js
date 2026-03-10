@@ -55,13 +55,6 @@ export const getGatewayConfig = async (selectedGateway) => {
     const mode = safeData.gateway_mode || 'production';
     const provider = selectedGateway || safeData.gateway_provider || 'stripe';
 
-    console.log('🔍 [paymentGateway] Cofre Invisível - Carregando config:', {
-      selectedGateway,
-      provider,
-      mode,
-      hasSettings: !!data
-    });
-
     let config = {
       provider,
       mode,
@@ -78,23 +71,12 @@ export const getGatewayConfig = async (selectedGateway) => {
       if (!config.publishableKey) {
         console.warn('⚠️ AVISO: Stripe Publishable Key não configurada em VITE_STRIPE_PUBLISHABLE_KEY');
       }
-      
-      console.log('🔍 [paymentGateway] Stripe config:', {
-        hasPublishableKey: !!config.publishableKey,
-        // ⚠️ NUNCA logar secretKey aqui - chaves secretas devem estar APENAS nas Edge Functions
-      });
     } else if (provider === 'mercado_pago') {
       config.publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
       
       if (!config.publicKey) {
         console.warn('⚠️ AVISO: Mercado Pago Public Key não configurada em VITE_MP_PUBLIC_KEY');
       }
-      
-      console.log('🔍 [paymentGateway] Mercado Pago config:', {
-        hasPublicKey: !!config.publicKey,
-        // ⚠️ Access Token NUNCA está no frontend
-        keyPrefix: config.publicKey ? config.publicKey.substring(0, 8) : 'MISSING'
-      });
       
       if (config.publicKey && !config.publicKey.startsWith('APP_USR-')) {
           console.warn('⚠️ AVISO CRÍTICO: Mercado Pago Public Key não parece ser de PRODUÇÃO (não começa com APP_USR-). O checkout pode falhar.');

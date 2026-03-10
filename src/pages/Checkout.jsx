@@ -98,157 +98,87 @@ export default function Checkout() {
           .eq('id', 1)
           .maybeSingle();
 
-        console.log('🔍 [DEBUG] Tentativa 1 (id=1):', settingsById);
+        settingsData = settingsById;
+        settingsError = settingsByIdError;
 
-        if (settingsById) {
-          settingsData = settingsById;
-        } else {
-          // Se não encontrar id=1, buscar o primeiro registro disponível
-          console.warn('⚠️ Registro id=1 não encontrado, buscando primeiro registro...');
+        if (!settingsData) {
+          // Fallback: pegar o primeiro registro
           const { data: firstSettings, error: firstSettingsError } = await supabase
             .from('platform_settings')
             .select('*')
             .order('id', { ascending: true })
             .limit(1)
-            .single();
-
-          console.log('🔍 [DEBUG] Tentativa 2 (primeiro registro):', firstSettings);
+            .maybeSingle();
+            
           settingsData = firstSettings;
-          settingsError = firstSettingsError || settingsByIdError;
+          settingsError = firstSettingsError;
         }
-        
-        console.log('🔍 [DEBUG] Platform Settings Data FINAL:', settingsData);
-        console.log('🔍 [DEBUG] Platform Settings Error:', settingsError);
-        
-        // Se não houver dados, usar valores padrão
-        const defaultSettings = {
-          gateway_mode: 'sandbox',
-          gateway_provider: 'stripe',
+
+        if (settingsError) throw settingsError;
+
+        // Se ainda não tiver settings, usar default
+        const finalSettings = settingsData || {
           sale_fee_pct: 10,
           processing_fee_fixed: 2.0,
-          insurance_percentage: 5,
           swap_guarantee_fee_fixed: 5.0,
-          default_shipping_from_cep: '01311100'
+          gateway_provider: 'stripe',
+          gateway_mode: 'sandbox' // Default seguro
         };
-
-        const finalSettings = settingsData || defaultSettings;
+        
         setSettings(finalSettings);
 
-        // Identificar quais gateways estão configurados (têm chaves salvas)
+        // Configurar gateways disponíveis
         const available = [];
-        const mode = finalSettings.gateway_mode || 'sandbox';
+        const isSandbox = finalSettings.gateway_mode !== 'production';
         
-        // Normalizar nome do gateway (o banco pode ter 'mercadopago' ou 'mercado_pago')
-        const normalizedProvider = (finalSettings.gateway_provider || 'stripe')
-          .replace('mercadopago', 'mercado_pago')
-          .toLowerCase();
-        console.log('🔍 [DEBUG] finalSettings completo:', finalSettings);
-        console.log('🔍 [DEBUG] Stripe Sandbox Keys:', {
-          pub: finalSettings.stripe_publishable_key_sandbox,
-          hasPub: !!finalSettings.stripe_publishable_key_sandbox,
-          pubLength: finalSettings.stripe_publishable_key_sandbox?.length
-        });
-        console.log('🔍 [DEBUG] MP Sandbox Keys:', {
-          pub: finalSettings.mp_public_key_sandbox,
-          hasPub: !!finalSettings.mp_public_key_sandbox,
-          pubLength: finalSettings.mp_public_key_sandbox?.length
-        });
-        console.log('🔍 [DEBUG] PayPal Sandbox Keys:', {
-          client: finalSettings.paypal_client_id_sandbox,
-          hasClient: !!finalSettings.paypal_client_id_sandbox,
-          clientLength: finalSettings.paypal_client_id_sandbox?.length
-        });
-        
-        // Função helper para validar se tem credencial (aceita até placeholder)
-        const hasCredential = (value) => {
-          const result = value && typeof value === 'string' && value.trim().length > 0;
-          return result;
-        };
-        
-        if (mode === 'production') {
-          if (hasCredential(finalSettings.stripe_publishable_key_production)) {
-            available.push({ id: 'stripe', name: '💳 Stripe', icon: '💳' });
-            console.log('✅ Stripe PRODUCTION adicionado');
-          } else {
-            console.log('❌ Stripe PRODUCTION não tem credenciais');
-          }
-          
-          if (hasCredential(finalSettings.mp_public_key_production)) {
-            available.push({ id: 'mercado_pago', name: '🎯 Mercado Pago', icon: '🎯' });
-            console.log('✅ Mercado Pago PRODUCTION adicionado');
-          } else {
-            console.log('❌ Mercado Pago PRODUCTION não tem credenciais');
-          }
-          
-          if (hasCredential(finalSettings.paypal_client_id_production)) {
-            available.push({ id: 'paypal', name: '🌐 PayPal', icon: '🌐' });
-            console.log('✅ PayPal PRODUCTION adicionado');
-          } else {
-            console.log('❌ PayPal PRODUCTION não tem credenciais');
-          }
-        } else {
-          // SANDBOX MODE
-          if (hasCredential(finalSettings.stripe_publishable_key_sandbox)) {
-            available.push({ id: 'stripe', name: '💳 Stripe', icon: '💳' });
-            console.log('✅ Stripe SANDBOX adicionado');
-          } else {
-            console.log('❌ Stripe SANDBOX não tem credenciais');
-          }
-          
-          if (hasCredential(finalSettings.mp_public_key_sandbox)) {
-            available.push({ id: 'mercado_pago', name: '🎯 Mercado Pago', icon: '🎯' });
-            console.log('✅ Mercado Pago SANDBOX adicionado');
-          } else {
-            console.log('❌ Mercado Pago SANDBOX não tem credenciais');
-          }
-          
-          if (hasCredential(finalSettings.paypal_client_id_sandbox)) {
-            available.push({ id: 'paypal', name: '🌐 PayPal', icon: '🌐' });
-            console.log('✅ PayPal SANDBOX adicionado');
-          } else {
-            console.log('❌ PayPal SANDBOX não tem credenciais');
+        // Stripe
+        if (finalSettings.gateway_provider === 'stripe' || !finalSettings.gateway_provider) {
+          if (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+            available.push({ 
+              id: 'stripe', 
+              name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito (Stripe)', 
+              icon: CreditCard 
+            });
           }
         }
 
-        console.log('📊 [DEBUG] Total de gateways adicionados:', available.length);
-        console.log('📊 [DEBUG] Gateways disponíveis:', available);
-        
-        // Fallback: sempre exibir ao menos o gateway principal configurado
-        if (available.length === 0) {
-          console.warn('⚠️ [FALLBACK] Nenhum gateway detectado, aplicando fallback...');
-          const allowedProviders = ['stripe', 'mercado_pago', 'paypal'];
-          const gatewayId = allowedProviders.includes(normalizedProvider) ? normalizedProvider : 'stripe';
-
-          available.push({
-            id: gatewayId,
-            name: gatewayId === 'stripe' ? '💳 Stripe' : gatewayId === 'mercado_pago' ? '🎯 Mercado Pago' : '🌐 PayPal',
-            icon: gatewayId === 'stripe' ? '💳' : gatewayId === 'mercado_pago' ? '🎯' : '🌐'
-          });
-          console.log('⚠️ [FALLBACK] Exibindo gateway principal:', gatewayId);
+        // Mercado Pago
+        if (finalSettings.gateway_provider === 'mercado_pago') {
+          if (import.meta.env.VITE_MP_PUBLIC_KEY) {
+            available.push({ 
+              id: 'mercado_pago', 
+              name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago', 
+              icon: CreditCard 
+            });
+          }
         }
         
-        console.log('✅ [FINAL] Available Gateways:', available);
+        // PayPal
+        if (finalSettings.gateway_provider === 'paypal') {
+          if (import.meta.env.VITE_PAYPAL_CLIENT_ID) {
+            available.push({ 
+              id: 'paypal', 
+              name: isSandbox ? 'PayPal (Teste)' : 'PayPal', 
+              icon: CreditCard 
+            });
+          }
+        }
         
         setAvailableGateways(available);
+
+        // Selecionar o primeiro disponível por padrão
         if (available.length > 0) {
-          setSelectedGateway(available[0].id);
+          const gatewayId = available[0].id;
+          setSelectedGateway(gatewayId);
         }
 
         setLoading(false);
       } catch (error) {
         console.error('Erro ao carregar checkout:', error);
-        console.error('Mensagem detalhada:', error.message);
-        
-        // Mostrar erro mais específico
-        if (error.message.includes('Configurações de plataforma')) {
-          toast.error('Sistema de pagamento não inicializado. Contate o administrador.');
-        } else {
-          toast.error('Erro ao carregar dados de checkout');
-        }
-        setLoading(false);
+        toast.error('Erro ao carregar dados do checkout');
+        navigate('/catalogo');
       }
     };
-
     init();
   }, [itemId, navigate]);
 
