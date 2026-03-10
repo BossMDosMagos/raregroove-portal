@@ -1,33 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async'; // SEO
 import { Toaster } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import Navbar from './components/Navbar';
+import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
 import { validateSecretVault } from './utils/secretVaultTest';
 
-// Nossas Páginas
+// Componentes de carregamento
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D4AF37]"></div>
+  </div>
+);
+
+// Páginas Públicas e Essenciais (Carregamento Imediato)
 import Login from './pages/Auth/Login';
 import CompleteSignUp from './pages/Auth/CompleteSignUp';
 import Portal from './pages/Portal';
 import Catalogo from './pages/Catalogo';
 import ItemDetails from './pages/ItemDetails';
-import MyItems from './pages/MyItems';
-import Profile from './pages/Profile';
-import MessagesWithUnread from './pages/MessagesWithUnread';
-import ChatThread from './pages/ChatThread';
-import NotFound from './pages/NotFound';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminUsers from './pages/AdminUsers';
-import FeeManagement from './pages/FeeManagement';
-import AdminSales from './pages/AdminSales';
-import DebugPayments from './pages/DebugPayments';
-import AdminSwapsManagement from './pages/AdminSwapsManagement';
-import SwapSimulator from './pages/SwapSimulator';
 import Checkout from './pages/Checkout';
-import SwapPayment from './pages/SwapPayment';
 import PaymentSuccess from './pages/PaymentSuccess';
+import NotFound from './pages/NotFound';
 import Maintenance from './pages/Maintenance';
+
+// Páginas Administrativas e Pesadas (Lazy Loading)
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const FeeManagement = lazy(() => import('./pages/FeeManagement'));
+const AdminSales = lazy(() => import('./pages/AdminSales'));
+const DebugPayments = lazy(() => import('./pages/DebugPayments'));
+const AdminSwapsManagement = lazy(() => import('./pages/AdminSwapsManagement'));
+const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
+
+// Páginas de Usuário (Lazy Loading)
+const MyItems = lazy(() => import('./pages/MyItems'));
+const Profile = lazy(() => import('./pages/Profile'));
+const MessagesWithUnread = lazy(() => import('./pages/MessagesWithUnread'));
+const ChatThread = lazy(() => import('./pages/ChatThread'));
+const SwapPayment = lazy(() => import('./pages/SwapPayment'));
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -113,17 +126,22 @@ export default function App() {
     loadAdminFlag();
   }, [session]);
 
-  if (loading) return null; // Opcional: colocar um componente de loading aqui
+  if (loading) {
+    return <LoadingFallback />;
+  }
 
   return (
-    <Router>
-      <UnreadMessagesProvider>
-        <Toaster position="top-center" expand={false} richColors theme="dark" />
-        
-        {/* Navbar fixa no topo (Glassmorphism) */}
-        <Navbar />
-        
-        <Routes>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <Router>
+          <UnreadMessagesProvider>
+            <Toaster position="top-center" expand={false} richColors theme="dark" />
+            
+            <div className="min-h-screen bg-[#050505] text-white">
+              <Navbar session={session} />
+              
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
           {/* Se estiver logado, manda pro Portal. Se não, manda pro Login */}
           <Route 
             path="/" 
@@ -302,8 +320,12 @@ export default function App() {
 
           {/* Rota 404 - Catch All */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </UnreadMessagesProvider>
-    </Router>
+              </Routes>
+            </Suspense>
+          </div>
+        </UnreadMessagesProvider>
+        </Router>
+      </ErrorBoundary>
+    </HelmetProvider>
   );
 }
