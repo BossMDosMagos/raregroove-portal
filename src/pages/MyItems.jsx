@@ -73,7 +73,7 @@ export default function MyItems() {
       // Buscar perfil para verificar role
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role')
+        .select('is_admin')
         .eq('id', user.id)
         .single();
       if (profileError) throw profileError;
@@ -88,7 +88,7 @@ export default function MyItems() {
 
       // Permitir exclusão de itens vendidos apenas para admin
       const isSold = itemData?.status === 'vendido' || itemData?.is_sold === true;
-      const isAdmin = profile?.role === 'admin';
+      const isAdmin = profile?.is_admin === true;
 
       if (isSold && !isAdmin) {
         toast.error('EXCLUSÃO BLOQUEADA', {
