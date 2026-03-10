@@ -99,7 +99,14 @@ export default function MyItems() {
       }
 
       const { error } = await supabase.from('items').delete().eq('id', deleteConfirmData.id);
-      if (error) throw error;
+      
+      if (error) {
+        // Se for erro de integridade referencial (FK)
+        if (error.code === '23503') {
+          throw new Error('Este item não pode ser excluído pois possui histórico de vendas ou trocas.');
+        }
+        throw error;
+      }
 
       toast.success('ITEM REMOVIDO', {
         description: 'O item foi excluído do seu acervo',
@@ -110,8 +117,9 @@ export default function MyItems() {
       setDeleteConfirmText('');
       fetchMyItems();
     } catch (error) {
+      console.error('Erro ao deletar:', error);
       toast.error('ERRO AO DELETAR', {
-        description: 'Não foi possível remover o item',
+        description: error.message || 'Não foi possível remover o item. Verifique se você tem permissão.',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     }
