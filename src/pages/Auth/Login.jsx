@@ -405,6 +405,8 @@ export default function Login() {
           duration: 8000,
           style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
         });
+
+        navigate('/verify-email', { state: { email } });
         
         // Ativar cooldown curto (5s) para evitar duplo-clique
         setSignUpCooldown(5);

@@ -19,6 +19,7 @@ const LoadingFallback = () => (
 
 // Páginas Públicas e Essenciais (Carregamento Imediato)
 import Login from './pages/Auth/Login';
+import VerifyEmail from './pages/Auth/VerifyEmail';
 import CompleteSignUp from './pages/Auth/CompleteSignUp';
 import Portal from './pages/Portal';
 import Catalogo from './pages/Catalogo';
@@ -237,6 +238,11 @@ export default function App() {
           <Route 
             path="/complete-signup" 
             element={<CompleteSignUp />} 
+          />
+
+          <Route
+            path="/verify-email"
+            element={<VerifyEmail />}
           />
           
           {/* Rota do Portal (Protegida) */}
