@@ -103,7 +103,7 @@ BEGIN
         admin_id = v_uid,
         resolved_at = now(),
         updated_at = now(),
-        metadata = public.jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
+        metadata = jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
     WHERE id = p_dispute_id;
 
     RETURN jsonb_build_object('success', true, 'message', 'Disputa rejeitada');
@@ -115,7 +115,7 @@ BEGIN
         admin_id = v_uid,
         resolved_at = now(),
         updated_at = now(),
-        metadata = public.jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
+        metadata = jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
     WHERE id = p_dispute_id;
 
     IF v_tx.status <> 'concluido' THEN
@@ -162,7 +162,7 @@ BEGIN
       admin_id = v_uid,
       resolved_at = now(),
       updated_at = now(),
-      metadata = public.jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
+      metadata = jsonb_strip_nulls(metadata || jsonb_build_object('note', v_note))
   WHERE id = p_dispute_id;
 
   UPDATE public.transactions
