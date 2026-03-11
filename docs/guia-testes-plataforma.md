@@ -198,3 +198,13 @@ No SQL Editor:
 select * from cron.job where jobname = 'escrow_sla_15m';
 select * from cron.job_run_details order by start_time desc limit 20;
 ```
+
+### 11) Notificação automática para admin (fila de reembolsos)
+
+O sistema cria uma notificação periódica para admins se houver reembolsos pendentes.
+
+Teste manual (SQL):
+
+```sql
+select public.notify_admin_refund_tasks();
+```
