@@ -10,10 +10,12 @@ CREATE TABLE IF NOT EXISTS system_settings (
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 
 -- Política: Todos podem ler (para verificar se site está off)
+DROP POLICY IF EXISTS "Public read settings" ON system_settings;
 CREATE POLICY "Public read settings" ON system_settings
   FOR SELECT USING (true);
 
 -- Política: Apenas Admins podem alterar
+DROP POLICY IF EXISTS "Admins update settings" ON system_settings;
 CREATE POLICY "Admins update settings" ON system_settings
   FOR UPDATE USING (
     auth.uid() IN (SELECT id FROM profiles WHERE is_admin = true)
