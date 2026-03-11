@@ -317,7 +317,7 @@ export default function Login() {
           password,
           options: { 
             data: { full_name: fullName, country_code: countryCode },
-            emailRedirectTo: 'http://localhost:5173/complete-signup'
+            emailRedirectTo
           }
         });
         
@@ -448,6 +448,11 @@ export default function Login() {
   const doc2Label = isBrazil ? (t('auth.form.rg') || 'RG') : (t('auth.form.passport') || 'Passport / ID Number');
   const doc1Placeholder = isBrazil ? (t('auth.form.cpf.placeholder') || '000.000.000-00') : (t('auth.form.taxId.placeholder') || 'A1B2C3');
   const doc2Placeholder = isBrazil ? (t('auth.form.rg.placeholder') || '00.000.000-0') : (t('auth.form.passport.placeholder') || 'X1234567');
+  const emailRedirectTo = (() => {
+    const envBase = String(import.meta.env.VITE_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
+    const base = envBase || window.location.origin;
+    return new URL('/complete-signup', base).toString();
+  })();
 
   return (
     <div className="min-h-screen bg-charcoal-deep flex items-center justify-center p-6 relative overflow-hidden selection:bg-gold-premium/30 selection:text-gold-light">
