@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { AlertCircle, CheckCircle, Clock, ExternalLink, Loader2, Scale, Search, Shield, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Download, ExternalLink, Loader2, Scale, Search, Shield, Upload, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const toastSuccessStyle = { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' };
@@ -13,9 +13,12 @@ export default function AdminDisputes() {
   const [disputes, setDisputes] = useState([]);
   const [profilesMap, setProfilesMap] = useState({});
   const [transactionsMap, setTransactionsMap] = useState({});
+  const [refundTasksMap, setRefundTasksMap] = useState({});
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [busyId, setBusyId] = useState(null);
+  const [uploadingId, setUploadingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const statusOptions = [
     { value: 'all', label: 'Todos' },
@@ -60,8 +63,9 @@ export default function AdminDisputes() {
 
       const transactionIds = Array.from(new Set(ds.map((d) => d.transaction_id).filter(Boolean)));
       const userIds = Array.from(new Set(ds.flatMap((d) => [d.opened_by, d.buyer_id, d.seller_id]).filter(Boolean)));
+      const disputeIds = Array.from(new Set(ds.map((d) => d.id).filter(Boolean)));
 
-      const [{ data: txData }, { data: profilesData }] = await Promise.all([
+      const [{ data: txData }, { data: profilesData }, { data: refundTasksData }] = await Promise.all([
         transactionIds.length > 0
           ? supabase
               .from('transactions')
@@ -73,6 +77,13 @@ export default function AdminDisputes() {
               .from('profiles')
               .select('id, full_name, email')
               .in('id', userIds)
+          : Promise.resolve({ data: [] }),
+        disputeIds.length > 0
+          ? supabase
+              .from('dispute_refund_tasks')
+              .select('id, dispute_id, status, proof_file_path, proof_original_filename, proof_expires_at, requested_at')
+              .in('dispute_id', disputeIds)
+              .order('requested_at', { ascending: false })
           : Promise.resolve({ data: [] }),
       ]);
 
@@ -86,8 +97,14 @@ export default function AdminDisputes() {
         return acc;
       }, {});
 
+      const nextRefundTasksMap = (refundTasksData || []).reduce((acc, t) => {
+        if (!acc[t.dispute_id]) acc[t.dispute_id] = t;
+        return acc;
+      }, {});
+
       setTransactionsMap(nextTxMap);
       setProfilesMap(nextProfilesMap);
+      setRefundTasksMap(nextRefundTasksMap);
       setDisputes(ds);
     } catch (error) {
       console.error('Erro ao carregar disputas:', error);
@@ -200,6 +217,101 @@ export default function AdminDisputes() {
     }
   };
 
+  const validateProofFile = (file) => {
+    const validTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ];
+    if (!validTypes.includes(file.type)) {
+      toast.error('FORMATO INVÁLIDO', {
+        description: 'Use PDF, JPG, PNG, WebP ou GIF.',
+        style: toastErrorStyle,
+      });
+      return false;
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('ARQUIVO MUITO GRANDE', {
+        description: 'Tamanho máximo permitido: 5MB.',
+        style: toastErrorStyle,
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const uploadRefundProof = async (refundTask, file) => {
+    if (!refundTask?.id || !file) return;
+    if (!validateProofFile(file)) return;
+
+    setUploadingId(refundTask.dispute_id);
+    try {
+      const fileExt = (file.name.split('.').pop() || 'bin').toLowerCase();
+      const timestamp = Date.now();
+      const proofPath = `admin_archive/${refundTask.id}/proof_${timestamp}.${fileExt}`;
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: uploadError } = await supabase.storage
+        .from('refund_proofs')
+        .upload(proofPath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        const bucketNotFound = /bucket not found/i.test(uploadError.message || '');
+        throw new Error(bucketNotFound ? 'Bucket refund_proofs não encontrado. Rode as migrations do projeto.' : uploadError.message);
+      }
+
+      const { data: updatedRows, error: updateError } = await supabase
+        .from('dispute_refund_tasks')
+        .update({
+          proof_file_path: proofPath,
+          proof_original_filename: file.name,
+          proof_expires_at: expiresAt,
+        })
+        .eq('id', refundTask.id)
+        .select('id');
+
+      if (updateError) throw updateError;
+      if (!updatedRows || updatedRows.length === 0) throw new Error('Falha ao vincular comprovante na tarefa.');
+
+      toast.success('COMPROVANTE ANEXADO', { style: toastSuccessStyle });
+      await load();
+    } catch (error) {
+      console.error('Erro ao anexar comprovante:', error);
+      toast.error('ERRO', { description: error.message || 'Falha ao anexar comprovante.', style: toastErrorStyle });
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const openRefundProof = async (refundTask) => {
+    if (!refundTask?.proof_file_path) return;
+    const expiresAt = refundTask.proof_expires_at ? new Date(refundTask.proof_expires_at) : null;
+    const isExpired = expiresAt ? expiresAt.getTime() <= Date.now() : false;
+    if (isExpired) return;
+
+    setDownloadingId(refundTask.dispute_id);
+    try {
+      const { data, error } = await supabase.storage
+        .from('refund_proofs')
+        .createSignedUrl(refundTask.proof_file_path, 60);
+
+      if (error) throw error;
+
+      window.open(data?.signedUrl, '_blank', 'noopener,noreferrer');
+      toast.success('COMPROVANTE ABERTO', { style: toastSuccessStyle });
+    } catch (error) {
+      console.error('Erro ao abrir comprovante:', error);
+      toast.error('ERRO', { description: error.message || 'Falha ao abrir comprovante.', style: toastErrorStyle });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-charcoal-deep text-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -271,6 +383,11 @@ export default function AdminDisputes() {
                     const buyer = profilesMap[d.buyer_id];
                     const seller = profilesMap[d.seller_id];
                     const isBusy = busyId === d.id;
+                    const refundTask = refundTasksMap[d.id] || null;
+                    const isUploading = uploadingId === d.id;
+                    const isDownloading = downloadingId === d.id;
+                    const proofExpiresAt = refundTask?.proof_expires_at ? new Date(refundTask.proof_expires_at) : null;
+                    const isProofExpired = proofExpiresAt ? proofExpiresAt.getTime() <= Date.now() : false;
                     return (
                       <tr key={d.id} className="border-t border-white/5 hover:bg-white/5 transition">
                         <td className="px-4 py-3">
@@ -344,14 +461,51 @@ export default function AdminDisputes() {
                             </button>
 
                             {d.status === 'resolved_refund_pending' && (
-                              <button
-                                disabled={isBusy}
-                                onClick={() => markRefundExecuted(d.id)}
-                                className="px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-yellow-500/20 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                Marcar executado
-                              </button>
+                              <>
+                                {refundTask?.proof_file_path && !isProofExpired ? (
+                                  <button
+                                    disabled={isDownloading}
+                                    onClick={() => openRefundProof(refundTask)}
+                                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-black uppercase tracking-wider hover:border-white/20 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    Comprovante
+                                  </button>
+                                ) : null}
+
+                                {refundTask?.id ? (
+                                  <>
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
+                                      className="hidden"
+                                      id={`refund-proof-dispute-${d.id}`}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        if (file) uploadRefundProof(refundTask, file);
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                    <button
+                                      disabled={isUploading || isBusy}
+                                      onClick={() => document.getElementById(`refund-proof-dispute-${d.id}`)?.click()}
+                                      className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-blue-500/20 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                      Anexar
+                                    </button>
+                                  </>
+                                ) : null}
+
+                                <button
+                                  disabled={isBusy || isUploading}
+                                  onClick={() => markRefundExecuted(d.id)}
+                                  className="px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-yellow-500/20 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                  Marcar executado
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>

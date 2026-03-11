@@ -107,6 +107,7 @@ Este guia valida, ponta a ponta, as implementações de:
    - Ledger registra `disputa_reembolso`.
    - Comprador e vendedor recebem notificação “REEMBOLSO APROVADO”.
 3. Após fazer o reembolso fora do sistema (processo humano), no `/admin/disputes`:
+   - (opcional) clique **Anexar** e envie o comprovante do reembolso.
    - clique **Marcar executado** na disputa.
 4. Validações esperadas:
    - Disputa vira `resolved_refund`.
