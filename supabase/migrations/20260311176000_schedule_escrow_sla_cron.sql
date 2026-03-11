@@ -7,9 +7,8 @@ BEGIN
       PERFORM cron.schedule(
         'escrow_sla_15m',
         '*/15 * * * *',
-        $$select public.run_escrow_sla();$$
+        $job$select public.run_escrow_sla();$job$
       );
     END IF;
   END IF;
 END $$;
-
