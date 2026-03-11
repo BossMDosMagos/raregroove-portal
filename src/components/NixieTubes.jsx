@@ -45,8 +45,15 @@ export default function NixieTubes({ value = null, digits = 6 }) {
         .maybeSingle();
 
       if (cancelled) return;
-      if (error) return;
-      setDbValue(Number(data?.total_visits || 0));
+      if (!error) {
+        setDbValue(Number(data?.total_visits || 0));
+        return;
+      }
+
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_total_visits');
+      if (cancelled) return;
+      if (rpcError) return;
+      setDbValue(Number(rpcData || 0));
     };
 
     load();
