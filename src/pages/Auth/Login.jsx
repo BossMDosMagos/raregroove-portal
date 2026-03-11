@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; // 1. Importado
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { createProfileOnSignUp } from '../../utils/profileService';
 import { Pill } from '../../components/UIComponents';
 import { Input, AuthButton } from '../../components/AuthComponents';
-import { checkLoginLockout, recordFailedLogin, clearLoginAttempts, validateHoneyPot } from '../../utils/security';
+import { checkLoginLockout, recordFailedLogin, clearLoginAttempts, validateDoubleHoneyPot, validateFormTiming } from '../../utils/security';
 import { useI18n } from '../../contexts/I18nContext.jsx';
 
 export default function Login() {
@@ -20,7 +20,8 @@ export default function Login() {
   const [rg, setRg] = useState('');
   const [rememberEmail, setRememberEmail] = useState(false);
   const [signUpCooldown, setSignUpCooldown] = useState(0); // Cooldown para rate limit
-  const [lockoutInfo, setLockoutInfo] = useState(null); // Estado de bloqueio local
+  const [loginCooldown, setLoginCooldown] = useState(0);
+  const [formStartedAt, setFormStartedAt] = useState(Date.now());
   
   // 🍯 HONEY POT: Campo oculto anti-bot
   const [addressSecondary, setAddressSecondary] = useState('');
@@ -28,13 +29,10 @@ export default function Login() {
 
   const navigate = useNavigate(); // 2. Inicializado
 
+  const authIdentifier = useMemo(() => (email || '').trim().toLowerCase(), [email]);
+
   useEffect(() => {
     // Verificar bloqueio ao carregar
-    const lockout = checkLoginLockout();
-    if (lockout.isLocked) {
-      setLockoutInfo(lockout);
-    }
-    
     const savedRemember = localStorage.getItem('rg_remember_email') === 'true';
     const savedEmail = localStorage.getItem('rg_login_email') || '';
 
@@ -72,6 +70,21 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [signUpCooldown]);
 
+  useEffect(() => {
+    if (loginCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setLoginCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [loginCooldown]);
+
+  useEffect(() => {
+    setFormStartedAt(Date.now());
+    setAddressSecondary('');
+    setWebsiteUrl('');
+    setLoginCooldown(0);
+  }, [isLogin]);
+
   const normalizeDoc = (value) => (value || '').replace(/\D/g, '');
 
   const isValidCpfCnpj = (value) => {
@@ -89,21 +102,38 @@ export default function Login() {
     setLoading(true);
 
     // 🔒 RATE LIMIT: Verificar bloqueio local
-    const lockout = checkLoginLockout();
+    const lockout = checkLoginLockout(authIdentifier);
     if (lockout.isLocked) {
       toast.error('BLOQUEIO DE SEGURANÇA', {
         description: lockout.message,
         duration: 8000,
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
-      setLockoutInfo(lockout);
       setLoading(false);
       return;
     }
 
-    // 🍯 HONEY POT: Detectar bots preenchendo campo oculto
-    if (addressSecondary || websiteUrl) {
-      console.warn('🚨 BOT DETECTADO: Campo honey pot preenchido');
+    if (lockout.cooldownSeconds) {
+      setLoginCooldown(lockout.cooldownSeconds);
+      toast.error('AGUARDE', {
+        description: lockout.message,
+        duration: 5000,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!validateFormTiming(formStartedAt, { minMs: 1200 })) {
+      toast.error('ACESSO NEGADO', {
+        description: 'Atividade suspeita detectada. Tente novamente.',
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!validateDoubleHoneyPot([addressSecondary, websiteUrl])) {
       toast.error('ACESSO NEGADO', {
         description: 'Atividade suspeita detectada. Acesso bloqueado.',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -118,9 +148,8 @@ export default function Login() {
         
         if (error) {
           // 🔒 REGISTRAR FALHA DE LOGIN
-          const result = recordFailedLogin();
+          const result = recordFailedLogin(authIdentifier);
           if (result.isLocked) {
-            setLockoutInfo(result);
             toast.error('BLOQUEIO ATIVADO', {
               description: result.message,
               duration: 8000,
@@ -130,21 +159,18 @@ export default function Login() {
             return;
           }
 
-          // Detectar erro de email não confirmado
-          if (error.message?.toLowerCase().includes('email not confirmed')) {
-            toast.error('CONTA NÃO ATIVADA', {
-              description: 'Sua conta ainda não foi ativada. Por favor, confirme seu e-mail.',
-              duration: 7000,
-              style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
-            });
-            setLoading(false);
-            return;
-          }
-          throw error;
+          if (result.cooldownSeconds) setLoginCooldown(result.cooldownSeconds);
+          toast.error('FALHA NA AUTENTICAÇÃO', {
+            description: 'Verifique suas credenciais e tente novamente.',
+            duration: 6000,
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+          });
+          setLoading(false);
+          return;
         }
 
         // Sucesso: Limpar tentativas falhas
-        clearLoginAttempts();
+        clearLoginAttempts(authIdentifier);
         
         // Verificar se o perfil existe
         const { data: profile, error: profileError } = await supabase
@@ -200,6 +226,24 @@ export default function Login() {
         
         navigate('/portal'); 
       } else {
+        if (!validateFormTiming(formStartedAt, { minMs: 1800 })) {
+          toast.error('ACESSO NEGADO', {
+            description: 'Atividade suspeita detectada. Tente novamente.',
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!validateDoubleHoneyPot([addressSecondary, websiteUrl])) {
+          toast.error('ACESSO NEGADO', {
+            description: 'Atividade suspeita detectada. Acesso bloqueado.',
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+          });
+          setLoading(false);
+          return;
+        }
+
         if (!isValidCpfCnpj(cpfCnpj)) {
           toast.error('CPF/CNPJ inválido', {
             description: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.'
@@ -417,33 +461,27 @@ export default function Login() {
               </div>
             )}
             
-            {/* 🍯 HONEY POT: Signup */}
-            {!isLogin && (
-              <input
-                type="text"
-                name="address_secondary_field"
-                value={addressSecondary}
-                onChange={(e) => setAddressSecondary(e.target.value)}
-                autoComplete="off"
-                tabIndex="-1"
-                aria-hidden="true"
-                className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
-              />
-            )}
+            <input
+              type="text"
+              name="address_secondary_field"
+              value={addressSecondary}
+              onChange={(e) => setAddressSecondary(e.target.value)}
+              autoComplete="off"
+              tabIndex="-1"
+              aria-hidden="true"
+              className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
+            />
 
-            {/* 🍯 HONEY POT: Login */}
-            {isLogin && (
-              <input
-                type="text"
-                name="website_url_field"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                autoComplete="off"
-                tabIndex="-1"
-                aria-hidden="true"
-                className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
-              />
-            )}
+            <input
+              type="text"
+              name="website_url_field"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              autoComplete="off"
+              tabIndex="-1"
+              aria-hidden="true"
+              className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
+            />
             
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/60 ml-1">
@@ -496,7 +534,7 @@ export default function Login() {
             
             <div className="pt-4 space-y-6">
               <button 
-                disabled={loading || (signUpCooldown > 0 && !isLogin)}
+                disabled={loading || loginCooldown > 0 || (signUpCooldown > 0 && !isLogin)}
                 className="w-full py-5 bg-gold-premium text-charcoal-deep rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all duration-500 hover:shadow-[0_0_40px_rgba(212,175,55,0.4)] hover:scale-[1.02] disabled:opacity-30 disabled:grayscale active:scale-95 flex items-center justify-center gap-3"
               >
                 {loading ? (
@@ -504,6 +542,8 @@ export default function Login() {
                     <Loader2 className="animate-spin" size={18} />
                     {isLogin ? (t('auth.login.processing') || 'ENTRANDO...') : (t('auth.signup.processing') || 'CRIANDO...')}
                   </>
+                ) : loginCooldown > 0 && isLogin ? (
+                  `AGUARDE ${loginCooldown}S`
                 ) : signUpCooldown > 0 && !isLogin ? (
                   `AGUARDE ${signUpCooldown}S`
                 ) : (

@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { fetchProfile } from '../../utils/profileService';
 import { Pill } from '../../components/UIComponents';
 import { Input, AuthButton } from '../../components/AuthComponents';
+import { validateDoubleHoneyPot, validateFormTiming } from '../../utils/security';
 
 export default function CompleteSignUp() {
   const [searchParams] = useSearchParams();
@@ -16,6 +17,9 @@ export default function CompleteSignUp() {
   const [profileData, setProfileData] = useState(null);
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [rg, setRg] = useState('');
+  const [addressSecondary, setAddressSecondary] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [formStartedAt] = useState(Date.now());
   const [step, setStep] = useState('verifying'); // 'verifying' | 'completing' | 'success'
 
   const normalizeDoc = (value) => (value || '').replace(/\D/g, '');
@@ -156,6 +160,26 @@ export default function CompleteSignUp() {
     setVerifying(true);
 
     try {
+      if (!validateFormTiming(formStartedAt, { minMs: 1800 })) {
+        toast.error('ACESSO NEGADO', {
+          description: 'Atividade suspeita detectada. Tente novamente.',
+          duration: 6000,
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
+        });
+        setVerifying(false);
+        return;
+      }
+
+      if (!validateDoubleHoneyPot([addressSecondary, websiteUrl])) {
+        toast.error('ACESSO NEGADO', {
+          description: 'Atividade suspeita detectada. Acesso bloqueado.',
+          duration: 6000,
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
+        });
+        setVerifying(false);
+        return;
+      }
+
       // Validar documentos
       if (!isValidCpfCnpj(cpfCnpj)) {
         const digitCount = normalizeDoc(cpfCnpj).length;
@@ -337,6 +361,26 @@ export default function CompleteSignUp() {
 
         {/* Formulário */}
         <form onSubmit={handleComplete} className="space-y-4">
+          <input
+            type="text"
+            name="address_secondary_field"
+            value={addressSecondary}
+            onChange={(e) => setAddressSecondary(e.target.value)}
+            autoComplete="off"
+            tabIndex="-1"
+            aria-hidden="true"
+            className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
+          />
+          <input
+            type="text"
+            name="website_url_field"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            autoComplete="off"
+            tabIndex="-1"
+            aria-hidden="true"
+            className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
+          />
           {/* CPF/CNPJ */}
           <div>
             <label className="block text-[#D4AF37] text-xs font-bold mb-2 tracking-widest">

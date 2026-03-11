@@ -1,7 +1,7 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async'; // SEO
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
@@ -108,6 +108,100 @@ export default function App() {
 
     loadAdminFlag();
   }, [session]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const timeoutMinutesRaw = Number(import.meta.env.VITE_SESSION_IDLE_TIMEOUT_MINUTES || 30);
+    const warnMinutesRaw = Number(import.meta.env.VITE_SESSION_IDLE_WARN_MINUTES || 2);
+    const timeoutMinutes = Number.isFinite(timeoutMinutesRaw) && timeoutMinutesRaw > 0 ? timeoutMinutesRaw : 30;
+    const warnMinutes = Number.isFinite(warnMinutesRaw) && warnMinutesRaw > 0 ? warnMinutesRaw : 2;
+
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+    const warnMs = Math.min(timeoutMs - 10_000, warnMinutes * 60 * 1000);
+    const storageKey = `rg_last_activity:${userId}`;
+
+    let lastWrite = 0;
+    let warned = false;
+
+    const writeActivity = () => {
+      const now = Date.now();
+      if (now - lastWrite < 5000) return;
+      lastWrite = now;
+      localStorage.setItem(storageKey, String(now));
+    };
+
+    const getLastActivity = () => {
+      const raw = localStorage.getItem(storageKey);
+      const value = Number(raw || 0);
+      if (!Number.isFinite(value) || value <= 0) return 0;
+      return value;
+    };
+
+    const handler = () => writeActivity();
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'pointerdown'];
+    events.forEach((evt) => window.addEventListener(evt, handler, { passive: true }));
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') writeActivity();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const onStorage = (e) => {
+      if (e.key !== storageKey) return;
+      if (warned) {
+        const last = getLastActivity();
+        const remaining = timeoutMs - (Date.now() - last);
+        if (remaining > warnMs) warned = false;
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    writeActivity();
+
+    const interval = setInterval(async () => {
+      const last = getLastActivity();
+      if (!last) {
+        writeActivity();
+        return;
+      }
+
+      const elapsed = Date.now() - last;
+      const remaining = timeoutMs - elapsed;
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        events.forEach((evt) => window.removeEventListener(evt, handler));
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('storage', onStorage);
+        await supabase.auth.signOut();
+        toast.error('SESSÃO EXPIRADA', {
+          description: 'Por segurança, sua sessão foi encerrada por inatividade.',
+          duration: 8000,
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+        });
+        return;
+      }
+
+      if (!warned && warnMs > 0 && remaining <= warnMs) {
+        warned = true;
+        const seconds = Math.max(1, Math.ceil(remaining / 1000));
+        toast.message('AVISO DE SEGURANÇA', {
+          description: `Sua sessão expira em ~${seconds}s por inatividade.`,
+          duration: 7000,
+          style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+        });
+      }
+    }, 15_000);
+
+    return () => {
+      clearInterval(interval);
+      events.forEach((evt) => window.removeEventListener(evt, handler));
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [session?.user?.id]);
 
   if (loading) {
     return <LoadingFallback />;
