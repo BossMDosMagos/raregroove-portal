@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 export default function Disputes() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [disputes, setDisputes] = useState([]);
 
@@ -64,7 +66,11 @@ export default function Disputes() {
               const cfg = statusConfig[d.status] || statusConfig.open;
               const Icon = cfg.icon;
               return (
-                <div key={d.id} className="bg-black/40 border border-white/10 rounded-2xl p-5 flex items-start justify-between gap-4">
+                <button
+                  key={d.id}
+                  onClick={() => navigate(`/disputas/${d.id}`)}
+                  className="w-full text-left bg-black/40 border border-white/10 rounded-2xl p-5 flex items-start justify-between gap-4 hover:border-white/20 transition"
+                >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${cfg.className}`}>
@@ -82,7 +88,7 @@ export default function Disputes() {
                       Aberta em {new Date(d.created_at).toLocaleString('pt-BR')}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -91,4 +97,3 @@ export default function Disputes() {
     </div>
   );
 }
-
