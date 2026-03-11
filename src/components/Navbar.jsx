@@ -289,6 +289,11 @@ export default function Navbar() {
                           onClick={() => {
                             markAsRead(notif.id);
                             setNotificationsOpen(false);
+                            if (notif.related_id && String(notif.title || '').toUpperCase().includes('DISPUTA')) {
+                              navigate(`/disputas/${notif.related_id}`);
+                            } else if (notif.item_id) {
+                              navigate(`/item/${notif.item_id}`);
+                            }
                           }}
                           className={`px-4 py-2.5 border-b border-[#D4AF37]/10 cursor-pointer transition-colors ${
                             notif.is_read ? 'bg-black/20' : 'bg-[#D4AF37]/5 hover:bg-[#D4AF37]/10'
