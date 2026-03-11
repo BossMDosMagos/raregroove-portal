@@ -1,9 +1,0 @@
-name = "escrow-sla-runner"
-main = "src/index.ts"
-compatibility_date = "2026-03-11"
-
-[triggers]
-crons = ["*/15 * * * *"]
-
-[vars]
-SUPABASE_URL = ""
