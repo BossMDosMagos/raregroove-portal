@@ -193,10 +193,10 @@ export default function NotificationBell() {
   const handleNavigate = (notification) => {
     setIsOpen(false);
     
-    if (notification.item_id) {
-      navigate(`/item/${notification.item_id}`);
-    } else if (notification.related_id && notification.type === 'system' && (String(notification.title || '').toUpperCase().includes('DISPUTA') || String(notification.message || '').toLowerCase().includes('disputa'))) {
+    if (notification.related_id && notification.type === 'system' && (String(notification.title || '').toUpperCase().includes('DISPUTA') || String(notification.message || '').toLowerCase().includes('disputa'))) {
       navigate(`/disputas/${notification.related_id}`);
+    } else if (notification.item_id) {
+      navigate(`/item/${notification.item_id}`);
     } else if (notification.type === 'message') {
       navigate('/mensagens');
     } else if (notification.type === 'review') {
