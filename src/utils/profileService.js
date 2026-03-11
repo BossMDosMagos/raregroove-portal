@@ -22,6 +22,7 @@ export const createProfileOnSignUp = async (user) => {
     const { data, error } = await supabase
       .from('profiles')
       .update({
+        country_code: user.country_code || 'BR',
         cpf_cnpj: user.cpf_cnpj || null,
         rg: user.rg || null,
         updated_at: new Date()

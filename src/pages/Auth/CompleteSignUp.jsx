@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
@@ -7,14 +7,16 @@ import { fetchProfile } from '../../utils/profileService';
 import { Pill } from '../../components/UIComponents';
 import { Input, AuthButton } from '../../components/AuthComponents';
 import { validateDoubleHoneyPot, validateFormTiming } from '../../utils/security';
+import { useI18n } from '../../contexts/I18nContext.jsx';
 
 export default function CompleteSignUp() {
-  const [searchParams] = useSearchParams();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [user, setUser] = useState(null);
   const [profileData, setProfileData] = useState(null);
+  const [countryCode, setCountryCode] = useState('BR');
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [rg, setRg] = useState('');
   const [addressSecondary, setAddressSecondary] = useState('');
@@ -22,7 +24,43 @@ export default function CompleteSignUp() {
   const [formStartedAt] = useState(Date.now());
   const [step, setStep] = useState('verifying'); // 'verifying' | 'completing' | 'success'
 
+  const isBrazil = countryCode === 'BR';
+  const doc1Label = isBrazil ? (t('auth.form.cpf') || 'CPF/CNPJ') : (t('auth.form.taxId') || 'Tax ID / National ID');
+  const doc2Label = isBrazil ? (t('auth.form.rg') || 'RG') : (t('auth.form.passport') || 'Passport / ID Number');
+  const doc1Placeholder = isBrazil ? (t('auth.form.cpf.placeholder') || '000.000.000-00 ou 00.000.000/0000-00') : (t('auth.form.taxId.placeholder') || 'A1B2C3');
+  const doc2Placeholder = isBrazil ? (t('auth.form.rg.placeholder') || '00.000.000-0') : (t('auth.form.passport.placeholder') || 'X1234567');
+
+  const countryOptions = [
+    { value: 'BR', label: t('country.br') || 'Brasil' },
+    { value: 'US', label: t('country.us') || 'Estados Unidos' },
+    { value: 'CA', label: t('country.ca') || 'Canadá' },
+    { value: 'GB', label: t('country.gb') || 'Reino Unido' },
+    { value: 'PT', label: t('country.pt') || 'Portugal' },
+    { value: 'ES', label: t('country.es') || 'Espanha' },
+    { value: 'FR', label: t('country.fr') || 'França' },
+    { value: 'DE', label: t('country.de') || 'Alemanha' },
+    { value: 'AR', label: t('country.ar') || 'Argentina' },
+    { value: 'MX', label: t('country.mx') || 'México' },
+    { value: 'OTHER', label: t('country.other') || 'Outro' },
+  ];
+
   const normalizeDoc = (value) => (value || '').replace(/\D/g, '');
+
+  const normalizeForeignDoc = (value) => {
+    const cleaned = String(value || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9._/\s-]/g, '')
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    return cleaned;
+  };
+
+  const isValidForeignDoc = (value) => {
+    const cleaned = normalizeForeignDoc(value);
+    if (!cleaned) return false;
+    if (cleaned.length < 3 || cleaned.length > 32) return false;
+    return /[A-Z0-9]/.test(cleaned);
+  };
 
   // Validação real de CPF com dígitos verificadores
   const isValidCPF = (cpf) => {
@@ -94,6 +132,7 @@ export default function CompleteSignUp() {
   };
 
   const isValidCpfCnpj = (value) => {
+    if (countryCode !== 'BR') return isValidForeignDoc(value);
     const digits = normalizeDoc(value);
     if (digits.length === 11) return isValidCPF(value);
     if (digits.length === 14) return isValidCNPJ(value);
@@ -101,6 +140,7 @@ export default function CompleteSignUp() {
   };
 
   const isValidRg = (value) => {
+    if (countryCode !== 'BR') return isValidForeignDoc(value);
     const digits = normalizeDoc(value);
     return digits.length >= 7 && digits.length <= 12;
   };
@@ -133,6 +173,7 @@ export default function CompleteSignUp() {
         setProfileData(profile);
 
         // Pré-preencher campos se já tiverem dados
+        if (profile?.country_code) setCountryCode(profile.country_code);
         if (profile?.cpf_cnpj) setCpfCnpj(profile.cpf_cnpj);
         if (profile?.rg) setRg(profile.rg);
 
@@ -182,33 +223,51 @@ export default function CompleteSignUp() {
 
       // Validar documentos
       if (!isValidCpfCnpj(cpfCnpj)) {
-        const digitCount = normalizeDoc(cpfCnpj).length;
-        toast.error('CPF/CNPJ inválido', {
-          description: digitCount === 11 
-            ? 'CPF inválido. Verifique os dígitos verificadores.' 
-            : digitCount === 14 
-            ? 'CNPJ inválido. Verifique os dígitos verificadores.'
-            : `Você digitou ${digitCount} dígitos. CPF precisa de 11, CNPJ de 14.`,
-          duration: 6000
-        });
+        if (countryCode === 'BR') {
+          const digitCount = normalizeDoc(cpfCnpj).length;
+          toast.error('CPF/CNPJ inválido', {
+            description: digitCount === 11 
+              ? 'CPF inválido. Verifique os dígitos verificadores.' 
+              : digitCount === 14 
+              ? 'CNPJ inválido. Verifique os dígitos verificadores.'
+              : `Você digitou ${digitCount} dígitos. CPF precisa de 11, CNPJ de 14.`,
+            duration: 6000
+          });
+        } else {
+          toast.error(t('auth.form.taxId.invalid') || 'Documento inválido', {
+            description: t('auth.form.taxId.invalidDesc') || 'Informe um Tax ID / National ID válido.',
+            duration: 6000
+          });
+        }
         setVerifying(false);
         return;
       }
 
       if (!isValidRg(rg)) {
-        toast.error('RG inválido', {
-          description: 'Informe um RG válido com 7 a 12 dígitos.'
-        });
+        if (countryCode === 'BR') {
+          toast.error('RG inválido', {
+            description: 'Informe um RG válido com 7 a 12 dígitos.'
+          });
+        } else {
+          toast.error(t('auth.form.passport.invalid') || 'Documento inválido', {
+            description: t('auth.form.passport.invalidDesc') || 'Informe um Passport / ID Number válido.',
+            duration: 6000
+          });
+        }
         setVerifying(false);
         return;
       }
+
+      const normalizedCpf = countryCode === 'BR' ? normalizeDoc(cpfCnpj) : normalizeForeignDoc(cpfCnpj);
+      const normalizedRg = countryCode === 'BR' ? normalizeDoc(rg) : normalizeForeignDoc(rg);
 
       // Atualizar perfil com dados completos
       const { error } = await supabase
         .from('profiles')
         .update({
-          cpf_cnpj: normalizeDoc(cpfCnpj),
-          rg: normalizeDoc(rg),
+          country_code: countryCode,
+          cpf_cnpj: normalizedCpf,
+          rg: normalizedRg,
           updated_at: new Date()
         })
         .eq('id', user.id);
@@ -381,29 +440,54 @@ export default function CompleteSignUp() {
             aria-hidden="true"
             className="absolute left-[-9999px] w-px h-1 opacity-0 pointer-events-none"
           />
+          <div>
+            <label className="block text-[#D4AF37] text-xs font-bold mb-2 tracking-widest">
+              {t('auth.form.country') || 'País'} *
+            </label>
+            <select
+              value={countryCode}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCountryCode(next);
+                setCpfCnpj('');
+                setRg('');
+              }}
+              disabled={verifying}
+              required
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-[#D4AF37]"
+            >
+              {countryOptions.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-[#050505]">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* CPF/CNPJ */}
           <div>
             <label className="block text-[#D4AF37] text-xs font-bold mb-2 tracking-widest">
-              CPF/CNPJ *
+              {doc1Label} *
             </label>
             <Input
               type="text"
-              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              placeholder={doc1Placeholder}
               value={cpfCnpj}
               onChange={(e) => setCpfCnpj(e.target.value)}
-              maxLength="18"
+              maxLength={isBrazil ? '18' : '32'}
               disabled={verifying}
               required
               autoFocus
             />
             <p className="text-gray-500 text-xs mt-1">
-              {cpfCnpj.length === 0 
-                ? '📝 CPF (11) ou CNPJ (14 dígitos)' 
-                : normalizeDoc(cpfCnpj).length === 11 
-                ? '✓ CPF - ' + normalizeDoc(cpfCnpj).length + ' dígitos'
-                : normalizeDoc(cpfCnpj).length === 14
-                ? '✓ CNPJ - ' + normalizeDoc(cpfCnpj).length + ' dígitos'
-                : '⚠️ Formato incompleto: ' + normalizeDoc(cpfCnpj).length + ' dígitos (11 ou 14)'}
+              {isBrazil
+                ? (cpfCnpj.length === 0
+                  ? '📝 CPF (11) ou CNPJ (14 dígitos)'
+                  : normalizeDoc(cpfCnpj).length === 11
+                  ? '✓ CPF - ' + normalizeDoc(cpfCnpj).length + ' dígitos'
+                  : normalizeDoc(cpfCnpj).length === 14
+                  ? '✓ CNPJ - ' + normalizeDoc(cpfCnpj).length + ' dígitos'
+                  : '⚠️ Formato incompleto: ' + normalizeDoc(cpfCnpj).length + ' dígitos (11 ou 14)')
+                : (cpfCnpj.length === 0 ? (t('auth.form.taxId.hint') || '📝 Documento nacional (Tax ID)') : '✓ ' + cpfCnpj.length + ' caracteres')}
             </p>
             {cpfCnpj.length > 0 && !isValidCpfCnpj(cpfCnpj) && (
               <p className="text-red-400 text-xs mt-1">❌ Documento inválido</p>
@@ -416,27 +500,27 @@ export default function CompleteSignUp() {
           {/* RG */}
           <div>
             <label className="block text-[#D4AF37] text-xs font-bold mb-2 tracking-widest">
-              RG *
+              {doc2Label} *
             </label>
             <Input
               type="text"
-              placeholder="00.000.000-0"
+              placeholder={doc2Placeholder}
               value={rg}
               onChange={(e) => setRg(e.target.value)}
-              maxLength="14"
+              maxLength={isBrazil ? '14' : '32'}
               disabled={verifying}
               required
             />
             <p className="text-gray-500 text-xs mt-1">
-              {rg.length === 0 
-                ? '📝 7 a 12 dígitos' 
-                : '✓ ' + normalizeDoc(rg).length + ' dígitos'}
+              {isBrazil
+                ? (rg.length === 0 ? '📝 7 a 12 dígitos' : '✓ ' + normalizeDoc(rg).length + ' dígitos')
+                : (rg.length === 0 ? (t('auth.form.passport.hint') || '📝 Documento (Passaporte/ID)') : '✓ ' + rg.length + ' caracteres')}
             </p>
             {rg.length > 0 && !isValidRg(rg) && (
-              <p className="text-red-400 text-xs mt-1">❌ RG inválido (7-12 dígitos)</p>
+              <p className="text-red-400 text-xs mt-1">❌ Documento inválido</p>
             )}
             {rg.length > 0 && isValidRg(rg) && (
-              <p className="text-green-400 text-xs mt-1">✅ RG válido</p>
+              <p className="text-green-400 text-xs mt-1">✅ Documento válido</p>
             )}
           </div>
 

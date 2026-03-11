@@ -16,6 +16,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [countryCode, setCountryCode] = useState('BR');
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [rg, setRg] = useState('');
   const [rememberEmail, setRememberEmail] = useState(false);
@@ -87,6 +88,15 @@ export default function Login() {
 
   const normalizeDoc = (value) => (value || '').replace(/\D/g, '');
 
+  const normalizeForeignDoc = (value) => {
+    const cleaned = String(value || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9._/\s-]/g, '')
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    return cleaned;
+  };
+
   const isValidCpfCnpj = (value) => {
     const digits = normalizeDoc(value);
     return digits.length === 11 || digits.length === 14;
@@ -96,6 +106,27 @@ export default function Login() {
     const digits = normalizeDoc(value);
     return digits.length >= 7 && digits.length <= 12;
   };
+
+  const isValidForeignDoc = (value) => {
+    const cleaned = normalizeForeignDoc(value);
+    if (!cleaned) return false;
+    if (cleaned.length < 3 || cleaned.length > 32) return false;
+    return /[A-Z0-9]/.test(cleaned);
+  };
+
+  const countryOptions = useMemo(() => ([
+    { value: 'BR', label: t('country.br') || 'Brasil' },
+    { value: 'US', label: t('country.us') || 'Estados Unidos' },
+    { value: 'CA', label: t('country.ca') || 'Canadá' },
+    { value: 'GB', label: t('country.gb') || 'Reino Unido' },
+    { value: 'PT', label: t('country.pt') || 'Portugal' },
+    { value: 'ES', label: t('country.es') || 'Espanha' },
+    { value: 'FR', label: t('country.fr') || 'França' },
+    { value: 'DE', label: t('country.de') || 'Alemanha' },
+    { value: 'AR', label: t('country.ar') || 'Argentina' },
+    { value: 'MX', label: t('country.mx') || 'México' },
+    { value: 'OTHER', label: t('country.other') || 'Outro' },
+  ]), [t]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -244,27 +275,48 @@ export default function Login() {
           return;
         }
 
-        if (!isValidCpfCnpj(cpfCnpj)) {
-          toast.error('CPF/CNPJ inválido', {
-            description: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.'
-          });
-          setLoading(false);
-          return;
-        }
+        const isBrazil = countryCode === 'BR';
+        if (isBrazil) {
+          if (!isValidCpfCnpj(cpfCnpj)) {
+            toast.error('CPF/CNPJ inválido', {
+              description: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.'
+            });
+            setLoading(false);
+            return;
+          }
 
-        if (!isValidRg(rg)) {
-          toast.error('RG inválido', {
-            description: 'Informe um RG válido com 7 a 12 dígitos.'
-          });
-          setLoading(false);
-          return;
+          if (!isValidRg(rg)) {
+            toast.error('RG inválido', {
+              description: 'Informe um RG válido com 7 a 12 dígitos.'
+            });
+            setLoading(false);
+            return;
+          }
+        } else {
+          if (!isValidForeignDoc(cpfCnpj)) {
+            toast.error(t('auth.form.taxId.invalid') || 'Documento inválido', {
+              description: t('auth.form.taxId.invalidDesc') || 'Informe um Tax ID / National ID válido.',
+              duration: 6000
+            });
+            setLoading(false);
+            return;
+          }
+
+          if (!isValidForeignDoc(rg)) {
+            toast.error(t('auth.form.passport.invalid') || 'Documento inválido', {
+              description: t('auth.form.passport.invalidDesc') || 'Informe um Passport / ID Number válido.',
+              duration: 6000
+            });
+            setLoading(false);
+            return;
+          }
         }
 
         const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
           options: { 
-            data: { full_name: fullName },
+            data: { full_name: fullName, country_code: countryCode },
             emailRedirectTo: 'http://localhost:5173/complete-signup'
           }
         });
@@ -300,16 +352,18 @@ export default function Login() {
             userId: data.user.id,
             email: email,
             fullName: fullName,
-            cpf_cnpj: normalizeDoc(cpfCnpj),
-            rg: normalizeDoc(rg)
+            country_code: countryCode,
+            cpf_cnpj: countryCode === 'BR' ? normalizeDoc(cpfCnpj) : normalizeForeignDoc(cpfCnpj),
+            rg: countryCode === 'BR' ? normalizeDoc(rg) : normalizeForeignDoc(rg)
           });
           
           const result = await createProfileOnSignUp({
             id: data.user.id,
             email: email,
             user_metadata: { full_name: fullName },
-            cpf_cnpj: normalizeDoc(cpfCnpj),
-            rg: normalizeDoc(rg)
+            country_code: countryCode,
+            cpf_cnpj: countryCode === 'BR' ? normalizeDoc(cpfCnpj) : normalizeForeignDoc(cpfCnpj),
+            rg: countryCode === 'BR' ? normalizeDoc(rg) : normalizeForeignDoc(rg)
           });
 
           if (!result?.success) {
@@ -359,6 +413,7 @@ export default function Login() {
         setEmail('');
         setPassword('');
         setFullName('');
+        setCountryCode('BR');
         setCpfCnpj('');
         setRg('');
         setIsLogin(true);
@@ -387,6 +442,12 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  const isBrazil = countryCode === 'BR';
+  const doc1Label = isBrazil ? (t('auth.form.cpf') || 'CPF/CNPJ') : (t('auth.form.taxId') || 'Tax ID / National ID');
+  const doc2Label = isBrazil ? (t('auth.form.rg') || 'RG') : (t('auth.form.passport') || 'Passport / ID Number');
+  const doc1Placeholder = isBrazil ? (t('auth.form.cpf.placeholder') || '000.000.000-00') : (t('auth.form.taxId.placeholder') || 'A1B2C3');
+  const doc2Placeholder = isBrazil ? (t('auth.form.rg.placeholder') || '00.000.000-0') : (t('auth.form.passport.placeholder') || 'X1234567');
 
   return (
     <div className="min-h-screen bg-charcoal-deep flex items-center justify-center p-6 relative overflow-hidden selection:bg-gold-premium/30 selection:text-gold-light">
@@ -418,6 +479,32 @@ export default function Login() {
             {!isLogin && (
               <div className="space-y-2 animate-in slide-in-from-top-2 duration-500">
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/60 ml-1">
+                  {t('auth.form.country') || "País"}
+                </label>
+                <select
+                  required
+                  className="w-full bg-charcoal-deep/50 border border-gold-premium/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-4 focus:ring-gold-premium/5 transition-all placeholder:text-white/10"
+                  value={countryCode}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCountryCode(next);
+                    setCpfCnpj('');
+                    setRg('');
+                  }}
+                  disabled={loading}
+                >
+                  {countryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-[#050505]">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="space-y-2 animate-in slide-in-from-top-2 duration-500 delay-75">
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/60 ml-1">
                   {t('auth.form.fullName') || "Nome Completo"}
                 </label>
                 <input 
@@ -425,37 +512,41 @@ export default function Login() {
                   className="w-full bg-charcoal-deep/50 border border-gold-premium/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-4 focus:ring-gold-premium/5 transition-all placeholder:text-white/10"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Seu nome completo"
+                  placeholder={t('auth.form.fullName.placeholder') || "Seu nome completo"}
                 />
               </div>
             )}
 
             {!isLogin && (
-              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-500 delay-75">
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-500 delay-100">
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/60 ml-1">
-                    {t('auth.form.cpf') || "CPF/CNPJ"}
+                    {doc1Label}
                   </label>
                   <input 
                     required
                     className="w-full bg-charcoal-deep/50 border border-gold-premium/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-4 focus:ring-gold-premium/5 transition-all placeholder:text-white/10"
                     value={cpfCnpj}
                     onChange={(e) => setCpfCnpj(e.target.value)}
-                    placeholder="000.000.000-00"
-                    inputMode="numeric"
+                    placeholder={doc1Placeholder}
+                    inputMode={isBrazil ? 'numeric' : 'text'}
+                    maxLength={isBrazil ? 18 : 32}
+                    autoCapitalize={isBrazil ? undefined : 'characters'}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/60 ml-1">
-                    RG
+                    {doc2Label}
                   </label>
                   <input 
                     required
                     className="w-full bg-charcoal-deep/50 border border-gold-premium/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-4 focus:ring-gold-premium/5 transition-all placeholder:text-white/10"
                     value={rg}
                     onChange={(e) => setRg(e.target.value)}
-                    placeholder="00.000.000-0"
-                    inputMode="numeric"
+                    placeholder={doc2Placeholder}
+                    inputMode={isBrazil ? 'numeric' : 'text'}
+                    maxLength={isBrazil ? 14 : 32}
+                    autoCapitalize={isBrazil ? undefined : 'characters'}
                   />
                 </div>
               </div>
