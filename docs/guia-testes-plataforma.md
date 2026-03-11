@@ -102,10 +102,15 @@ Este guia valida, ponta a ponta, as implementações de:
 **Cenário B — Reembolsar**
 1. Em uma disputa diferente, clique **Reembolsar**.
 2. Validações esperadas:
-   - Disputa vira `resolved_refund`.
+   - Disputa vira `resolved_refund_pending` (reembolso aprovado, aguardando execução humana).
    - Transação vira `cancelado`.
    - Ledger registra `disputa_reembolso`.
-   - Comprador e vendedor recebem notificação “DISPUTA RESOLVIDA”.
+   - Comprador e vendedor recebem notificação “REEMBOLSO APROVADO”.
+3. Após fazer o reembolso fora do sistema (processo humano), no `/admin/disputes`:
+   - clique **Marcar executado** na disputa.
+4. Validações esperadas:
+   - Disputa vira `resolved_refund`.
+   - Comprador e vendedor recebem notificação “REEMBOLSO EXECUTADO”.
 
 ### 8) Regra de prazo: disputa até 7 dias após entrega (status concluído)
 
@@ -184,4 +189,3 @@ No SQL Editor:
 select * from cron.job where jobname = 'escrow_sla_15m';
 select * from cron.job_run_details order by start_time desc limit 20;
 ```
-

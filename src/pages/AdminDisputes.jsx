@@ -24,6 +24,7 @@ export default function AdminDisputes() {
     { value: 'awaiting_buyer', label: 'Aguardando Comprador' },
     { value: 'under_review', label: 'Em Análise' },
     { value: 'resolved_release', label: 'Resolvida (Liberação)' },
+    { value: 'resolved_refund_pending', label: 'Reembolso (Pendente)' },
     { value: 'resolved_refund', label: 'Resolvida (Reembolso)' },
     { value: 'rejected', label: 'Rejeitada' },
     { value: 'cancelled', label: 'Cancelada' },
@@ -36,6 +37,7 @@ export default function AdminDisputes() {
       awaiting_buyer: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300',
       under_review: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
       resolved_release: 'bg-green-500/10 border-green-500/30 text-green-300',
+      resolved_refund_pending: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300',
       resolved_refund: 'bg-green-500/10 border-green-500/30 text-green-300',
       rejected: 'bg-zinc-500/10 border-zinc-500/30 text-zinc-300',
       cancelled: 'bg-zinc-500/10 border-zinc-500/30 text-zinc-300',
@@ -176,6 +178,28 @@ export default function AdminDisputes() {
     }
   };
 
+  const markRefundExecuted = async (disputeId) => {
+    const note = window.prompt('Notas (opcional):') || '';
+    setBusyId(disputeId);
+    try {
+      const { data, error } = await supabase.rpc('admin_mark_refund_executed', {
+        p_dispute_id: disputeId,
+        p_note: note,
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Falha ao marcar reembolso como executado');
+      toast.success('REEMBOLSO EXECUTADO', { description: data.message, style: toastSuccessStyle });
+      await load();
+    } catch (error) {
+      toast.error('ERRO', {
+        description: error.message || 'Falha ao marcar reembolso.',
+        style: toastErrorStyle,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-charcoal-deep text-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -270,6 +294,7 @@ export default function AdminDisputes() {
                           <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${statusBadge(d.status)}`}>
                             {d.status === 'open' ? <AlertCircle className="w-4 h-4" /> : null}
                             {['awaiting_seller', 'awaiting_buyer', 'under_review'].includes(d.status) ? <Clock className="w-4 h-4" /> : null}
+                            {d.status === 'resolved_refund_pending' ? <Clock className="w-4 h-4" /> : null}
                             {['resolved_release', 'resolved_refund'].includes(d.status) ? <CheckCircle className="w-4 h-4" /> : null}
                             {['rejected', 'cancelled'].includes(d.status) ? <XCircle className="w-4 h-4" /> : null}
                             {d.status}
@@ -317,6 +342,17 @@ export default function AdminDisputes() {
                               {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                               Reembolsar
                             </button>
+
+                            {d.status === 'resolved_refund_pending' && (
+                              <button
+                                disabled={isBusy}
+                                onClick={() => markRefundExecuted(d.id)}
+                                className="px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-yellow-500/20 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                Marcar executado
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -331,4 +367,3 @@ export default function AdminDisputes() {
     </div>
   );
 }
-

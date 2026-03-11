@@ -40,6 +40,7 @@ export default function Disputes() {
     awaiting_seller: { label: 'Aguardando Vendedor', icon: Clock, className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300' },
     awaiting_buyer: { label: 'Aguardando Comprador', icon: Clock, className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300' },
     under_review: { label: 'Em Análise', icon: Clock, className: 'bg-blue-500/10 border-blue-500/30 text-blue-300' },
+    resolved_refund_pending: { label: 'Reembolso (Pendente)', icon: Clock, className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300' },
     resolved_refund: { label: 'Resolvida (Reembolso)', icon: CheckCircle, className: 'bg-green-500/10 border-green-500/30 text-green-300' },
     resolved_release: { label: 'Resolvida (Liberação)', icon: CheckCircle, className: 'bg-green-500/10 border-green-500/30 text-green-300' },
     rejected: { label: 'Rejeitada', icon: XCircle, className: 'bg-[#C0C0C0]/10 border-[#C0C0C0]/30 text-[#C0C0C0]' },

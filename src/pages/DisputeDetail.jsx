@@ -21,6 +21,7 @@ export default function DisputeDetail() {
     awaiting_seller: { label: 'Aguardando Vendedor', className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300', icon: Clock },
     awaiting_buyer: { label: 'Aguardando Comprador', className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300', icon: Clock },
     under_review: { label: 'Em Análise', className: 'bg-blue-500/10 border-blue-500/30 text-blue-300', icon: Clock },
+    resolved_refund_pending: { label: 'Reembolso (Pendente)', className: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300', icon: Clock },
     resolved_refund: { label: 'Resolvida (Reembolso)', className: 'bg-green-500/10 border-green-500/30 text-green-300', icon: Clock },
     resolved_release: { label: 'Resolvida (Liberação)', className: 'bg-green-500/10 border-green-500/30 text-green-300', icon: Clock },
     rejected: { label: 'Rejeitada', className: 'bg-[#C0C0C0]/10 border-[#C0C0C0]/30 text-[#C0C0C0]', icon: Clock },
@@ -251,4 +252,3 @@ export default function DisputeDetail() {
     </div>
   );
 }
-
