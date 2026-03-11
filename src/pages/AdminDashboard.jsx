@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye } from 'lucide-react';
+import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye, Clock } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -437,6 +437,18 @@ export default function AdminDashboard() {
             className="flex items-center justify-center gap-2 bg-black/60 text-blue-400 border border-blue-400/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-blue-400/80 hover:bg-blue-400/10 transition-all"
           >
             <Users size={14} /> Gestor de Perfis
+          </Link>
+          <Link
+            to="/admin/disputes"
+            className="flex items-center justify-center gap-2 bg-black/60 text-red-400 border border-red-400/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-red-400/80 hover:bg-red-400/10 transition-all"
+          >
+            <AlertCircle size={14} /> Gestor de Disputas
+          </Link>
+          <Link
+            to="/admin/escrow-sla"
+            className="flex items-center justify-center gap-2 bg-black/60 text-[#D4AF37] border border-[#D4AF37]/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#D4AF37]/80 hover:bg-[#D4AF37]/10 transition-all"
+          >
+            <Clock size={14} /> Timers de Escrow
           </Link>
           <Link
             to="/admin/sales"

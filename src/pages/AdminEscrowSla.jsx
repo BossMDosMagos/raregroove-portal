@@ -14,6 +14,7 @@ export default function AdminEscrowSla() {
   const [events, setEvents] = useState([]);
   const [transactionsMap, setTransactionsMap] = useState({});
   const [profilesMap, setProfilesMap] = useState({});
+  const [disputesByTransaction, setDisputesByTransaction] = useState({});
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
 
@@ -38,15 +39,29 @@ export default function AdminEscrowSla() {
       const ev = eventsData || [];
       const transactionIds = Array.from(new Set(ev.map((e) => e.transaction_id).filter(Boolean)));
 
-      const { data: txData } = transactionIds.length > 0
-        ? await supabase
-            .from('transactions')
-            .select('id, status, total_amount, net_amount, buyer_id, seller_id, created_at, shipped_at, delivered_at, items(title)')
-            .in('id', transactionIds)
-        : { data: [] };
+      const [{ data: txData }, { data: disputesData }] = await Promise.all([
+        transactionIds.length > 0
+          ? supabase
+              .from('transactions')
+              .select('id, status, total_amount, net_amount, buyer_id, seller_id, created_at, shipped_at, delivered_at, items(title)')
+              .in('id', transactionIds)
+          : Promise.resolve({ data: [] }),
+        transactionIds.length > 0
+          ? supabase
+              .from('disputes')
+              .select('id, transaction_id, status, created_at')
+              .in('transaction_id', transactionIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
+      ]);
 
       const txMap = (txData || []).reduce((acc, t) => {
         acc[t.id] = t;
+        return acc;
+      }, {});
+
+      const disputesMap = (disputesData || []).reduce((acc, d) => {
+        if (!acc[d.transaction_id]) acc[d.transaction_id] = d;
         return acc;
       }, {});
 
@@ -66,6 +81,7 @@ export default function AdminEscrowSla() {
       setEvents(ev);
       setTransactionsMap(txMap);
       setProfilesMap(pMap);
+      setDisputesByTransaction(disputesMap);
     } catch (error) {
       console.error('Erro ao carregar SLA:', error);
       toast.error('ERRO AO CARREGAR', {
@@ -206,6 +222,7 @@ export default function AdminEscrowSla() {
                     <th className="text-left px-4 py-3">Comprador</th>
                     <th className="text-left px-4 py-3">Vendedor</th>
                     <th className="text-left px-4 py-3">Criado</th>
+                    <th className="text-left px-4 py-3">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -213,6 +230,7 @@ export default function AdminEscrowSla() {
                     const tx = transactionsMap[e.transaction_id];
                     const buyer = profilesMap[tx?.buyer_id];
                     const seller = profilesMap[tx?.seller_id];
+                    const disputeId = e?.metadata?.dispute_id || disputesByTransaction[e.transaction_id]?.id;
                     return (
                       <tr key={e.id} className="border-t border-white/5 hover:bg-white/5 transition">
                         <td className="px-4 py-3">
@@ -242,6 +260,18 @@ export default function AdminEscrowSla() {
                             </div>
                           )}
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            {disputeId ? (
+                              <button
+                                onClick={() => navigate(`/disputas/${disputeId}`)}
+                                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-black uppercase tracking-wider hover:border-white/20 transition"
+                              >
+                                Abrir disputa
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -254,4 +284,3 @@ export default function AdminEscrowSla() {
     </div>
   );
 }
-
