@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Heart, DollarSign, Tag, Music, Sparkles, Trash2, Edit2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '../contexts/I18nContext.jsx';
 
 // ========================================
 // MODAL: Adicionar/Editar Desejo
 // ========================================
 export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null }) {
+  const { t } = useI18n();
   const [itemName, setItemName] = useState(editingWish?.item_name || '');
   const [artist, setArtist] = useState(editingWish?.artist || '');
   const [maxPrice, setMaxPrice] = useState(editingWish?.max_price || '');
@@ -20,7 +22,7 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
     e.preventDefault();
     
     if (!itemName.trim()) {
-      toast.error('Por favor, informe o nome do item desejado', {
+      toast.error(t('wishlist.modal.errors.missingItemName'), {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
       return;
@@ -30,7 +32,7 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error(t('wishlist.errors.notAuthenticated'));
 
       const wishData = {
         user_id: user.id,
@@ -58,8 +60,8 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
 
       if (result.error) throw result.error;
 
-      toast.success(editingWish ? '✨ Desejo atualizado!' : '✨ Desejo adicionado à lista!', {
-        description: 'Você será notificado quando encontrarmos um match',
+      toast.success(editingWish ? t('wishlist.toast.updated.title') : t('wishlist.toast.created.title'), {
+        description: t('wishlist.toast.created.desc'),
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
       });
       
@@ -67,7 +69,8 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
       onClose();
     } catch (error) {
       console.error('Erro ao salvar desejo:', error);
-      toast.error('Erro ao salvar desejo: ' + error.message, {
+      toast.error(t('wishlist.toast.error.title'), {
+        description: error.message || t('wishlist.toast.error.desc'),
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     } finally {
@@ -83,7 +86,7 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
           <div className="flex items-center gap-3">
             <Heart className="w-6 h-6 text-[#D4AF37]" />
             <h2 className="text-xl font-bold text-white">
-              {editingWish ? 'Editar Desejo' : 'Adicionar à Wishlist'}
+              {editingWish ? t('wishlist.modal.title.edit') : t('wishlist.modal.title.add')}
             </h2>
           </div>
           <button
@@ -100,18 +103,18 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
               <Music className="w-4 h-4 text-[#D4AF37]" />
-              Nome do Item *
+              {t('wishlist.modal.fields.itemName')} *
             </label>
             <input
               type="text"
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
-              placeholder="Ex: Dark Side of the Moon, Michael Jackson..."
+              placeholder={t('wishlist.modal.placeholders.itemName')}
               className="w-full px-4 py-2 bg-black border border-[#D4AF37]/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use palavras-chave para aumentar as chances de match
+              {t('wishlist.modal.hints.itemName')}
             </p>
           </div>
 
@@ -119,13 +122,13 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
               <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-              Artista (opcional)
+              {t('wishlist.modal.fields.artist')}
             </label>
             <input
               type="text"
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
-              placeholder="Ex: Pink Floyd, Queen..."
+              placeholder={t('wishlist.modal.placeholders.artist')}
               className="w-full px-4 py-2 bg-black border border-[#D4AF37]/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
             />
           </div>
@@ -134,7 +137,7 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
               <DollarSign className="w-4 h-4 text-[#D4AF37]" />
-              Preço Máximo (opcional)
+              {t('wishlist.modal.fields.maxPrice')}
             </label>
             <input
               type="number"
@@ -142,11 +145,11 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
               min="0"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              placeholder="Ex: 150.00"
+              placeholder={t('wishlist.modal.placeholders.maxPrice')}
               className="w-full px-4 py-2 bg-black border border-[#D4AF37]/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Deixe vazio para receber todos os matches
+              {t('wishlist.modal.hints.maxPrice')}
             </p>
           </div>
 
@@ -154,30 +157,30 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
               <Tag className="w-4 h-4 text-[#D4AF37]" />
-              Categoria (opcional)
+              {t('wishlist.modal.fields.category')}
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-4 py-2 bg-black border border-[#D4AF37]/30 rounded-lg text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
             >
-              <option value="">Todas as categorias</option>
-              <option value="Novo">Novo</option>
-              <option value="Seminovo">Seminovo</option>
-              <option value="Usado">Usado</option>
-              <option value="Colecionador">Colecionador</option>
+              <option value="">{t('wishlist.category.all')}</option>
+              <option value="Novo">{t('wishlist.category.Novo')}</option>
+              <option value="Seminovo">{t('wishlist.category.Seminovo')}</option>
+              <option value="Usado">{t('wishlist.category.Usado')}</option>
+              <option value="Colecionador">{t('wishlist.category.Colecionador')}</option>
             </select>
           </div>
 
           {/* Descrição */}
           <div>
             <label className="text-sm font-medium text-gray-300 mb-2 block">
-              Observações (opcional)
+              {t('wishlist.modal.fields.description')}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex: Preferência por primeira prensagem, edição japonesa..."
+              placeholder={t('wishlist.modal.placeholders.description')}
               rows={3}
               className="w-full px-4 py-2 bg-black border border-[#D4AF37]/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors resize-none"
               maxLength={500}
@@ -192,14 +195,14 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
               className="flex-1 px-4 py-2 border border-[#D4AF37]/30 rounded-lg text-gray-300 hover:bg-[#D4AF37]/10 transition-colors"
               disabled={isSubmitting}
             >
-              Cancelar
+              {t('wishlist.actions.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-[#D4AF37] text-black font-semibold rounded-lg hover:bg-[#D4AF37]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Salvando...' : (editingWish ? 'Atualizar' : 'Adicionar')}
+              {isSubmitting ? t('wishlist.actions.saving') : (editingWish ? t('wishlist.actions.update') : t('wishlist.actions.add'))}
             </button>
           </div>
         </form>
@@ -212,10 +215,11 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
 // CARD: Exibir cada desejo da lista
 // ========================================
 export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
+  const { t, formatCurrency, formatDate } = useI18n();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm('Deseja remover este desejo da lista?')) return;
+    if (!confirm(t('wishlist.card.confirmRemove'))) return;
     
     setIsDeleting(true);
     try {
@@ -226,13 +230,13 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
 
       if (error) throw error;
       
-      toast.success('Desejo removido', {
+      toast.success(t('wishlist.toast.removed.title'), {
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
       });
       onDelete?.(wish.id);
     } catch (error) {
       console.error('Erro ao deletar:', error);
-      toast.error('Erro ao remover desejo', {
+      toast.error(t('wishlist.toast.removeError.title'), {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     } finally {
@@ -249,17 +253,24 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
 
       if (error) throw error;
       
-      toast.success(wish.active ? 'Desejo pausado' : 'Desejo ativado', {
+      toast.success(wish.active ? t('wishlist.toast.paused.title') : t('wishlist.toast.activated.title'), {
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
       });
       onToggleActive?.(wish.id);
     } catch (error) {
       console.error('Erro ao atualizar:', error);
-      toast.error('Erro ao atualizar desejo', {
+      toast.error(t('wishlist.toast.toggleError.title'), {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     }
   };
+
+  const categoryLabel = (() => {
+    if (!wish.category) return null;
+    const key = `wishlist.category.${wish.category}`;
+    const label = t(key);
+    return label === key ? wish.category : label;
+  })();
 
   return (
     <div 
@@ -288,14 +299,14 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
                 ? 'text-green-400 hover:text-green-300' 
                 : 'text-gray-500 hover:text-gray-400'
             }`}
-            title={wish.active ? 'Pausar' : 'Ativar'}
+            title={wish.active ? t('wishlist.actions.pause') : t('wishlist.actions.activate')}
           >
             <CheckCircle className="w-5 h-5" />
           </button>
           <button
             onClick={() => onEdit?.(wish)}
             className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-            title="Editar"
+            title={t('wishlist.actions.edit')}
           >
             <Edit2 className="w-5 h-5" />
           </button>
@@ -303,7 +314,7 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
             onClick={handleDelete}
             disabled={isDeleting}
             className="p-1 text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-            title="Remover"
+            title={t('wishlist.actions.remove')}
           >
             <Trash2 className="w-5 h-5" />
           </button>
@@ -315,21 +326,21 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
         {wish.artist && (
           <div className="flex items-center gap-2 text-gray-300">
             <Sparkles className="w-4 h-4 text-[#D4AF37]/70" />
-            <span>Artista: {wish.artist}</span>
+            <span>{t('wishlist.card.artistLabel')} {wish.artist}</span>
           </div>
         )}
         
         {wish.max_price && (
           <div className="flex items-center gap-2 text-gray-300">
             <DollarSign className="w-4 h-4 text-[#D4AF37]/70" />
-            <span>Até: R$ {parseFloat(wish.max_price).toFixed(2)}</span>
+            <span>{t('wishlist.card.maxPriceLabel')} {formatCurrency(wish.max_price)}</span>
           </div>
         )}
         
-        {wish.category && (
+        {categoryLabel && (
           <div className="flex items-center gap-2 text-gray-300">
             <Tag className="w-4 h-4 text-[#D4AF37]/70" />
-            <span>Categoria: {wish.category}</span>
+            <span>{t('wishlist.card.categoryLabel')} {categoryLabel}</span>
           </div>
         )}
         
@@ -343,7 +354,7 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
       {/* Status Badge */}
       <div className="mt-3 pt-3 border-t border-[#D4AF37]/20 flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Adicionado em {new Date(wish.created_at).toLocaleDateString('pt-BR')}
+          {t('wishlist.card.addedAt')} {formatDate(wish.created_at)}
         </span>
         <span 
           className={`text-xs font-semibold px-2 py-1 rounded ${
@@ -352,7 +363,7 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
               : 'bg-gray-700 text-gray-400'
           }`}
         >
-          {wish.active ? '🔍 Buscando' : '⏸️ Pausado'}
+          {wish.active ? `🔍 ${t('wishlist.card.status.searching')}` : `⏸️ ${t('wishlist.card.status.paused')}`}
         </span>
       </div>
     </div>
@@ -363,6 +374,7 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
 // Empty State: Quando não há desejos
 // ========================================
 export function WishlistEmptyState({ onAddWish }) {
+  const { t } = useI18n();
   return (
     <div className="text-center py-16 px-4">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#D4AF37]/10 mb-6">
@@ -370,12 +382,11 @@ export function WishlistEmptyState({ onAddWish }) {
       </div>
       
       <h3 className="text-2xl font-bold text-white mb-2">
-        Sua Wishlist está vazia
+        {t('wishlist.empty.title')}
       </h3>
       
       <p className="text-gray-400 mb-6 max-w-md mx-auto">
-        Adicione itens raros que você está procurando e seja notificado automaticamente 
-        quando eles aparecerem no acervo!
+        {t('wishlist.empty.desc')}
       </p>
       
       <button
@@ -383,7 +394,7 @@ export function WishlistEmptyState({ onAddWish }) {
         className="inline-flex items-center gap-2 px-6 py-3 bg-[#D4AF37] text-black font-semibold rounded-lg hover:bg-[#D4AF37]/90 transition-colors"
       >
         <Heart className="w-5 h-5" />
-        Adicionar Primeiro Desejo
+        {t('wishlist.empty.addFirst')}
       </button>
     </div>
   );
