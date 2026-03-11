@@ -47,39 +47,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(true);
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [maintenanceLoading, setMaintenanceLoading] = useState(false); // Desativado loading inicial
-
-  /*
-  useEffect(() => {
-    // 🚧 Lógica de Manutenção DESATIVADA TEMPORARIAMENTE (Loop Infinito)
-    setMaintenanceLoading(false);
-  }, []);
-  */
-
-  // MODO MANUTENÇÃO (Apenas Remoto - Banco de Dados)
-  const isMaintenanceActive = false; // Forçado para false
-  
-  // Rotas permitidas mesmo em manutenção (Login e Admin)
-  const currentPath = window.location.pathname;
-  const isWhitelisted = currentPath.startsWith('/admin') || currentPath.startsWith('/login') || currentPath.startsWith('/auth');
-
-  /*
-  // 1. Evitar "flash" de conteúdo
-  if (maintenanceLoading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center flex-col gap-4">
-         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D4AF37]"></div>
-         <p className="text-xs text-[#D4AF37] uppercase tracking-widest">Carregando Sistema...</p>
-      </div>
-    );
-  }
-  */
-
-  // 2. Se estiver em manutenção E não for admin E não estiver em rota permitida
-  if (isMaintenanceActive && !loading && !adminLoading && !isAdmin && !isWhitelisted) {
-    return <Maintenance />;
-  }
 
   useEffect(() => {
     // 🔐 Validar Cofre Invisível na startup
