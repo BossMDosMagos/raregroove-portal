@@ -39,6 +39,11 @@ BEGIN
   END IF;
 END $$;
 
+DROP FUNCTION IF EXISTS public.get_user_financials(uuid);
+DROP FUNCTION IF EXISTS public.add_tracking_code(uuid, text);
+DROP FUNCTION IF EXISTS public.confirm_delivery(uuid);
+DROP FUNCTION IF EXISTS public.create_withdrawal(uuid, numeric, text);
+
 CREATE OR REPLACE FUNCTION public.get_user_financials(user_uuid uuid)
 RETURNS TABLE(
   saldo_disponivel numeric,
@@ -307,4 +312,3 @@ GRANT EXECUTE ON FUNCTION public.confirm_delivery(uuid) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.create_withdrawal(uuid, numeric, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_withdrawal(uuid, numeric, text) TO authenticated;
-
