@@ -116,7 +116,9 @@ Este guia valida, ponta a ponta, as implementações de:
 1. Acesse `/admin/refunds`.
 2. Validações esperadas:
    - Lista mostra apenas reembolsos `pending_execution` por padrão.
-   - Você consegue abrir a disputa e clicar em **Marcar executado** por ali.
+   - Você consegue anexar um comprovante (PDF/JPG/PNG/WebP/GIF) e clicar em **Marcar executado** por ali.
+   - Depois da execução, o comprovante fica arquivado por 30 dias e pode ser aberto por link temporário.
+   - O botão **Expurgar expirados** remove comprovantes vencidos do storage e desvincula da tarefa.
 
 ### 8) Regra de prazo: disputa até 7 dias após entrega (status concluído)
 
