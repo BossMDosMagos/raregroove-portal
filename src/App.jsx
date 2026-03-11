@@ -43,6 +43,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const MessagesWithUnread = lazy(() => import('./pages/MessagesWithUnread'));
 const ChatThread = lazy(() => import('./pages/ChatThread'));
 const SwapPayment = lazy(() => import('./pages/SwapPayment'));
+const Disputes = lazy(() => import('./pages/Disputes'));
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -180,6 +181,12 @@ export default function App() {
           <Route 
             path="/profile" 
             element={session ? <Profile /> : <Navigate to="/" />} 
+          />
+
+          {/* Rota de Disputas (Protegida) */}
+          <Route
+            path="/disputas"
+            element={session ? <Disputes /> : <Navigate to="/" />}
           />
 
           {/* Rota do Simulador de Swaps (Protegida) */}

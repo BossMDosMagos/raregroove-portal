@@ -114,6 +114,7 @@ export function TransactionRow({ transaction, type = 'sale', onTrackingAdded, on
   const [expanded, setExpanded] = useState(false);
   const [trackingCode, setTrackingCode] = useState(transaction.tracking_code || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDisputeSubmitting, setIsDisputeSubmitting] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showShippingLabel, setShowShippingLabel] = useState(false);
 
@@ -220,6 +221,39 @@ export function TransactionRow({ transaction, type = 'sale', onTrackingAdded, on
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenDispute = async () => {
+    const reason = window.prompt('Descreva o problema para abrir a disputa:');
+    if (!reason || !reason.trim()) return;
+
+    setIsDisputeSubmitting(true);
+    try {
+      const { data, error } = await supabase.rpc('open_dispute', {
+        p_transaction_id: transaction.transaction_id,
+        p_reason: reason.trim(),
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success('Disputa aberta', {
+          description: 'Você pode acompanhar em /disputas',
+          style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+        });
+      } else {
+        toast.error(data?.message || 'Não foi possível abrir a disputa', {
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao abrir disputa:', error);
+      toast.error('Erro ao abrir disputa', {
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    } finally {
+      setIsDisputeSubmitting(false);
     }
   };
 
@@ -468,18 +502,33 @@ export function TransactionRow({ transaction, type = 'sale', onTrackingAdded, on
                     </p>
                   </div>
                   
-                  <button
-                    onClick={handleConfirmDelivery}
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-green-500 text-white font-black rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/50 flex items-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <CheckCircle className="w-5 h-5" />
-                    )}
-                    CONFIRMAR RECEBIMENTO
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleOpenDispute}
+                      disabled={isDisputeSubmitting || isSubmitting}
+                      className="px-4 py-3 bg-red-500/10 border border-red-500/30 text-red-300 font-black rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center gap-2"
+                    >
+                      {isDisputeSubmitting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5" />
+                      )}
+                      ABRIR DISPUTA
+                    </button>
+
+                    <button
+                      onClick={handleConfirmDelivery}
+                      disabled={isSubmitting || isDisputeSubmitting}
+                      className="px-6 py-3 bg-green-500 text-white font-black rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/50 flex items-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-5 h-5" />
+                      )}
+                      CONFIRMAR RECEBIMENTO
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
