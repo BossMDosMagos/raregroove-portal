@@ -17,6 +17,18 @@ export function formatPixKeyDisplay(value) {
     return value.trimStart();
   }
 
+  if ((value.startsWith('+') || value.startsWith('55')) && (cleaned.length === 12 || cleaned.length === 13) && cleaned.startsWith('55')) {
+    const local = cleaned.slice(2);
+    const ddd = parseInt(local.substring(0, 2));
+    const isValidDDD = ddd >= 11 && ddd <= 99;
+    if (isValidDDD && local.length === 11) {
+      return `+55 (${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+    }
+    if (isValidDDD && local.length === 10) {
+      return `+55 (${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+    }
+  }
+
   // 11 dígitos - Telefone celular (DDD + 9 + 8 dígitos)
   if (cleaned.length === 11) {
     // Verificar se começa com 1 ou 9 válido
@@ -45,7 +57,7 @@ export function formatPixKeyDisplay(value) {
   }
 
   // 11 dígitos - CPF
-  if (cleaned.length === 11 && cleaned.length === value.replace(/\./g, '').replace(/\-/g, '').length) {
+  if (cleaned.length === 11) {
     return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6, 9)}-${cleaned.slice(9)}`;
   }
 
@@ -84,13 +96,19 @@ export function normalizePixKeyForBrcode(value) {
     
     // Se tem DDD válido E (é celular OU fixo): É TELEFONE
     // OBRIGATORIAMENTE adiciona +55
+    if (digitsOnly.length === 11 && isValidCPF(digitsOnly)) {
+      return digitsOnly;
+    }
     if (isValidDDD && (isCellphone || isLandline)) {
       return `+55${digitsOnly}`;
     }
   }
 
-  // CPF (11 dígitos) ou CNPJ (14 dígitos): retorna só os dígitos
-  if (digitsOnly.length === 11 || digitsOnly.length === 14) {
+  if (digitsOnly.length === 11 && isValidCPF(digitsOnly)) {
+    return digitsOnly;
+  }
+
+  if (digitsOnly.length === 14 && isValidCNPJ(digitsOnly)) {
     return digitsOnly;
   }
 
@@ -137,7 +155,7 @@ export function validatePixKey(value) {
   // Telefone
   if (normalized.startsWith('+55')) {
     return { 
-      isValid: normalized.length === 13 || normalized.length === 12,
+      isValid: normalized.length === 13 || normalized.length === 14,
       message: 'Telefone PIX válido',
       type: 'telefone'
     };
@@ -146,7 +164,7 @@ export function validatePixKey(value) {
   // CPF
   if (/^\d{11}$/.test(normalized)) {
     return { 
-      isValid: true, 
+      isValid: isValidCPF(normalized),
       message: 'CPF PIX válido',
       type: 'cpf'
     };
@@ -155,7 +173,7 @@ export function validatePixKey(value) {
   // CNPJ
   if (/^\d{14}$/.test(normalized)) {
     return { 
-      isValid: true, 
+      isValid: isValidCNPJ(normalized),
       message: 'CNPJ PIX válido',
       type: 'cnpj'
     };
@@ -175,6 +193,65 @@ export function validatePixKey(value) {
     message: 'Formato de chave PIX não reconhecido',
     type: null 
   };
+}
+
+function isValidCPF(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(digits.charAt(i), 10) * (10 - i);
+  }
+  let firstDigit = 11 - (sum % 11);
+  if (firstDigit >= 10) firstDigit = 0;
+  if (firstDigit !== parseInt(digits.charAt(9), 10)) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(digits.charAt(i), 10) * (11 - i);
+  }
+  let secondDigit = 11 - (sum % 11);
+  if (secondDigit >= 10) secondDigit = 0;
+  if (secondDigit !== parseInt(digits.charAt(10), 10)) return false;
+
+  return true;
+}
+
+function isValidCNPJ(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(digits)) return false;
+
+  let size = digits.length - 2;
+  let numbers = digits.substring(0, size);
+  const digitsCheck = digits.substring(size);
+  let sum = 0;
+  let pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i), 10) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digitsCheck.charAt(0), 10)) return false;
+
+  size += 1;
+  numbers = digits.substring(0, size);
+  sum = 0;
+  pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i), 10) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digitsCheck.charAt(1), 10)) return false;
+
+  return true;
 }
 
 /**

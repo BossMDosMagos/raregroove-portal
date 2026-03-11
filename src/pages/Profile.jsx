@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { fetchProfile, upsertProfile, uploadAvatar } from '../utils/profileService';
 import { fetchUserAddresses, createAddress, updateAddress, deleteAddress, setAddressAsDefault, validateAddress } from '../utils/addressService';
-import { formatPixKeyDisplay } from '../utils/pixFormatter';
+import { formatPixKeyDisplay, normalizePixKeyForBrcode } from '../utils/pixFormatter';
 import Avatar from '../components/Avatar';
 import { RatingDisplay, EliteBadge, ReviewCard, RatingStats } from '../components/RatingComponents';
 import { WishlistModal, WishlistCard, WishlistEmptyState } from '../components/WishlistComponents';
@@ -118,6 +118,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef(null);
+  const lastPixKeyRef = useRef('');
   const [editData, setEditData] = useState({
     email: '',
     full_name: '',
@@ -191,7 +192,7 @@ export default function Profile() {
         complement: profileData?.complement || '',
         city: profileData?.city || '',
         state: profileData?.state || '',
-        pix_key: profileData?.pix_key || '',
+        pix_key: profileData?.pix_key ? formatPixKeyDisplay(profileData.pix_key) : '',
         avatar_url: profileData?.avatar_url || ''
       });
 
@@ -302,6 +303,8 @@ export default function Profile() {
         return;
       }
 
+      const normalizedPixKey = normalizePixKeyForBrcode(editData.pix_key || '');
+
       // Salvar na tabela profiles (update direto)
       await upsertProfile(currentUser.id, {
         email: editData.email,
@@ -315,7 +318,7 @@ export default function Profile() {
         complement: editData.complement,
         city: editData.city,
         state: editData.state,
-        pix_key: editData.pix_key
+        pix_key: normalizedPixKey
       });
 
       toast.success('PERFIL ATUALIZADO', {
@@ -339,7 +342,7 @@ export default function Profile() {
           complement: updatedProfile.complement || '',
           city: updatedProfile.city || '',
           state: updatedProfile.state || '',
-          pix_key: updatedProfile.pix_key || '',
+          pix_key: updatedProfile.pix_key ? formatPixKeyDisplay(updatedProfile.pix_key) : '',
           avatar_url: updatedProfile.avatar_url || ''
         });
       }
@@ -376,6 +379,19 @@ export default function Profile() {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     }
+  };
+
+  const handlePixKeyChange = (e) => {
+    const nextRaw = e.target.value;
+    lastPixKeyRef.current = nextRaw;
+    setEditData((prev) => ({ ...prev, pix_key: nextRaw }));
+  };
+
+  const handlePixKeyBlur = () => {
+    const raw = String(lastPixKeyRef.current || editData.pix_key || '');
+    const normalized = normalizePixKeyForBrcode(raw);
+    const display = normalized ? formatPixKeyDisplay(normalized) : '';
+    setEditData((prev) => ({ ...prev, pix_key: display || raw.trimStart() }));
   };
 
   const handleCEPChange = async (cep) => {
@@ -705,7 +721,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="md:col-span-2">
-                        <GoldInput label={t('profile.personalData.pix')} value={editData.pix_key} onChange={e => setEditData({ ...editData, pix_key: e.target.value })} placeholder="Email, CPF, Telefone ou Chave Aleatória" />
+                        <GoldInput label={t('profile.personalData.pix')} value={editData.pix_key} onChange={handlePixKeyChange} onBlur={handlePixKeyBlur} placeholder="Email, CPF, Telefone ou Chave Aleatória" />
                       </div>
                       <div className="md:col-span-2 pt-6">
                         <button onClick={handleSaveProfile} className="w-full bg-gold-premium text-charcoal-deep py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] transition-all active:scale-[0.98]">
@@ -1081,7 +1097,8 @@ export default function Profile() {
                   <GoldInput
                     label={t('profile.form.pixKey')}
                     value={editData.pix_key || ''}
-                    onChange={e => setEditData({ ...editData, pix_key: formatPixKey(e.target.value) })}
+                    onChange={handlePixKeyChange}
+                    onBlur={handlePixKeyBlur}
                     placeholder={t('profile.form.pixKeyPlaceholder')}
                   />
 
