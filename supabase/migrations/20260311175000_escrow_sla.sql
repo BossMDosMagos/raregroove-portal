@@ -97,6 +97,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.system_create_dispute(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.system_create_dispute(uuid, text, text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.run_escrow_sla()
 RETURNS jsonb
@@ -180,6 +181,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.run_escrow_sla() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.run_escrow_sla() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.admin_run_escrow_sla()
 RETURNS jsonb
@@ -209,6 +211,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.admin_run_escrow_sla() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_run_escrow_sla() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_run_escrow_sla() TO service_role;
 
 -- (Opcional) Agendar execução automática via pg_cron, se disponível.
 -- Caso o seu projeto não tenha pg_cron habilitado, isso não fará nada.
@@ -220,9 +223,9 @@ BEGIN
   SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') INTO v_has_cron;
 
   IF v_has_cron THEN
-    EXECUTE 'SELECT EXISTS (SELECT 1 FROM cron.job WHERE jobname = ''escrow_sla_15m'')' INTO v_exists;
+    SELECT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'escrow_sla_15m') INTO v_exists;
     IF NOT v_exists THEN
-      EXECUTE $$SELECT cron.schedule('escrow_sla_15m', '*/15 * * * *', $$SELECT public.run_escrow_sla();$$)$$;
+      PERFORM cron.schedule('escrow_sla_15m', '*/15 * * * *', 'SELECT public.run_escrow_sla();');
     END IF;
   END IF;
 END $$;
