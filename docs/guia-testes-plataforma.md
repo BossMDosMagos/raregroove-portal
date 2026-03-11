@@ -112,6 +112,12 @@ Este guia valida, ponta a ponta, as implementações de:
    - Disputa vira `resolved_refund`.
    - Comprador e vendedor recebem notificação “REEMBOLSO EXECUTADO”.
 
+**Fila de reembolsos (recomendado)**
+1. Acesse `/admin/refunds`.
+2. Validações esperadas:
+   - Lista mostra apenas reembolsos `pending_execution` por padrão.
+   - Você consegue abrir a disputa e clicar em **Marcar executado** por ali.
+
 ### 8) Regra de prazo: disputa até 7 dias após entrega (status concluído)
 
 1. Escolha uma transação **concluída** de teste.

@@ -37,6 +37,7 @@ const DebugPayments = lazy(() => import('./pages/DebugPayments'));
 const AdminSwapsManagement = lazy(() => import('./pages/AdminSwapsManagement'));
 const AdminDisputes = lazy(() => import('./pages/AdminDisputes'));
 const AdminEscrowSla = lazy(() => import('./pages/AdminEscrowSla'));
+const AdminRefundTasks = lazy(() => import('./pages/AdminRefundTasks'));
 const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
 
 // Páginas de Usuário (Lazy Loading)
@@ -307,6 +308,20 @@ export default function App() {
                   ? null
                   : isAdmin
                   ? <AdminEscrowSla />
+                  : <Navigate to="/" />
+                : <Navigate to="/" />
+            }
+          />
+
+          {/* Rota Admin Reembolsos (Protegida + Admin) */}
+          <Route
+            path="/admin/refunds"
+            element={
+              session
+                ? adminLoading
+                  ? null
+                  : isAdmin
+                  ? <AdminRefundTasks />
                   : <Navigate to="/" />
                 : <Navigate to="/" />
             }

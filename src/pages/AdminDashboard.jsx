@@ -34,6 +34,7 @@ export default function AdminDashboard() {
   const [withdrawalDetailsModal, setWithdrawalDetailsModal] = useState(null);
   const [withdrawalDeleteModal, setWithdrawalDeleteModal] = useState(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [pendingRefundTasksCount, setPendingRefundTasksCount] = useState(0);
 
   const { formatCurrency, formatDate: formatDateLocale } = useI18n();
   const formatMoney = (value) => formatCurrency(value, 'BRL');
@@ -188,6 +189,14 @@ export default function AdminDashboard() {
       setReadyToSplit(readyRows);
       setLedgerEntries(ledgerData || []);
       setWithdrawals(enrichedWithdrawals);
+
+      const { data: refundTasksData } = await supabase
+        .from('dispute_refund_tasks')
+        .select('id, status')
+        .eq('status', 'pending_execution')
+        .limit(1000);
+
+      setPendingRefundTasksCount((refundTasksData || []).length);
     } catch (error) {
       console.error('Erro ao carregar dados admin:', error);
       toast.error('Erro ao carregar painel admin');
@@ -449,6 +458,17 @@ export default function AdminDashboard() {
             className="flex items-center justify-center gap-2 bg-black/60 text-[#D4AF37] border border-[#D4AF37]/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-[#D4AF37]/80 hover:bg-[#D4AF37]/10 transition-all"
           >
             <Clock size={14} /> Timers de Escrow
+          </Link>
+          <Link
+            to="/admin/refunds"
+            className="flex items-center justify-center gap-2 bg-black/60 text-yellow-300 border border-yellow-500/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all"
+          >
+            <CreditCard size={14} /> Fila de Reembolsos
+            {pendingRefundTasksCount > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-yellow-500 text-black rounded-full text-[9px] font-black">
+                {pendingRefundTasksCount > 99 ? '99+' : pendingRefundTasksCount}
+              </span>
+            )}
           </Link>
           <Link
             to="/admin/sales"
