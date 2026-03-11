@@ -69,6 +69,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const key = 'rg_visit_counted_v1';
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem(key) === '1') return;
+    sessionStorage.setItem(key, '1');
+
+    supabase.rpc('increment_total_visits').then(() => void 0).catch(() => void 0);
+  }, []);
+
+  useEffect(() => {
     const loadAdminFlag = async () => {
       if (!session?.user?.id) {
         setIsAdmin(false);

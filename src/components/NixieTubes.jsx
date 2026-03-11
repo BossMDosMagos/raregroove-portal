@@ -16,9 +16,10 @@ function Tube({ digit }) {
   );
 }
 
-export default function NixieTubes({ value = 0, digits = 6 }) {
+export default function NixieTubes({ value = null, digits = 6 }) {
   const [dbValue, setDbValue] = useState(null);
-  const v = clampInt(typeof value === 'number' ? value : (dbValue ?? 0));
+  const hasPropValue = typeof value === 'number';
+  const v = clampInt(hasPropValue ? value : (dbValue ?? 0));
   const prev = useRef(v);
 
   const text = useMemo(() => String(v).padStart(digits, '0').slice(-digits), [digits, v]);
@@ -32,7 +33,7 @@ export default function NixieTubes({ value = 0, digits = 6 }) {
   }, [v]);
 
   useEffect(() => {
-    if (typeof value === 'number') return undefined;
+    if (hasPropValue) return undefined;
 
     let cancelled = false;
 
@@ -68,7 +69,7 @@ export default function NixieTubes({ value = 0, digits = 6 }) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [value]);
+  }, [hasPropValue, value]);
 
   return (
     <button
