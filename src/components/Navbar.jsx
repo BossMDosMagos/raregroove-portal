@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useCart } from '../contexts/CartContext.jsx';
+import NixieTubes from './NixieTubes.jsx';
+import AcrylicLedClock from './AcrylicLedClock.jsx';
 import logoRareGroove from '../assets/LogoRareGroove.png';
 
 export default function Navbar() {
@@ -12,6 +15,7 @@ export default function Navbar() {
   const location = useLocation();
   const { unreadCount: unreadMessagesCount } = useUnreadMessages();
   const { locale, setLocale, t } = useI18n();
+  const { cartItem, setOpen } = useCart();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -21,10 +25,10 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [cartCount] = useState(0);
   const dropdownRef = useRef(null);
   const notificationsRef = useRef(null);
 
+  const cartCount = cartItem?.itemId ? 1 : 0;
   const unreadNotificationsCount = notifications.filter(n => !n.is_read).length;
   const totalUnreadCount = unreadNotificationsCount + unreadMessagesCount;
 
@@ -144,39 +148,47 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50">
       {/* Barra Principal - Glassmorphism */}
       <div
-        className="backdrop-blur-xl bg-[rgba(13,13,13,0.7)] border-b border-[#D4AF37]/20"
-        style={{
-          backdropFilter: 'blur(12px)',
-        }}
+        className="hifi-panel border-b border-[#D4AF37]/20"
       >
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+        <div className="hifi-display-left">
+          <div className="pointer-events-auto">
+            <NixieTubes digits={6} />
+          </div>
+        </div>
+
+        <div className="hifi-display-right">
+          <div className="pointer-events-auto">
+            <AcrylicLedClock />
+          </div>
+        </div>
+
+        <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-6 md:pl-[170px] md:pr-[190px] h-16 flex items-center justify-between">
           
-          {/* ── LADO ESQUERDO: Logo ────────────────────────────────────────── */}
-          <Link
-            to="/portal"
-            className="flex-shrink-0 flex items-center gap-2 group hover:opacity-80 transition-opacity"
-          >
-            {/* Logo completo no desktop */}
-            <img 
-              src={logoRareGroove}
-              alt="Rare Groove" 
-              className="hidden md:block h-10 w-auto object-contain"
-            />
-            {/* Símbolo no mobile - usa a mesma imagem reduzida */}
-            <img 
-              src={logoRareGroove}
-              alt="Rare Groove" 
-              className="md:hidden h-10 w-10 object-contain"
-            />
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              to="/portal"
+              className="flex-shrink-0 flex items-center gap-2 group hover:opacity-80 transition-opacity"
+            >
+              <img 
+                src={logoRareGroove}
+                alt="Rare Groove" 
+                className="hidden md:block h-10 w-auto object-contain"
+              />
+              <img 
+                src={logoRareGroove}
+                alt="Rare Groove" 
+                className="md:hidden h-10 w-10 object-contain"
+              />
+            </Link>
+          </div>
 
           {/* ── CENTRO: Links de Navegação (Desktop) ───────────────────────── */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-12">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`relative text-sm font-medium transition-colors py-2 ${
+                className={`relative text-[11px] font-black uppercase tracking-[0.24em] transition-colors py-2 ${
                   isActive(link.path)
                     ? 'text-[#D4AF37]'
                     : 'text-gray-300 hover:text-[#D4AF37]'
@@ -224,9 +236,10 @@ export default function Navbar() {
             </div>
 
             {/* Carrinho */}
-            <Link
-              to="/catalogo"
-              className="relative p-2 hover:bg-[#D4AF37]/10 rounded-lg transition-colors text-gray-300 hover:text-[#D4AF37]"
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="md:hidden relative p-2 hover:bg-[#D4AF37]/10 rounded-lg transition-colors text-gray-300 hover:text-[#D4AF37]"
               title="Carrinho"
             >
               <ShoppingCart size={20} />
@@ -235,7 +248,7 @@ export default function Navbar() {
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             {/* Notificações */}
             <div className="relative" ref={notificationsRef}>

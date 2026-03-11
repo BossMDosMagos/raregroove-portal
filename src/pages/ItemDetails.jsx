@@ -9,11 +9,14 @@ import { toast } from 'sonner';
 import { sanitizeMessage, isMessageEmptyAfterSanitize, isMessageTooShort, hasSuspiciousPattern } from '../utils/sanitizeMessage';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { Pill } from '../components/UIComponents';
+import { useCart } from '../contexts/CartContext.jsx';
+import { formatRemaining } from '../utils/time.js';
 
 export default function ItemDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatCurrency } = useI18n();
+  const { addToCart, cartItem, remainingText, setOpen } = useCart();
   const [item, setItem] = useState(null);
   const [seller, setSeller] = useState(null);
   const [sellerRating, setSellerRating] = useState(null);
@@ -32,7 +35,7 @@ export default function ItemDetails() {
       setCurrentUser(user);
 
       // Buscar o item
-      const { data: itemData, error: itemError } = await supabase
+      let { data: itemData, error: itemError } = await supabase
         .from('items')
         .select('*')
         .eq('id', id)
@@ -46,6 +49,27 @@ export default function ItemDetails() {
         navigate('/catalogo');
         setLoading(false);
         return;
+      }
+
+      if (itemData?.status === 'reservado' && itemData?.reserved_until) {
+        const untilMs = new Date(itemData.reserved_until).getTime();
+        if (Number.isFinite(untilMs) && untilMs <= Date.now()) {
+          const { error: rpcError } = await supabase.rpc('release_item_reservation', { item_uuid: itemData.id });
+          if (rpcError) {
+            await supabase
+              .from('items')
+              .update({ status: 'disponivel', reserved_by: null, reserved_until: null })
+              .eq('id', itemData.id);
+          }
+
+          const refreshed = await supabase
+            .from('items')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (refreshed?.data) itemData = refreshed.data;
+        }
       }
 
       setItem(itemData);
@@ -162,6 +186,24 @@ export default function ItemDetails() {
       </div>
     </div>
   );
+
+  const reservedUntilMs = item?.reserved_until ? new Date(item.reserved_until).getTime() : null;
+  const reserveRemainingMs = reservedUntilMs ? reservedUntilMs - Date.now() : null;
+  const reserveActive = Boolean(item?.status === 'reservado' && typeof reserveRemainingMs === 'number' && reserveRemainingMs > 0);
+  const reserveTextFromDb = reserveActive ? formatRemaining(reserveRemainingMs) : null;
+
+  let localCart = null;
+  try {
+    localCart = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
+  } catch {
+    localCart = null;
+  }
+
+  const localReserveForThis = Boolean(localCart?.itemId === item?.id && Number(localCart?.reservedUntilMs || 0) > Date.now());
+  const reservedByMe = reserveActive && item?.reserved_by && currentUser?.id && item.reserved_by === currentUser.id;
+  const reservedByOther = reserveActive && item?.reserved_by && currentUser?.id && item.reserved_by !== currentUser.id;
+  const reservedUnknown = reserveActive && !item?.reserved_by;
+  const blockedByReserve = item?.allow_sale && item?.status === 'reservado' && !reservedByMe && !localReserveForThis && (reservedByOther || reservedUnknown);
 
   return (
     <div className="min-h-screen bg-charcoal-deep text-white py-12 px-4 md:px-8 pt-28 selection:bg-gold-premium/30 selection:text-gold-light">
@@ -330,10 +372,39 @@ export default function ItemDetails() {
               </div>
 
               {/* Action Buttons */}
+              {(cartItem?.itemId === item?.id || reservedByMe || localReserveForThis) && (
+                <div className="mb-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl px-5 py-4 flex items-center justify-between">
+                  <p className="text-orange-200 text-[10px] font-black uppercase tracking-[0.25em]">Reserva garantida por:</p>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(true)}
+                    className="text-orange-200 font-black text-sm tabular-nums hover:text-white transition-colors"
+                  >
+                    {remainingText || (localReserveForThis ? formatRemaining(Number(localCart?.reservedUntilMs || 0) - Date.now()) : reserveTextFromDb) || '00:00'}
+                  </button>
+                </div>
+              )}
+              {blockedByReserve && (
+                <div className="mb-4 bg-white/5 border border-white/10 rounded-2xl px-5 py-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.25em]">Reservado por outro colecionador</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.25em] mt-1 tabular-nums">
+                      {reserveTextFromDb ? `Volta em ${reserveTextFromDb}` : 'Indisponível no momento'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/catalogo')}
+                    className="px-4 py-3 rounded-xl bg-gold-premium text-charcoal-deep font-black uppercase tracking-widest text-[10px] hover:shadow-[0_0_20px_rgba(212,175,55,0.35)] transition-all"
+                  >
+                    Voltar
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-white/5 relative z-10">
                 {item?.allow_sale && (
                   <button 
-                    onClick={() => {
+                    onClick={async () => {
                       if (!currentUser) {
                         toast.error(t('auth.required') || 'Faça login para continuar');
                         navigate('/');
@@ -343,14 +414,29 @@ export default function ItemDetails() {
                         toast.error(t('item.ownItemError') || 'Você não pode comprar seu próprio item');
                         return;
                       }
-                      navigate(`/checkout/${item.id}`);
+                      if (blockedByReserve) {
+                        toast.error('ITEM RESERVADO', {
+                          description: 'Outro colecionador está com reserva ativa.',
+                          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+                        });
+                        return;
+                      }
+                      const reserved = await addToCart(item.id);
+                      if (reserved) navigate(`/checkout/${item.id}`);
                     }}
-                    className="group relative overflow-hidden bg-gold-premium text-charcoal-deep py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:shadow-[0_0_40px_rgba(212,175,55,0.4)] transition-all duration-500"
+                    disabled={blockedByReserve}
+                    className={`group relative overflow-hidden py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all duration-500 ${
+                      blockedByReserve
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/10'
+                        : 'bg-gold-premium text-charcoal-deep hover:shadow-[0_0_40px_rgba(212,175,55,0.4)]'
+                    }`}
                   >
                     <span className="relative z-10 flex items-center justify-center gap-3">
-                      <Tag size={16} /> {t('item.buyAction') || 'COMPRAR AGORA'}
+                      <Tag size={16} /> {blockedByReserve ? 'RESERVADO' : (t('item.buyAction') || 'COMPRAR AGORA')}
                     </span>
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                    {!blockedByReserve && (
+                      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                    )}
                   </button>
                 )}
                 

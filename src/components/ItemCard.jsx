@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Disc, Tag, Heart, Music, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useCart } from '../contexts/CartContext.jsx';
+import { formatRemaining } from '../utils/time.js';
 
 export const ItemCard = ({ item }) => {
   const navigate = useNavigate();
   const { t, formatCurrency } = useI18n();
-  const [isHovered, setIsHovered] = useState(false);
+  const { addToCart } = useCart();
   const [isInWishlist, setIsInWishlist] = useState(() => {
     try {
       const wishlist = JSON.parse(localStorage.getItem('rg_wishlist') || '[]');
@@ -41,12 +43,21 @@ export const ItemCard = ({ item }) => {
 
   // Formatação segura de preço
   const formattedPrice = formatCurrency ? formatCurrency(item.price) : `R$ ${item.price}`;
+  const reservedUntilMs = item?.reserved_until ? new Date(item.reserved_until).getTime() : null;
+  const [nowMs, setNowMs] = useState(0);
+
+  useEffect(() => {
+    if (!item?.reserved_until) return undefined;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [item?.reserved_until]);
+
+  const reserveRemaining = reservedUntilMs && nowMs ? reservedUntilMs - nowMs : null;
+  const reserveText = typeof reserveRemaining === 'number' && reserveRemaining > 0 ? formatRemaining(reserveRemaining) : null;
 
   return (
     <div 
       onClick={() => navigate(`/item/${item.id}`)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className="cursor-pointer group relative glass-card rounded-[2rem] overflow-hidden border border-white/5 hover:border-gold-premium/40 transition-all duration-500 hover:shadow-[0_0_50px_-15px_rgba(212,175,55,0.3)] hover:-translate-y-2"
     >
       
@@ -56,7 +67,9 @@ export const ItemCard = ({ item }) => {
         {item.status === 'reservado' && (
           <div className="absolute inset-0 bg-charcoal-deep/80 backdrop-blur-sm z-20 flex items-center justify-center">
             <div className="border border-warning/50 bg-warning/10 px-6 py-3 rounded-xl rotate-[-5deg] shadow-2xl backdrop-blur-md">
-              <p className="text-warning font-black text-sm uppercase tracking-[0.2em]">{t('chat.activeTransaction') || 'EM NEGOCIAÇÃO'}</p>
+              <p className="text-warning font-black text-sm uppercase tracking-[0.2em] tabular-nums">
+                {reserveText ? `RESERVA: ${reserveText}` : (t('chat.activeTransaction') || 'EM NEGOCIAÇÃO')}
+              </p>
             </div>
           </div>
         )}
@@ -150,6 +163,11 @@ export const ItemCard = ({ item }) => {
           </div>
           
           <button 
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (item.status === 'reservado' || item.status === 'vendido' || item.is_sold) return;
+              await addToCart(item.id);
+            }}
             className="p-3 bg-gold-premium text-charcoal-deep rounded-xl opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-lg hover:shadow-gold-premium/20 font-bold"
           >
             <Tag size={18} />

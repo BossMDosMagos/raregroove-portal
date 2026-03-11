@@ -4,8 +4,10 @@ import { HelmetProvider } from 'react-helmet-async'; // SEO
 import { Toaster } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
+import { CartProvider } from './contexts/CartContext.jsx';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
+import CartDrawer from './components/CartDrawer.jsx';
 import { validateSecretVault } from './utils/secretVaultTest';
 
 // Componentes de carregamento
@@ -102,13 +104,15 @@ export default function App() {
       <ErrorBoundary>
         <Router>
           <UnreadMessagesProvider>
-            <Toaster position="top-center" expand={false} richColors theme="dark" />
-            
-            <div className="min-h-screen bg-[#050505] text-white">
-              <Navbar session={session} />
+            <CartProvider>
+              <Toaster position="top-center" expand={false} richColors theme="dark" />
               
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
+              <div className="min-h-screen bg-[#050505] text-white">
+                <Navbar />
+                <CartDrawer />
+                
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
           {/* Se estiver logado, manda pro Portal. Se não, manda pro Login */}
           <Route 
             path="/" 
@@ -287,10 +291,11 @@ export default function App() {
 
           {/* Rota 404 - Catch All */}
           <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </div>
-        </UnreadMessagesProvider>
+                  </Routes>
+                </Suspense>
+              </div>
+            </CartProvider>
+          </UnreadMessagesProvider>
         </Router>
       </ErrorBoundary>
     </HelmetProvider>

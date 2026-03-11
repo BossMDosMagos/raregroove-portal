@@ -6,11 +6,13 @@ import { toast } from 'sonner';
 import { Pill } from '../components/UIComponents';
 import PaymentGateway from '../components/PaymentGateway';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useCart } from '../contexts/CartContext.jsx';
 
 export default function Checkout() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const { itemId } = useParams();
   const navigate = useNavigate();
+  const { clearLocalCart } = useCart();
 
   // 💰 SELETOR DE MOEDA
   const [currency, setCurrency] = useState(locale === 'en-US' ? 'USD' : 'BRL');
@@ -62,6 +64,54 @@ export default function Checkout() {
           toast.error('Este item já foi vendido');
           navigate('/catalogo');
           return;
+        }
+
+        if (itemData.status === 'reservado') {
+          const reservedUntilMs = itemData.reserved_until ? new Date(itemData.reserved_until).getTime() : null;
+          const hasActiveReserve = Boolean(reservedUntilMs && reservedUntilMs > Date.now());
+          const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
+
+          if (!reservedUntilMs) {
+            try {
+              const stored = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
+              const ok = stored?.itemId === itemData.id && Number(stored?.reservedUntilMs || 0) > Date.now();
+              if (!ok) {
+                toast.error('ITEM INDISPONÍVEL', {
+                  description: 'Este item está reservado/em negociação.',
+                });
+                navigate('/catalogo');
+                return;
+              }
+            } catch {
+              toast.error('ITEM INDISPONÍVEL', {
+                description: 'Este item está reservado/em negociação.',
+              });
+              navigate('/catalogo');
+              return;
+            }
+          }
+
+          if (hasActiveReserve && !isReservedByMe) {
+            let ok = false;
+            try {
+              const stored = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
+              ok = stored?.itemId === itemData.id && Number(stored?.reservedUntilMs || 0) > Date.now();
+            } catch {
+              ok = false;
+            }
+
+            if (!ok) {
+              toast.error('ITEM RESERVADO', {
+                description: 'Outro colecionador está com reserva ativa.',
+              });
+              navigate('/catalogo');
+              return;
+            }
+          }
+
+          if (!hasActiveReserve) {
+            await supabase.rpc('release_item_reservation', { item_uuid: itemData.id });
+          }
         }
 
         setItem(itemData);
@@ -213,6 +263,8 @@ export default function Checkout() {
         description: 'O vendedor foi notificado.',
         duration: 5000,
       });
+
+      clearLocalCart(item.id);
 
       // Redirecionar para página de sucesso
       setTimeout(() => {

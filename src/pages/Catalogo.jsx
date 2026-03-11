@@ -7,6 +7,7 @@ import { Pill } from '../components/UIComponents';
 import AddItemModal from '../components/AddItemModal';
 import { WishlistModal } from '../components/WishlistComponents';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useCart } from '../contexts/CartContext.jsx';
 
 export default function Catalogo() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -21,9 +22,12 @@ export default function Catalogo() {
     maxPrice: ''
   });
   const { t } = useI18n();
+  const { cartItem } = useCart();
 
   const fetchItems = async () => {
     setLoadingItems(true);
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
     const { data, error } = await supabase
       .from('items')
       .select('*')
@@ -31,7 +35,27 @@ export default function Catalogo() {
       .eq('is_sold', false)
       .order('created_at', { ascending: false });
     if (!error) {
-      setItems(data);
+      let list = data || [];
+      const expiredReserved = list.filter((i) => i.status === 'reservado' && i.reserved_until && new Date(i.reserved_until).toISOString() < nowIso);
+      if (expiredReserved.length > 0) {
+        await Promise.allSettled(expiredReserved.map(async (i) => {
+          const { error: rpcError } = await supabase.rpc('release_item_reservation', { item_uuid: i.id });
+          if (!rpcError) return;
+          await supabase.from('items').update({ status: 'disponivel', reserved_by: null, reserved_until: null }).eq('id', i.id);
+        }));
+        const releasedIds = new Set(expiredReserved.map((i) => i.id));
+        list = list.map((i) => releasedIds.has(i.id) ? { ...i, status: 'disponivel', reserved_by: null, reserved_until: null } : i);
+      }
+
+      const visible = list.filter((i) => {
+        if (i.status !== 'reservado') return true;
+        if (cartItem?.itemId === i.id) return true;
+        if (!i.reserved_until) return true;
+        if (i.reserved_until && new Date(i.reserved_until).toISOString() < nowIso) return true;
+        return false;
+      });
+
+      setItems(visible);
     }
     setLoadingItems(false);
   };
@@ -56,6 +80,11 @@ export default function Catalogo() {
     const id = setTimeout(fetchItems, 0);
     return () => clearTimeout(id);
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(fetchItems, 15000);
+    return () => clearInterval(id);
+  }, [cartItem?.itemId]);
 
   const filteredProducts = items.filter(product => {
     if (filters.search) {

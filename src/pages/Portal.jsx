@@ -71,6 +71,35 @@ export default function Portal() {
     loadAdminFlag();
   }, []);
 
+  useEffect(() => {
+    const key = 'rg_visit_counted_v1';
+    if (sessionStorage.getItem(key) === '1') return;
+    sessionStorage.setItem(key, '1');
+
+    const increment = async () => {
+      const { data, error } = await supabase.rpc('increment_total_visits');
+      if (!error && typeof data === 'number') return;
+
+      const { data: existing, error: readError } = await supabase
+        .from('site_stats')
+        .select('id, total_visits')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (readError) return;
+
+      if (!existing) {
+        await supabase.from('site_stats').insert([{ id: 1, total_visits: 1 }]);
+        return;
+      }
+
+      const next = Number(existing.total_visits || 0) + 1;
+      await supabase.from('site_stats').update({ total_visits: next, updated_at: new Date().toISOString() }).eq('id', 1);
+    };
+
+    increment();
+  }, []);
+
   return (
     <div className="min-h-screen bg-charcoal-deep text-white selection:bg-gold-premium/30 selection:text-gold-light">
       {/* Hero Section */}
