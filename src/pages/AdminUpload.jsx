@@ -43,7 +43,9 @@ async function apiPost(path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(String(data?.error || 'Erro'));
+    const base = String(data?.message || data?.error || res.statusText || 'Erro');
+    const details = data?.body ? ` • ${String(data.body).slice(0, 280)}` : '';
+    const err = new Error(`${base}${details}`);
     err.code = data?.error || null;
     throw err;
   }
@@ -58,7 +60,9 @@ async function apiGet(path) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(String(data?.error || 'Erro'));
+    const base = String(data?.message || data?.error || res.statusText || 'Erro');
+    const details = data?.body ? ` • ${String(data.body).slice(0, 280)}` : '';
+    const err = new Error(`${base}${details}`);
     err.code = data?.error || null;
     throw err;
   }
@@ -76,10 +80,16 @@ async function multipartUpload({ file, key, contentType, onProgress }) {
     const end = Math.min(file.size, partNumber * partSize);
     const chunk = file.slice(start, end);
     const { url } = await apiPost('/api/b2-multipart/presign', { key, upload_id, part_number: partNumber });
-    const res = await fetch(url, { method: 'PUT', body: chunk });
+    let res;
+    try {
+      res = await fetch(url, { method: 'PUT', body: chunk });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      throw new Error(`Falha de rede/CORS no upload (parte ${partNumber}). Verifique CORS no Backblaze (AllowMethods: PUT, GET, HEAD; AllowHeaders: *; ExposeHeaders: ETag; Origin: seu domínio). Detalhe: ${msg}`);
+    }
     if (!res.ok) throw new Error(`Falha ao enviar parte ${partNumber}`);
     const etag = String(res.headers.get('etag') || '').replace(/"/g, '');
-    if (!etag) throw new Error(`ETag ausente na parte ${partNumber}`);
+    if (!etag) throw new Error(`ETag ausente na parte ${partNumber} (verifique CORS: ExposeHeaders precisa incluir ETag)`);
     parts.push({ partNumber, etag });
     onProgress?.(partNumber, totalParts);
   }
