@@ -34,7 +34,7 @@ export default function Grooveflix() {
       try {
         const { data, error } = await supabase
           .from('items')
-          .select('id, title, artist, band, image_url, created_at, metadata')
+          .select('id, title, artist, image_url, created_at, metadata')
           .order('created_at', { ascending: false })
           .limit(80);
 
@@ -84,7 +84,7 @@ export default function Grooveflix() {
       return {
         id: item.id,
         title: item.title || 'Untitled',
-        artist: item.artist || item.band || '',
+        artist: item.artist || '',
         coverUrl: item.image_url || '',
         category: category || 'single',
         audioPath: audioPath || null,
