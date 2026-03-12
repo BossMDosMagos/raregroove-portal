@@ -6,7 +6,7 @@ import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 export default function GrooveflixGatekeeper({ children }) {
   const location = useLocation();
-  const { loading: subLoading, profile, refresh } = useSubscription();
+  const { loading: subLoading, profile, settings, refresh } = useSubscription();
   const [loading, setLoading] = useState(true);
   const allowed = useMemo(() => {
     const lvl = Number(profile?.user_level || 0);
@@ -15,8 +15,14 @@ export default function GrooveflixGatekeeper({ children }) {
     if (status === 'active') return true;
     if (status !== 'trialing') return false;
     const endsAt = profile?.subscription_trial_ends_at ? new Date(profile.subscription_trial_ends_at).getTime() : 0;
-    return endsAt > Date.now();
-  }, [profile]);
+    if (!(endsAt > Date.now())) return false;
+
+    const limitGb = Number(settings?.trial_data_limit_gb || 0);
+    const usedGb = Number(profile?.subscription_data_used_gb || 0);
+    if (limitGb > 0 && usedGb >= limitGb) return false;
+
+    return true;
+  }, [profile, settings?.trial_data_limit_gb]);
 
   useEffect(() => {
     const run = async () => {

@@ -23,7 +23,7 @@ export function SubscriptionProvider({ children }) {
       const [{ data: prof }, { data: plansData }, { data: settingsData }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, country_code, user_level, subscription_status, subscription_plan, subscription_date, subscription_trial_ends_at, subscription_trial_started_at')
+          .select('id, country_code, user_level, subscription_status, subscription_plan, subscription_date, subscription_trial_ends_at, subscription_trial_started_at, subscription_data_used_gb')
           .eq('id', user.id)
           .single(),
         supabase
