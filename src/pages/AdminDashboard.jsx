@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye, Clock } from 'lucide-react';
+import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye, Clock, Sparkles } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -493,6 +493,12 @@ export default function AdminDashboard() {
             className="flex items-center justify-center gap-2 bg-black/60 text-green-400 border border-green-400/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-green-400/80 hover:bg-green-400/10 transition-all"
           >
             <Settings size={14} /> Configurações Financeiras
+          </Link>
+          <Link
+            to="/admin/subscriptions"
+            className="flex items-center justify-center gap-2 bg-black/60 text-fuchsia-300 border border-fuchsia-400/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-fuchsia-400/80 hover:bg-fuchsia-400/10 transition-all"
+          >
+            <Sparkles size={14} /> Gestão de Assinaturas
           </Link>
           <button
             onClick={() => withdrawalsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

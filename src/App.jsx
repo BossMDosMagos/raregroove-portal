@@ -42,6 +42,7 @@ const AdminDisputes = lazy(() => import('./pages/AdminDisputes'));
 const AdminEscrowSla = lazy(() => import('./pages/AdminEscrowSla'));
 const AdminRefundTasks = lazy(() => import('./pages/AdminRefundTasks'));
 const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
+const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 
 // Páginas de Usuário (Lazy Loading)
 const MyItems = lazy(() => import('./pages/MyItems'));
@@ -384,6 +385,20 @@ export default function App() {
                   ? null
                   : isAdmin
                   ? <FeeManagement />
+                  : <Navigate to="/" />
+                : <Navigate to="/" />
+            }
+          />
+
+          {/* Rota Admin Assinaturas (Protegida + Admin) */}
+          <Route
+            path="/admin/subscriptions"
+            element={
+              session
+                ? adminLoading
+                  ? null
+                  : isAdmin
+                  ? <AdminSubscriptions />
                   : <Navigate to="/" />
                 : <Navigate to="/" />
             }

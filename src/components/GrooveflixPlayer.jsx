@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { Download, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 function formatTime(seconds) {
@@ -9,7 +9,7 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 }
 
-export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, onProgress }) {
+export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, onProgress, canDownload = false, trialing = false }) {
   const audioRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -72,6 +72,13 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
 
   const progressPct = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
+  const onBlockedDownload = () => {
+    toast.message('DISPONÍVEL APÓS A ASSINATURA', {
+      description: trialing ? 'Durante o trial, downloads ficam bloqueados.' : 'Ative um plano para desbloquear downloads.',
+      style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+    });
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 border-t border-fuchsia-500/20 backdrop-blur-xl">
       <audio
@@ -124,6 +131,50 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
                   <span className="led-text" style={{ opacity: 0.35, margin: '0 8px' }}>/</span>
                   <span className="led-text">{formatTime(duration)}</span>
                 </div>
+                {(active?.isoUrl || active?.bookletUrl) ? (
+                  <div className="hidden lg:flex items-center gap-2">
+                    {active?.bookletUrl ? (
+                      canDownload ? (
+                        <a
+                          href={active.bookletUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Download className="w-4 h-4" /> Encarte
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onBlockedDownload}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 transition text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Download className="w-4 h-4" /> Encarte
+                        </button>
+                      )
+                    ) : null}
+                    {active?.isoUrl ? (
+                      canDownload ? (
+                        <a
+                          href={active.isoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Download className="w-4 h-4" /> ISO
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onBlockedDownload}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 transition text-[10px] font-black uppercase tracking-widest"
+                        >
+                          <Download className="w-4 h-4" /> ISO
+                        </button>
+                      )
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
 

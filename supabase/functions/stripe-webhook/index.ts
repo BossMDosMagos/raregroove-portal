@@ -143,7 +143,8 @@ serve(async (req) => {
                 user_level: userLevel,
                 subscription_status: 'active',
                 subscription_plan: planId,
-                subscription_date: new Date().toISOString()
+                subscription_date: new Date().toISOString(),
+                subscription_trial_ends_at: null
               })
               .eq('id', buyerId);
 

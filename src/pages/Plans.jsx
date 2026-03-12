@@ -3,20 +3,47 @@ import { Crown, Gem, Shield, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 export default function Plans() {
-  const { t } = useI18n();
+  const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [selected, setSelected] = useState(null);
   const [restrictedOpen, setRestrictedOpen] = useState(() => searchParams.get('restricted') === '1');
+  const [trialBusy, setTrialBusy] = useState(false);
+  const { plans: dbPlans, settings, profile, refresh } = useSubscription();
+
+  const prefersUsd = useMemo(() => {
+    const country = String(profile?.country_code || '').toUpperCase();
+    if (country && country !== 'BR') return true;
+    if (locale === 'en-US') return true;
+    return false;
+  }, [locale, profile?.country_code]);
+
+  const currency = prefersUsd ? 'USD' : 'BRL';
+
+  const getPriceFor = (planId) => {
+    const db = (dbPlans || []).find((p) => p.plan_id === planId);
+    if (!db) return '';
+    if (currency === 'USD') {
+      const usd = Number(db.price_usd || 0);
+      if (usd > 0) return formatCurrency(usd, 'USD');
+      const brl = Number(db.price_brl || 0);
+      const rate = Number(exchangeRate || 0);
+      if (rate > 0) return formatCurrency(brl / rate, 'USD');
+      return formatCurrency(0, 'USD');
+    }
+    return formatCurrency(Number(db.price_brl || 0), 'BRL');
+  };
 
   const plans = useMemo(() => ([
     {
       id: 'digger',
       title: t('plans.digger.title') || 'DIGGER',
-      price: t('plans.digger.price') || 'Grátis',
-      badge: t('plans.digger.badge') || 'Entrada',
+      price: getPriceFor('digger') || formatCurrency(14.9, currency),
+      badge: (dbPlans || []).find((p) => p.plan_id === 'digger')?.description || (t('plans.digger.badge') || 'Entrada'),
       accent: 'border-white/10',
       icon: Shield,
       features: [
@@ -24,13 +51,13 @@ export default function Plans() {
         t('plans.digger.f2') || '5 imortalizações de teste',
         t('plans.digger.f3') || 'Biblioteca pessoal (limitada)',
       ],
-      cta: t('plans.digger.cta') || 'Entrar no Groove',
+      cta: t('plans.digger.cta') || 'Ativar Digger',
     },
     {
       id: 'keeper',
       title: t('plans.keeper.title') || 'KEEPER',
-      price: t('plans.keeper.price') || 'Pro',
-      badge: t('plans.keeper.badge') || 'Prata',
+      price: getPriceFor('keeper') || formatCurrency(34.9, currency),
+      badge: (dbPlans || []).find((p) => p.plan_id === 'keeper')?.description || (t('plans.keeper.badge') || 'Custo-benefício'),
       accent: 'border-fuchsia-500/30 gf-glow',
       icon: Gem,
       features: [
@@ -38,14 +65,14 @@ export default function Plans() {
         t('plans.keeper.f2') || 'Streaming Hi‑Fi (Mobile)',
         t('plans.keeper.f3') || 'Selo Prata no perfil',
       ],
-      cta: t('plans.keeper.cta') || 'Virar Keeper',
+      cta: t('plans.keeper.cta') || 'Ativar Keeper',
       highlight: true,
     },
     {
       id: 'high_guardian',
       title: t('plans.high.title') || 'HIGH GUARDIAN',
-      price: t('plans.high.price') || 'Elite',
-      badge: t('plans.high.badge') || 'Ouro Neon',
+      price: getPriceFor('high_guardian') || formatCurrency(69.9, currency),
+      badge: (dbPlans || []).find((p) => p.plan_id === 'high_guardian')?.description || (t('plans.high.badge') || 'Elite/Full Access'),
       accent: 'border-purple-500/30',
       icon: Crown,
       features: [
@@ -54,9 +81,9 @@ export default function Plans() {
         t('plans.high.f3') || 'Ouvir itens públicos da comunidade',
         t('plans.high.f4') || 'Selo Ouro com brilho neon',
       ],
-      cta: t('plans.high.cta') || 'Virar Guardian',
+      cta: t('plans.high.cta') || 'Ativar High Guardian',
     },
-  ]), [t]);
+  ]), [currency, dbPlans, exchangeRate, formatCurrency, t]);
 
   const pick = (planId) => {
     setSelected(planId);
@@ -65,6 +92,38 @@ export default function Plans() {
       description: t('plans.saved.desc') || 'Checkout de assinatura entra na próxima etapa.',
       style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
     });
+  };
+
+  const canStartTrial = useMemo(() => {
+    const days = Number(settings?.trial_days || 0);
+    if (!(days > 0)) return false;
+    const status = String(profile?.subscription_status || '').toLowerCase();
+    if (status === 'active' || status === 'trialing') return false;
+    if (profile?.subscription_trial_started_at) return false;
+    return true;
+  }, [profile?.subscription_status, profile?.subscription_trial_started_at, settings?.trial_days]);
+
+  const startTrial = async () => {
+    if (!canStartTrial || trialBusy) return;
+    setTrialBusy(true);
+    try {
+      const { data, error } = await supabase.rpc('start_subscription_trial');
+      if (error) throw error;
+      if (!data?.ok) {
+        toast.error('TRIAL INDISPONÍVEL', { description: String(data?.error || 'Erro') });
+        return;
+      }
+      await refresh();
+      toast.success('TRIAL ATIVADO', {
+        description: `Degustação por ${data.trial_days} dias liberada.`,
+        style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+      });
+      navigate('/grooveflix');
+    } catch (e) {
+      toast.error('ERRO AO ATIVAR TRIAL', { description: e.message });
+    } finally {
+      setTrialBusy(false);
+    }
   };
 
   return (
@@ -112,6 +171,16 @@ export default function Plans() {
                   {t('plans.restricted.cta') || 'Ativar Keeper'}
                 </button>
               </div>
+              {canStartTrial && (
+                <button
+                  type="button"
+                  disabled={trialBusy}
+                  onClick={startTrial}
+                  className="mt-3 w-full py-3 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition disabled:opacity-40"
+                >
+                  {trialBusy ? 'Ativando...' : `Iniciar Trial (${Number(settings?.trial_days || 0)} dias)`}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -172,7 +241,7 @@ export default function Plans() {
                     type="button"
                     onClick={() => {
                       pick(p.id);
-                      if (p.id !== 'digger') navigate(`/checkout?mode=subscription&plan=${encodeURIComponent(p.id)}`);
+                      navigate(`/checkout?mode=subscription&plan=${encodeURIComponent(p.id)}`);
                     }}
                     className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.22em] text-xs border transition ${
                       p.highlight

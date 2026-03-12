@@ -6,6 +6,7 @@ import GrooveflixPlayer from '../components/GrooveflixPlayer';
 import GrooveflixRow from '../components/GrooveflixRow';
 import { buildGrooveflixUrl } from '../utils/grooveflix';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 function safeParseJson(value) {
   try {
@@ -15,23 +16,9 @@ function safeParseJson(value) {
   }
 }
 
-function toTrack(item) {
-  const meta = item?.metadata || {};
-  const path = meta?.grooveflix?.audio_path || meta?.grooveflix?.flac_path || meta?.grooveflix?.preview_path || '';
-  const direct = meta?.grooveflix?.audio_url || meta?.grooveflix?.stream_url || '';
-  const audioUrl = direct ? String(direct) : buildGrooveflixUrl(path);
-
-  return {
-    id: item.id,
-    title: item.title || 'Untitled',
-    artist: item.artist || item.band || '',
-    coverUrl: item.image_url || '',
-    audioUrl: audioUrl || null,
-  };
-}
-
 export default function Grooveflix() {
   const { t } = useI18n();
+  const { profile, settings, isTrialing, isActive } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -66,7 +53,44 @@ export default function Grooveflix() {
     load();
   }, []);
 
-  const tracks = useMemo(() => (items || []).map(toTrack), [items]);
+  const canDownload = useMemo(() => {
+    if (isActive) return true;
+    if (isTrialing) return settings?.block_downloads_on_trial === false;
+    return false;
+  }, [isActive, isTrialing, settings?.block_downloads_on_trial]);
+
+  const shouldUsePreviewAudio = useMemo(() => {
+    if (!isTrialing) return false;
+    if (settings?.limit_audio_quality_on_trial === false) return false;
+    return String(settings?.max_trial_quality || 'preview') === 'preview';
+  }, [isTrialing, settings?.limit_audio_quality_on_trial, settings?.max_trial_quality]);
+
+  const tracks = useMemo(() => {
+    return (items || []).map((item) => {
+      const meta = item?.metadata || {};
+      const gf = meta?.grooveflix || {};
+
+      const direct = gf?.audio_url || gf?.stream_url || '';
+      const audioPath = shouldUsePreviewAudio
+        ? (gf?.preview_path || gf?.audio_path || gf?.flac_path || '')
+        : (gf?.audio_path || gf?.flac_path || gf?.preview_path || '');
+
+      const audioUrl = direct ? String(direct) : buildGrooveflixUrl(audioPath);
+
+      const isoUrl = gf?.iso_url ? String(gf.iso_url) : buildGrooveflixUrl(gf?.iso_path || '');
+      const bookletUrl = gf?.booklet_url ? String(gf.booklet_url) : buildGrooveflixUrl(gf?.booklet_path || gf?.encarte_path || '');
+
+      return {
+        id: item.id,
+        title: item.title || 'Untitled',
+        artist: item.artist || item.band || '',
+        coverUrl: item.image_url || '',
+        audioUrl: audioUrl || null,
+        isoUrl: isoUrl || null,
+        bookletUrl: bookletUrl || null,
+      };
+    });
+  }, [items, shouldUsePreviewAudio]);
 
   const byId = useMemo(() => {
     const map = {};
@@ -186,6 +210,8 @@ export default function Grooveflix() {
         activeId={activeId}
         onChangeActiveId={setActiveId}
         onProgress={(id, seconds) => onProgress(id, seconds)}
+        canDownload={canDownload}
+        trialing={String(profile?.subscription_status || '').toLowerCase() === 'trialing'}
       />
     </div>
   );

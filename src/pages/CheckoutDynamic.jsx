@@ -5,49 +5,70 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import PaymentGateway from '../components/PaymentGateway';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 export default function CheckoutDynamic() {
-  const { t, formatCurrency, locale } = useI18n();
+  const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const mode = (searchParams.get('mode') || 'acervo').toLowerCase();
   const planId = (searchParams.get('plan') || localStorage.getItem('rg_plan_tier_v1') || '').toLowerCase();
+  const itemId = searchParams.get('itemId') || searchParams.get('item_id');
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const { plans: dbPlans, profile, refresh } = useSubscription();
 
   const [paying, setPaying] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState(null);
   const [availableGateways, setAvailableGateways] = useState([]);
 
-  const currency = useMemo(() => (locale === 'en-US' ? 'USD' : 'BRL'), [locale]);
+  const prefersUsd = useMemo(() => {
+    const country = String(profile?.country_code || '').toUpperCase();
+    if (country && country !== 'BR') return true;
+    if (locale === 'en-US') return true;
+    return false;
+  }, [locale, profile?.country_code]);
+
+  const currency = prefersUsd ? 'USD' : 'BRL';
 
   const plan = useMemo(() => {
-    const map = {
-      keeper: {
-        id: 'keeper',
-        title: 'KEEPER',
-        label: t('plans.keeper.title') || 'KEEPER',
-        amountBRL: 29.9,
-        userLevel: 2,
-        icon: Gem,
-        accent: 'from-fuchsia-500/30 to-purple-500/20 border-fuchsia-500/40',
-      },
-      high_guardian: {
-        id: 'high_guardian',
-        title: 'HIGH GUARDIAN',
-        label: t('plans.high.title') || 'HIGH GUARDIAN',
-        amountBRL: 59.9,
-        userLevel: 3,
-        icon: Crown,
-        accent: 'from-purple-500/30 to-fuchsia-500/15 border-purple-500/40',
-      },
+    const db = (dbPlans || []).find((p) => p.plan_id === planId);
+    if (!db) return null;
+
+    const icon = db.plan_id === 'high_guardian' ? Crown : db.plan_id === 'keeper' ? Gem : Gem;
+    const accent =
+      db.plan_id === 'high_guardian'
+        ? 'from-purple-500/30 to-fuchsia-500/15 border-purple-500/40'
+        : db.plan_id === 'keeper'
+        ? 'from-fuchsia-500/30 to-purple-500/20 border-fuchsia-500/40'
+        : 'from-white/10 to-white/5 border-white/20';
+
+    const amountBRL = Number(db.price_brl || 0);
+    const amountUSD = Number(db.price_usd || 0);
+
+    let displayAmount = amountBRL;
+    if (currency === 'USD') {
+      if (amountUSD > 0) displayAmount = amountUSD;
+      else {
+        const rate = Number(exchangeRate || 0);
+        displayAmount = rate > 0 ? amountBRL / rate : 0;
+      }
+    }
+
+    return {
+      id: db.plan_id,
+      title: String(db.name || '').toUpperCase() || db.plan_id.toUpperCase(),
+      label: db.name || db.plan_id.toUpperCase(),
+      description: db.description || '',
+      userLevel: Number(db.user_level || 0),
+      amount: displayAmount,
+      icon,
+      accent
     };
-    return map[planId] || null;
-  }, [planId, t]);
+  }, [currency, dbPlans, exchangeRate, planId]);
 
   const isSubscription = mode === 'subscription';
 
@@ -63,7 +84,8 @@ export default function CheckoutDynamic() {
         setUser(authUser);
 
         if (!isSubscription) {
-          navigate('/catalogo');
+          if (itemId) navigate(`/checkout/${itemId}`);
+          else navigate('/catalogo');
           return;
         }
 
@@ -72,6 +94,7 @@ export default function CheckoutDynamic() {
           navigate('/plans');
           return;
         }
+        await refresh();
 
         const { data: settingsData } = await supabase
           .from('platform_settings')
@@ -79,14 +102,9 @@ export default function CheckoutDynamic() {
           .single();
 
         const finalSettings = settingsData || {
-          processing_fee_percentage: 4.0,
-          processing_fee_fixed: 2.0,
-          swap_guarantee_fee_fixed: 5.0,
           gateway_provider: 'stripe',
           gateway_mode: 'sandbox'
         };
-
-        setSettings(finalSettings);
 
         const available = [];
         const isSandbox = finalSettings.gateway_mode !== 'production';
@@ -132,7 +150,7 @@ export default function CheckoutDynamic() {
     };
 
     init();
-  }, [isSubscription, navigate, plan, t]);
+  }, [isSubscription, itemId, navigate, plan, refresh, t]);
 
   const displayedGateways = useMemo(() => {
     if (!availableGateways || availableGateways.length === 0) return [];
@@ -143,7 +161,7 @@ export default function CheckoutDynamic() {
 
   const amount = useMemo(() => {
     if (!plan) return 0;
-    return plan.amountBRL;
+    return plan.amount;
   }, [plan]);
 
   const transactionId = useMemo(() => {
@@ -231,7 +249,7 @@ export default function CheckoutDynamic() {
                   {t('checkout.subscription.total') || 'Total'}
                 </div>
                 <div className="text-3xl font-black text-white">
-                  {formatCurrency(amount, 'BRL')}
+                  {formatCurrency(amount, currency)}
                 </div>
               </div>
             </div>
@@ -283,7 +301,8 @@ export default function CheckoutDynamic() {
                     buyerId: user?.id,
                     buyerEmail: user?.email,
                     itemTitle: `GROOVEFLIX • ${plan.title}`,
-                    transactionId
+                    transactionId,
+                    currency
                   }}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
@@ -312,4 +331,3 @@ export default function CheckoutDynamic() {
     </div>
   );
 }
-
