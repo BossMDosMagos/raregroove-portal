@@ -23,6 +23,7 @@ export default function Grooveflix() {
   const [activeId, setActiveId] = useState(null);
   const [continueMap, setContinueMap] = useState({});
   const [meteredMap, setMeteredMap] = useState({});
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
     const stored = safeParseJson(localStorage.getItem('rg_grooveflix_continue_v1') || '{}') || {};
@@ -65,29 +66,40 @@ export default function Grooveflix() {
     return String(settings?.max_trial_quality || 'preview') === 'preview';
   }, [isTrialing, settings?.limit_audio_quality_on_trial, settings?.max_trial_quality]);
 
-  const tracks = useMemo(() => {
-    return (items || []).map((item) => {
+  const allTracks = useMemo(() => {
+    return (items || [])
+      .map((item) => {
       const meta = item?.metadata || {};
       const gf = meta?.grooveflix || {};
 
+      const category = String(gf?.category || '').toLowerCase();
       const audioPath = shouldUsePreviewAudio
         ? (gf?.preview_path || gf?.audio_path || gf?.flac_path || '')
         : (gf?.audio_path || gf?.flac_path || gf?.preview_path || '');
 
       const isoPath = gf?.iso_path || '';
       const bookletPath = gf?.booklet_path || gf?.encarte_path || '';
+      if (!audioPath && !isoPath && !bookletPath) return null;
 
       return {
         id: item.id,
         title: item.title || 'Untitled',
         artist: item.artist || item.band || '',
         coverUrl: item.image_url || '',
+        category: category || 'single',
         audioPath: audioPath || null,
         isoPath: isoPath || null,
         bookletPath: bookletPath || null,
       };
-    });
+    })
+      .filter(Boolean);
   }, [items, shouldUsePreviewAudio]);
+
+  const tracks = useMemo(() => {
+    const c = String(categoryFilter || 'all').toLowerCase();
+    if (c === 'all') return allTracks;
+    return (allTracks || []).filter((t) => String(t.category || '').toLowerCase() === c);
+  }, [allTracks, categoryFilter]);
 
   useEffect(() => {
     if (!isTrialing) return;
@@ -137,6 +149,17 @@ export default function Grooveflix() {
     return result;
   }, [continueListening, recentlyImmortalized, japanesePressings, forgottenBrazil]);
 
+  const categoryCounts = useMemo(() => {
+    const counts = { all: allTracks.length, single: 0, coletanea: 0, iso: 0 };
+    (allTracks || []).forEach((t) => {
+      const c = String(t.category || '').toLowerCase();
+      if (c === 'single') counts.single += 1;
+      else if (c === 'coletanea') counts.coletanea += 1;
+      else if (c === 'iso') counts.iso += 1;
+    });
+    return counts;
+  }, [allTracks]);
+
   useEffect(() => {
     if (activeId) return;
     if (continueListening.length > 0) setActiveId(continueListening[0].id);
@@ -185,6 +208,28 @@ export default function Grooveflix() {
             {loading ? (t('grooveflix.loading') || 'Carregando...') : `${tracks.length} ${t('grooveflix.albums') || 'álbuns'}`}
           </div>
         </header>
+
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'all', label: 'Todos', count: categoryCounts.all },
+            { id: 'single', label: 'Single', count: categoryCounts.single },
+            { id: 'coletanea', label: 'Coletânea', count: categoryCounts.coletanea },
+            { id: 'iso', label: 'ISO', count: categoryCounts.iso },
+          ].map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategoryFilter(c.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition ${
+                categoryFilter === c.id
+                  ? 'bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-200'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
+              }`}
+            >
+              {c.label} <span className="text-white/40">{c.count}</span>
+            </button>
+          ))}
+        </div>
 
         <div className="space-y-12">
           <GrooveflixRow

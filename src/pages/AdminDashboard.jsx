@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye, Clock, Sparkles } from 'lucide-react';
+import { DollarSign, Shield, TrendingUp, Lock, CheckCircle, Loader2, Users, RefreshCw, Settings, BarChart3, Bug, CreditCard, AlertCircle, XCircle, Wallet, Copy, Download, Upload, X, Trash2, Eye, Clock, Sparkles, Music4 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -499,6 +499,12 @@ export default function AdminDashboard() {
             className="flex items-center justify-center gap-2 bg-black/60 text-fuchsia-300 border border-fuchsia-400/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-fuchsia-400/80 hover:bg-fuchsia-400/10 transition-all"
           >
             <Sparkles size={14} /> Gestão de Assinaturas
+          </Link>
+          <Link
+            to="/admin/upload"
+            className="flex items-center justify-center gap-2 bg-black/60 text-fuchsia-200 border border-fuchsia-500/30 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-fuchsia-500/80 hover:bg-fuchsia-500/10 transition-all"
+          >
+            <Music4 size={14} /> Imortalidade (Cofre)
           </Link>
           <button
             onClick={() => withdrawalsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

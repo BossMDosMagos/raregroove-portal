@@ -43,6 +43,7 @@ const AdminEscrowSla = lazy(() => import('./pages/AdminEscrowSla'));
 const AdminRefundTasks = lazy(() => import('./pages/AdminRefundTasks'));
 const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
+const AdminUpload = lazy(() => import('./pages/AdminUpload'));
 
 // Páginas de Usuário (Lazy Loading)
 const MyItems = lazy(() => import('./pages/MyItems'));
@@ -399,6 +400,20 @@ export default function App() {
                   ? null
                   : isAdmin
                   ? <AdminSubscriptions />
+                  : <Navigate to="/" />
+                : <Navigate to="/" />
+            }
+          />
+
+          {/* Rota Admin Upload (Protegida + Admin) */}
+          <Route
+            path="/admin/upload"
+            element={
+              session
+                ? adminLoading
+                  ? null
+                  : isAdmin
+                  ? <AdminUpload />
                   : <Navigate to="/" />
                 : <Navigate to="/" />
             }
