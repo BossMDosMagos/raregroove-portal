@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, FileText, Lock, Truck, Users, AlertTriangle,
-  ChevronDown, ChevronRight, ExternalLink, Mail, LogOut
+  ChevronDown, ChevronRight, ExternalLink, Mail, LogOut, Download, UploadCloud, Disc3, Infinity as InfinityIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -29,6 +29,7 @@ function FAQ({ q, children }) {
 
 const DOC_SECTIONS = [
   { id: 'sobre', label: 'Sobre a Plataforma', icon: Shield },
+  { id: 'imortalidade', label: 'A Jornada da Imortalidade', icon: Disc3 },
   { id: 'termos', label: 'Termos de Serviço', icon: FileText },
   { id: 'privacidade', label: 'Privacidade & LGPD', icon: Lock },
   { id: 'comunidade', label: 'Política da Comunidade', icon: Users },
@@ -164,6 +165,78 @@ export default function Portal() {
                 {t('portal.about.compliance.items').split(';').map((item, i) => <Li key={i}>{item}</Li>)}
               </ul>
             </SubSection>
+          </Section>
+
+          <Section id="imortalidade" icon={Disc3} title={t('portal.section.imortalidade')}>
+            <div className="glass-card rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/5 to-transparent" />
+              <div className="relative space-y-8">
+                <p className="text-silver-premium/70 text-sm leading-relaxed max-w-3xl">
+                  {t('portal.immortality.intro')}
+                </p>
+
+                <div className="grid lg:grid-cols-3 gap-6">
+                  <div className="bg-black/30 border border-fuchsia-500/20 rounded-3xl p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Disc3 className="w-5 h-5 text-fuchsia-400" />
+                      <div className="text-white font-black uppercase tracking-wider text-xs">{t('portal.immortality.step1.title')}</div>
+                    </div>
+                    <p className="text-silver-premium/60 text-xs leading-relaxed">
+                      {t('portal.immortality.step1.body')}
+                    </p>
+                    <a
+                      href="https://www.exactaudiocopy.de/en/index.php/resources/download/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 w-full bg-gradient-to-r from-fuchsia-500/25 to-purple-500/15 border border-fuchsia-500/30 text-fuchsia-200 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.22em] hover:border-fuchsia-500/60 transition"
+                    >
+                      <Download size={14} /> {t('portal.immortality.step1.cta')}
+                    </a>
+                  </div>
+
+                  <div className="bg-black/30 border border-purple-500/20 rounded-3xl p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <UploadCloud className="w-5 h-5 text-purple-300" />
+                      <div className="text-white font-black uppercase tracking-wider text-xs">{t('portal.immortality.step2.title')}</div>
+                    </div>
+                    <p className="text-silver-premium/60 text-xs leading-relaxed">
+                      {t('portal.immortality.step2.body')}
+                    </p>
+                    <div className="text-[10px] text-silver-premium/60 uppercase tracking-[0.22em] font-black">
+                      {t('portal.immortality.step2.note')}
+                    </div>
+                  </div>
+
+                  <div className="bg-black/30 border border-white/10 rounded-3xl p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <InfinityIcon className="w-5 h-5 text-gold-premium" />
+                      <div className="text-white font-black uppercase tracking-wider text-xs">{t('portal.immortality.step3.title')}</div>
+                    </div>
+                    <p className="text-silver-premium/60 text-xs leading-relaxed">
+                      {t('portal.immortality.step3.body')}
+                    </p>
+                    <div className="flex gap-3">
+                      <a
+                        href="/grooveflix"
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/80 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.22em] hover:border-white/20 transition"
+                      >
+                        GROOVEFLIX
+                      </a>
+                      <a
+                        href="/plans"
+                        className="flex-1 inline-flex items-center justify-center gap-2 bg-black/40 border border-gold-premium/30 text-gold-premium px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.22em] hover:border-gold-premium/60 transition"
+                      >
+                        {t('portal.immortality.plansCta')}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <InfoBox type="info">
+                  {t('portal.immortality.infobox')}
+                </InfoBox>
+              </div>
+            </div>
           </Section>
 
           {/* TERMOS DE SERVIÇO */}

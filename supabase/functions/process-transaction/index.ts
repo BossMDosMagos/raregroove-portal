@@ -221,6 +221,10 @@ serve(async (req) => {
                 buyerId: meta.buyer_id || meta.buyerid,
                 sellerId: meta.seller_id || meta.sellerid,
                 itemId: meta.item_id || meta.itemid,
+                planId: meta.plan_id || meta.planid || meta.plan_tier || meta.plantier || meta.plan || null,
+                userLevel: meta.user_level || meta.userlevel || null,
+                externalReference: paymentData.external_reference || null,
+                currency: paymentData.currency_id || meta.currency || meta.currency_id || 'BRL',
                 itemPrice: Number(meta.item_price || meta.itemprice || totalPaid),
                 shippingCost: shippingCost,
                 insuranceCost: insuranceCost,
@@ -297,6 +301,80 @@ serve(async (req) => {
           transactionType: transactionType
       });
       throw new Error(`Dados obrigatórios faltando: buyerId=${buyerId}, paymentId=${paymentId}`);
+    }
+
+    if (transactionType === 'subscription') {
+      const planIdRaw = payload.plan_id || payload.planId || payload.plan_tier || payload.planTier || payload.plan || 'unknown';
+      const planId = String(planIdRaw || 'unknown').toLowerCase();
+
+      let userLevelValue = Number(payload.user_level || payload.userLevel || 0);
+      if (!Number.isFinite(userLevelValue) || userLevelValue <= 0) {
+        if (planId === 'digger') userLevelValue = 1;
+        if (planId === 'keeper') userLevelValue = 2;
+        if (planId === 'high_guardian') userLevelValue = 3;
+      }
+
+      const providerValue = String(paymentProvider || 'unknown');
+      const externalReferenceValue = String(payload.external_reference || payload.externalReference || '');
+      const currencyValue = String(payload.currency || payload.currency_id || 'BRL');
+
+      const { data: existingSub, error: existingSubError } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('provider', providerValue)
+        .eq('payment_id', String(paymentId))
+        .maybeSingle();
+
+      if (existingSubError) throw existingSubError;
+
+      if (!existingSub) {
+        const { error: subInsertError } = await supabase
+          .from('subscriptions')
+          .insert([
+            {
+              user_id: buyerId,
+              plan_id: planId,
+              user_level: userLevelValue,
+              status: 'active',
+              provider: providerValue,
+              payment_id: String(paymentId),
+              external_reference: externalReferenceValue || null,
+              amount: totalAmount ?? null,
+              currency: currencyValue || null,
+              subscribed_at: new Date().toISOString()
+            }
+          ]);
+
+        if (subInsertError) throw subInsertError;
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          user_level: userLevelValue,
+          subscription_status: 'active',
+          subscription_plan: planId,
+          subscription_date: new Date().toISOString()
+        })
+        .eq('id', buyerId);
+
+      if (profileError) throw profileError;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          subscription: {
+            userId: buyerId,
+            planId,
+            userLevel: userLevelValue,
+            status: 'active'
+          }
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
 
     if (transactionType === 'venda') {

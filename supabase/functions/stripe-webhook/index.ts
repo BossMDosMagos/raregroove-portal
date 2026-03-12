@@ -103,6 +103,57 @@ serve(async (req) => {
             }
           }
         }
+
+        // Caso 3: Assinatura Grooveflix
+        if ((metadata.transaction_type === 'subscription' || metadata.transactionType === 'subscription' || metadata.subscription === '1' || metadata.plan_id || metadata.plan_tier) && (metadata.buyer_id || metadata.buyerId || metadata.user_id)) {
+          const planId = String(metadata.plan_id || metadata.plan_tier || metadata.plan || 'unknown').toLowerCase();
+          const buyerId = String(metadata.buyer_id || metadata.buyerId || metadata.user_id);
+
+          let userLevel = Number(metadata.user_level || metadata.user_level_value || 0);
+          if (!Number.isFinite(userLevel) || userLevel <= 0) {
+            if (planId === 'digger') userLevel = 1;
+            if (planId === 'keeper') userLevel = 2;
+            if (planId === 'high_guardian') userLevel = 3;
+          }
+
+          const { error: subError } = await supabase
+            .from('subscriptions')
+            .upsert(
+              {
+                user_id: buyerId,
+                plan_id: planId,
+                user_level: userLevel,
+                status: 'active',
+                provider: 'stripe',
+                payment_id: paymentIntent.id,
+                external_reference: metadata.external_reference || metadata.transactionId || null,
+                amount: paymentIntent.amount_received ? Number(paymentIntent.amount_received) / 100 : null,
+                currency: paymentIntent.currency || null,
+                subscribed_at: new Date().toISOString()
+              },
+              { onConflict: 'provider,payment_id' }
+            );
+
+          if (subError) {
+            console.error('Erro ao registrar assinatura:', subError);
+          } else {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({
+                user_level: userLevel,
+                subscription_status: 'active',
+                subscription_plan: planId,
+                subscription_date: new Date().toISOString()
+              })
+              .eq('id', buyerId);
+
+            if (profileError) {
+              console.error('Erro ao atualizar perfil da assinatura:', profileError);
+            } else {
+              console.log('✅ Assinatura ativada para usuário:', buyerId, planId);
+            }
+          }
+        }
         
         break;
       }

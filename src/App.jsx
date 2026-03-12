@@ -8,6 +8,7 @@ import { CartProvider } from './contexts/CartContext.jsx';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
 import CartDrawer from './components/CartDrawer.jsx';
+import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
 import { validateSecretVault } from './utils/secretVaultTest';
 
 // Componentes de carregamento
@@ -25,6 +26,7 @@ import Portal from './pages/Portal';
 import Catalogo from './pages/Catalogo';
 import ItemDetails from './pages/ItemDetails';
 import Checkout from './pages/Checkout';
+import CheckoutDynamic from './pages/CheckoutDynamic';
 import PaymentSuccess from './pages/PaymentSuccess';
 import NotFound from './pages/NotFound';
 import Maintenance from './pages/Maintenance';
@@ -49,6 +51,8 @@ const ChatThread = lazy(() => import('./pages/ChatThread'));
 const SwapPayment = lazy(() => import('./pages/SwapPayment'));
 const Disputes = lazy(() => import('./pages/Disputes'));
 const DisputeDetail = lazy(() => import('./pages/DisputeDetail'));
+const Grooveflix = lazy(() => import('./pages/Grooveflix'));
+const Plans = lazy(() => import('./pages/Plans'));
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -250,6 +254,16 @@ export default function App() {
             path="/portal" 
             element={session ? <Portal /> : <Navigate to="/" />} 
           />
+
+          <Route
+            path="/grooveflix"
+            element={session ? <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper> : <Navigate to="/" />}
+          />
+
+          <Route
+            path="/plans"
+            element={session ? <Plans /> : <Navigate to="/" />}
+          />
           
           {/* Rota do Catálogo (Protegida) */}
           <Route 
@@ -304,6 +318,10 @@ export default function App() {
           />
 
           {/* Rota do Checkout (Protegida) */}
+          <Route
+            path="/checkout"
+            element={session ? <CheckoutDynamic /> : <Navigate to="/" />}
+          />
           <Route 
             path="/checkout/:itemId" 
             element={session ? <Checkout /> : <Navigate to="/" />} 

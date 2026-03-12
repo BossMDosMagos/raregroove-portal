@@ -13,6 +13,7 @@ export default function PaymentSuccess() {
   const [shipping, setShipping] = useState(null);
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState('checking'); // checking | active | pending | failed
 
   const transactionId = searchParams.get('transaction_id') || searchParams.get('transactionId');
   const swapId = searchParams.get('swap_id');
@@ -21,8 +22,11 @@ export default function PaymentSuccess() {
     searchParams.get('payment_id') ||
     searchParams.get('collection_id') ||
     searchParams.get('external_reference');
+  const externalReference = searchParams.get('external_reference') || searchParams.get('externalReference') || '';
+  const mode = (searchParams.get('mode') || '').toLowerCase();
   const paymentStatus = searchParams.get('status') || searchParams.get('collection_status');
   const paymentProvider = searchParams.get('payment_provider') || 'mercado_pago';
+  const planId = (searchParams.get('plan') || '').toLowerCase();
 
   const returnItemId = searchParams.get('item_id');
   const returnBuyerId = searchParams.get('buyer_id');
@@ -36,10 +40,63 @@ export default function PaymentSuccess() {
   const isFailure = currentPath.includes('/failure');
   const isPending = currentPath.includes('/pending');
   const isSuccess = currentPath.includes('/success') || paymentStatus === 'approved';
+  const isSubscriptionFlow = mode === 'subscription' || String(externalReference || '').startsWith('SUBS-');
 
   useEffect(() => {
-    loadTransactionDetails();
-  }, [transactionId, swapId, paymentId, paymentStatus]);
+    if (!isSubscriptionFlow) loadTransactionDetails();
+  }, [transactionId, swapId, paymentId, paymentStatus, isSubscriptionFlow]);
+
+  useEffect(() => {
+    if (!isSubscriptionFlow) return;
+
+    const run = async () => {
+      if (!isSuccess || isFailure) {
+        setSubscriptionStatus('failed');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      setSubscriptionStatus('pending');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        setSubscriptionStatus('failed');
+        return;
+      }
+
+      let tries = 0;
+      const interval = window.setInterval(async () => {
+        tries += 1;
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('user_level, subscription_status, subscription_plan')
+            .eq('id', user.id)
+            .single();
+
+          if (!error) {
+            const lvl = Number(profile?.user_level || 0);
+            const status = String(profile?.subscription_status || '').toLowerCase();
+            if (lvl > 0 && status === 'active') {
+              window.clearInterval(interval);
+              setSubscriptionStatus('active');
+              window.setTimeout(() => navigate('/grooveflix'), 1200);
+            }
+          }
+        } catch (e) {
+          void e;
+        }
+
+        if (tries >= 24) {
+          window.clearInterval(interval);
+          setSubscriptionStatus('failed');
+        }
+      }, 2500);
+    };
+
+    run();
+  }, [isSubscriptionFlow, isSuccess, isFailure, navigate]);
 
   const loadTransactionById = async (id) => {
     const { data: txData, error: txError } = await supabase
@@ -176,6 +233,90 @@ export default function PaymentSuccess() {
         <div className="text-center space-y-4">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#D4AF37]"></div>
           <p className="text-white/60">Carregando detalhes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSubscriptionFlow) {
+    const isActive = subscriptionStatus === 'active';
+    const isFailed = subscriptionStatus === 'failed';
+    return (
+      <div className="min-h-screen bg-black text-white pt-24 pb-16 px-4">
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-black" />
+          <div className="absolute -top-40 -left-40 w-[560px] h-[560px] bg-fuchsia-600/15 blur-[140px]" />
+          <div className="absolute top-10 right-[-160px] w-[680px] h-[680px] bg-purple-600/14 blur-[160px]" />
+        </div>
+
+        <div className="relative max-w-3xl mx-auto text-center space-y-8">
+          <Pill>
+            {isActive ? (t('checkout.subscription.unlocked.badge') || 'Acesso Liberado') : isFailed ? (t('checkout.subscription.unlocked.badgeFail') || 'Sincronização Pendente') : (t('checkout.subscription.unlocked.badgePending') || 'Liberando...')}
+          </Pill>
+
+          <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
+            {isActive ? (
+              <>
+                {t('checkout.subscription.unlocked.title') || 'Sarcófago'} <span className="text-fuchsia-400">{t('checkout.subscription.unlocked.title2') || 'Aberto'}</span>
+              </>
+            ) : isFailed ? (
+              <>
+                {t('checkout.subscription.unlocked.failTitle') || 'Quase lá'} <span className="text-fuchsia-400">…</span>
+              </>
+            ) : (
+              <>
+                {t('checkout.subscription.unlocked.pendingTitle') || 'Acesso'} <span className="text-fuchsia-400">{t('checkout.subscription.unlocked.pendingTitle2') || 'Sendo Liberado'}</span>
+              </>
+            )}
+          </h1>
+
+          <p className="text-white/60 text-sm max-w-2xl mx-auto">
+            {isActive
+              ? (t('checkout.subscription.unlocked.desc') || 'Sua assinatura foi ativada. Redirecionando para o Grooveflix…')
+              : isFailed
+              ? (t('checkout.subscription.unlocked.failDesc') || 'O webhook ainda está sincronizando. Aguarde alguns segundos e tente novamente.')
+              : (t('checkout.subscription.unlocked.pendingDesc') || 'Estamos aguardando a confirmação final do gateway. Isso pode levar alguns segundos.')}
+          </p>
+
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex items-end gap-1 h-10 w-20">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="gf-vu-bar w-2 rounded-sm bg-gradient-to-t from-fuchsia-500 to-purple-500"
+                  style={{ height: `${12 + i * 4}px` }}
+                />
+              ))}
+            </div>
+            <div className="led-display">
+              <span className="led-text">{(planId || 'keeper').toUpperCase()}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/grooveflix')}
+              disabled={!isActive}
+              className="w-full md:w-auto px-8 py-4 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/25 to-purple-500/15 text-white hover:border-fuchsia-500/70 transition disabled:opacity-30"
+            >
+              {t('checkout.subscription.unlocked.cta') || 'Entrar no Grooveflix'}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="w-full md:w-auto px-8 py-4 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition"
+            >
+              {t('checkout.subscription.unlocked.retry') || 'Recarregar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/plans')}
+              className="w-full md:w-auto px-8 py-4 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition"
+            >
+              {t('checkout.subscription.unlocked.plans') || 'Ver Planos'}
+            </button>
+          </div>
         </div>
       </div>
     );

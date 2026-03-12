@@ -134,6 +134,8 @@ export default function Navbar() {
   // ── Links de navegação ───────────────────────────────────────────────────
   const navLinks = [
     { label: t('nav.explore'), path: '/catalogo', icon: Home },
+    { label: t('nav.grooveflix'), path: '/grooveflix', icon: null },
+    { label: t('nav.plans'), path: '/plans', icon: null },
     { label: t('nav.myItems'), path: '/meu-acervo', icon: null },
     { label: t('nav.swaps'), path: '/swaps', icon: null },
     { label: t('nav.community'), path: '/mensagens', icon: null },

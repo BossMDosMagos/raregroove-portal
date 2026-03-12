@@ -316,6 +316,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
       // Criar preferência (formato simplificado)
+      const transactionType = (metadata?.transactionType || metadata?.transaction_type || 'venda');
       const requestBody = {
         item: {
           title: metadata.itemTitle,
@@ -336,7 +337,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         // IMPORTANTE: Passar metadata explicitamente para o backend do MP
         metadata: {
             ...metadata,
-            transaction_type: 'venda', // Forçar tipo para garantir
+            transaction_type: transactionType,
             net_amount: metadata.netAmount, // Garantir snake_case se backend esperar
             platform_fee: metadata.platformFee
         }

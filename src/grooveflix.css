@@ -1,0 +1,22 @@
+@keyframes gf-vu {
+  0% { transform: scaleY(0.2); opacity: 0.55; }
+  15% { transform: scaleY(1); opacity: 1; }
+  45% { transform: scaleY(0.35); opacity: 0.7; }
+  100% { transform: scaleY(0.6); opacity: 0.85; }
+}
+
+.gf-vu-bar {
+  transform-origin: bottom;
+  animation: gf-vu 900ms ease-in-out infinite;
+}
+
+.gf-vu-bar:nth-child(2) { animation-duration: 760ms; }
+.gf-vu-bar:nth-child(3) { animation-duration: 1040ms; }
+.gf-vu-bar:nth-child(4) { animation-duration: 820ms; }
+.gf-vu-bar:nth-child(5) { animation-duration: 1120ms; }
+.gf-vu-bar:nth-child(6) { animation-duration: 880ms; }
+
+.gf-glow {
+  box-shadow: 0 0 28px rgba(236, 72, 153, 0.25), 0 0 60px rgba(168, 85, 247, 0.15);
+}
+
