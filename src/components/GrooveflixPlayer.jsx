@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../lib/supabase';
 
 function formatTime(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds || 0)));
@@ -15,10 +16,81 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
+  const [resolving, setResolving] = useState(false);
 
   const tracks = useMemo(() => queue || [], [queue]);
   const activeIndex = useMemo(() => tracks.findIndex((t) => t.id === activeId), [tracks, activeId]);
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
+
+  const getAuthHeader = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ? String(session.access_token) : '';
+    return token ? `Bearer ${token}` : '';
+  };
+
+  const presign = async ({ filePath, mode, filename }) => {
+    const auth = await getAuthHeader();
+    if (!auth) throw new Error('Sessão expirada');
+    const res = await fetch('/api/b2-presign', {
+      method: 'POST',
+      headers: {
+        authorization: auth,
+        'content-type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({
+        file_path: filePath,
+        mode,
+        filename: filename || undefined,
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(String(data?.error || 'Erro ao gerar link'));
+      err.code = data?.error || null;
+      throw err;
+    }
+    return String(data.url || '');
+  };
+
+  const resolveAudioUrl = async ({ autoPlay }) => {
+    const filePath = active?.audioPath ? String(active.audioPath) : '';
+    if (!filePath) {
+      setResolvedAudioUrl(null);
+      return;
+    }
+    if (resolving) return;
+    setResolving(true);
+    try {
+      const url = await presign({ filePath, mode: 'stream' });
+      if (!url) throw new Error('Link inválido');
+      setResolvedAudioUrl(url);
+      const el = audioRef.current;
+      if (el && autoPlay) {
+        try {
+          await el.play();
+        } catch {
+          void 0;
+        }
+      }
+    } catch (e) {
+      if (String(e?.code || '').toLowerCase() === 'trial_expired') {
+        toast.error('TRIAL EXPIRADO', {
+          description: 'O limite do trial foi atingido ou o tempo expirou.',
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+        });
+        window.location.href = '/plans?restricted=1';
+        return;
+      }
+      toast.error('ERRO NO COFRE', {
+        description: e.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+      setResolvedAudioUrl(null);
+    } finally {
+      setResolving(false);
+    }
+  };
 
   useEffect(() => {
     const el = audioRef.current;
@@ -26,14 +98,28 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
     el.volume = volume;
   }, [volume]);
 
+  useEffect(() => {
+    setResolvedAudioUrl(null);
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+    if (!active?.audioPath) return;
+    void resolveAudioUrl({ autoPlay: false });
+  }, [activeId]);
+
   const toggle = async () => {
     const el = audioRef.current;
     if (!el || !active) return;
-    if (!active.audioUrl) {
+    if (!active.audioPath) {
       toast.error('INDISPONÍVEL', {
         description: 'Este CD ainda não possui streaming configurado.',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
+      return;
+    }
+
+    if (!resolvedAudioUrl && !resolving) {
+      await resolveAudioUrl({ autoPlay: true });
       return;
     }
 
@@ -79,11 +165,29 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
     });
   };
 
+  const onDownload = async ({ filePath, filename }) => {
+    if (!filePath) return;
+    if (!canDownload) {
+      onBlockedDownload();
+      return;
+    }
+    try {
+      const url = await presign({ filePath, mode: 'download', filename });
+      if (!url) throw new Error('Link inválido');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      toast.error('ERRO NO DOWNLOAD', {
+        description: e.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    }
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 border-t border-fuchsia-500/20 backdrop-blur-xl">
       <audio
         ref={audioRef}
-        src={active?.audioUrl || undefined}
+        src={resolvedAudioUrl || undefined}
         preload="metadata"
         onLoadStart={() => {
           setCurrentTime(0);
@@ -131,47 +235,29 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
                   <span className="led-text" style={{ opacity: 0.35, margin: '0 8px' }}>/</span>
                   <span className="led-text">{formatTime(duration)}</span>
                 </div>
-                {(active?.isoUrl || active?.bookletUrl) ? (
+                {(active?.isoPath || active?.bookletPath) ? (
                   <div className="hidden lg:flex items-center gap-2">
-                    {active?.bookletUrl ? (
-                      canDownload ? (
-                        <a
-                          href={active.bookletUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <Download className="w-4 h-4" /> Encarte
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={onBlockedDownload}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 transition text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <Download className="w-4 h-4" /> Encarte
-                        </button>
-                      )
+                    {active?.bookletPath ? (
+                      <button
+                        type="button"
+                        onClick={() => onDownload({ filePath: active.bookletPath, filename: `${active.title || 'encarte'}.pdf` })}
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border text-[10px] font-black uppercase tracking-widest transition ${
+                          canDownload ? 'border-white/10 text-white/70 hover:text-white hover:border-white/20' : 'border-white/10 text-white/40'
+                        }`}
+                      >
+                        <Download className="w-4 h-4" /> Encarte
+                      </button>
                     ) : null}
-                    {active?.isoUrl ? (
-                      canDownload ? (
-                        <a
-                          href={active.isoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <Download className="w-4 h-4" /> ISO
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={onBlockedDownload}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 transition text-[10px] font-black uppercase tracking-widest"
-                        >
-                          <Download className="w-4 h-4" /> ISO
-                        </button>
-                      )
+                    {active?.isoPath ? (
+                      <button
+                        type="button"
+                        onClick={() => onDownload({ filePath: active.isoPath, filename: `${active.title || 'iso'}.iso` })}
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border text-[10px] font-black uppercase tracking-widest transition ${
+                          canDownload ? 'border-white/10 text-white/70 hover:text-white hover:border-white/20' : 'border-white/10 text-white/40'
+                        }`}
+                      >
+                        <Download className="w-4 h-4" /> ISO
+                      </button>
                     ) : null}
                   </div>
                 ) : null}

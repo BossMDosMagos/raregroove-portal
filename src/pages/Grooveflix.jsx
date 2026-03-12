@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Film, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
 import GrooveflixPlayer from '../components/GrooveflixPlayer';
 import GrooveflixRow from '../components/GrooveflixRow';
-import { buildGrooveflixUrl } from '../utils/grooveflix';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
@@ -19,7 +17,6 @@ function safeParseJson(value) {
 
 export default function Grooveflix() {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const { profile, settings, isTrialing, isActive, refresh } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -57,10 +54,10 @@ export default function Grooveflix() {
   }, []);
 
   const canDownload = useMemo(() => {
-    if (isActive) return true;
-    if (isTrialing) return settings?.block_downloads_on_trial === false;
-    return false;
-  }, [isActive, isTrialing, settings?.block_downloads_on_trial]);
+    const lvl = Number(profile?.user_level || 0);
+    if (!isActive) return false;
+    return lvl >= 2;
+  }, [isActive, profile?.user_level]);
 
   const shouldUsePreviewAudio = useMemo(() => {
     if (!isTrialing) return false;
@@ -73,24 +70,21 @@ export default function Grooveflix() {
       const meta = item?.metadata || {};
       const gf = meta?.grooveflix || {};
 
-      const direct = gf?.audio_url || gf?.stream_url || '';
       const audioPath = shouldUsePreviewAudio
         ? (gf?.preview_path || gf?.audio_path || gf?.flac_path || '')
         : (gf?.audio_path || gf?.flac_path || gf?.preview_path || '');
 
-      const audioUrl = direct ? String(direct) : buildGrooveflixUrl(audioPath);
-
-      const isoUrl = gf?.iso_url ? String(gf.iso_url) : buildGrooveflixUrl(gf?.iso_path || '');
-      const bookletUrl = gf?.booklet_url ? String(gf.booklet_url) : buildGrooveflixUrl(gf?.booklet_path || gf?.encarte_path || '');
+      const isoPath = gf?.iso_path || '';
+      const bookletPath = gf?.booklet_path || gf?.encarte_path || '';
 
       return {
         id: item.id,
         title: item.title || 'Untitled',
         artist: item.artist || item.band || '',
         coverUrl: item.image_url || '',
-        audioUrl: audioUrl || null,
-        isoUrl: isoUrl || null,
-        bookletUrl: bookletUrl || null,
+        audioPath: audioPath || null,
+        isoPath: isoPath || null,
+        bookletPath: bookletPath || null,
       };
     });
   }, [items, shouldUsePreviewAudio]);
@@ -99,35 +93,9 @@ export default function Grooveflix() {
     if (!isTrialing) return;
     if (!activeId) return;
     if (meteredMap[activeId]) return;
-
-    const track = (tracks || []).find((t) => t.id === activeId);
-    if (!track?.audioUrl) return;
-
     setMeteredMap((prev) => ({ ...prev, [activeId]: true }));
-
-    const run = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('grooveflix-meter', {
-          body: { url: track.audioUrl }
-        });
-        if (error) throw error;
-        if (String(data?.status || '').toLowerCase() === 'expired') {
-          toast.error('TRIAL EXPIRADO', {
-            description: 'O limite do trial foi atingido ou o tempo expirou.',
-            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
-          });
-          await refresh();
-          navigate('/plans?restricted=1', { replace: true });
-        } else {
-          await refresh();
-        }
-      } catch (e) {
-        void e;
-      }
-    };
-
-    run();
-  }, [activeId, isTrialing, meteredMap, navigate, refresh, tracks]);
+    void refresh();
+  }, [activeId, isTrialing, meteredMap, refresh]);
 
   const byId = useMemo(() => {
     const map = {};

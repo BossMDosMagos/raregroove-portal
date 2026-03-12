@@ -10,11 +10,14 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [query, setQuery] = useState('');
+  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [editData, setEditData] = useState(null);
   const [suspendUntil, setSuspendUntil] = useState('');
   const [deleteConfirmData, setDeleteConfirmData] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [revokeConfirmData, setRevokeConfirmData] = useState(null);
+  const [revokeBusy, setRevokeBusy] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
 
@@ -44,15 +47,26 @@ export default function AdminUsers() {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!query.trim()) return users;
+    let list = users;
+
+    if (subscriptionFilter !== 'all') {
+      list = list.filter((user) => {
+        const sub = String(user.subscription_status || 'inactive').toLowerCase();
+        if (subscriptionFilter === 'active') return sub === 'active';
+        if (subscriptionFilter === 'trialing') return sub === 'trialing';
+        return true;
+      });
+    }
+
+    if (!query.trim()) return list;
     const term = query.toLowerCase();
-    return users.filter((user) =>
+    return list.filter((user) =>
       user.email?.toLowerCase().includes(term) ||
       user.cpf_cnpj?.toLowerCase().includes(term) ||
       user.rg?.toLowerCase().includes(term) ||
       user.full_name?.toLowerCase().includes(term)
     );
-  }, [users, query]);
+  }, [users, query, subscriptionFilter]);
 
   const getStatusBadge = (status) => {
     if (status === 'banned') {
@@ -62,6 +76,25 @@ export default function AdminUsers() {
       return 'bg-orange-500/20 text-orange-400 border-orange-500/40';
     }
     return 'bg-green-500/20 text-green-400 border-green-500/40';
+  };
+
+  const getSubscriptionBadge = (subscriptionStatus) => {
+    const status = String(subscriptionStatus || 'inactive').toLowerCase();
+    if (status === 'active') return 'bg-green-500/20 text-green-400 border-green-500/40';
+    if (status === 'trialing') return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+    if (status === 'expired') return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40';
+    if (status === 'canceled') return 'bg-red-500/20 text-red-400 border-red-500/40';
+    return 'bg-white/5 text-white/50 border-white/10';
+  };
+
+  const formatSubscriptionStatus = (subscriptionStatus) => {
+    const status = String(subscriptionStatus || 'inactive').toLowerCase();
+    if (status === 'active') return 'active';
+    if (status === 'trialing') return 'trialing';
+    if (status === 'expired') return 'expired';
+    if (status === 'canceled') return 'canceled';
+    if (status === 'past_due') return 'past_due';
+    return 'inactive';
   };
 
   const handleBan = async (userId) => {
@@ -317,14 +350,28 @@ export default function AdminUsers() {
         </div>
 
         <div className="bg-[#050505] border border-[#D4AF37]/20 rounded-2xl p-5">
-          <div className="flex items-center gap-3">
-            <Search className="w-4 h-4 text-[#D4AF37]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por nome, email ou documento"
-              className="flex-1 bg-transparent text-sm text-white placeholder-white/30 focus:outline-none"
-            />
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <Search className="w-4 h-4 text-[#D4AF37]" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar por nome, email ou documento"
+                className="flex-1 bg-transparent text-sm text-white placeholder-white/30 focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Filtro</span>
+              <select
+                value={subscriptionFilter}
+                onChange={(e) => setSubscriptionFilter(e.target.value)}
+                className="bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-xs font-black uppercase tracking-widest"
+              >
+                <option value="all">Todos</option>
+                <option value="active">Apenas Ativos</option>
+                <option value="trialing">Apenas Trials</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -338,6 +385,7 @@ export default function AdminUsers() {
                   <th className="py-3">CPF/CNPJ</th>
                   <th className="py-3">RG</th>
                   <th className="py-3">Status</th>
+                  <th className="py-3">Assinatura</th>
                   <th className="py-3">Cadastro</th>
                   <th className="py-3">Acoes</th>
                 </tr>
@@ -352,6 +400,11 @@ export default function AdminUsers() {
                     <td className="py-3 pr-4">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${getStatusBadge(user.status)}`}>
                         {user.status || 'active'}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${getSubscriptionBadge(user.subscription_status)}`}>
+                        {formatSubscriptionStatus(user.subscription_status)}
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-white/60">
@@ -393,7 +446,7 @@ export default function AdminUsers() {
                           <KeyRound className="w-3 h-3 inline-block mr-1" /> Resetar senha
                         </button>
                         <button
-                          onClick={() => handleRevokeSubscription(user.id)}
+                          onClick={() => setRevokeConfirmData(user)}
                           className="px-3 py-1 rounded-lg border border-fuchsia-500/40 text-fuchsia-300 text-[10px] font-bold uppercase tracking-widest hover:bg-fuchsia-500/10"
                         >
                           <AlertTriangle className="w-3 h-3 inline-block mr-1" /> Revogar acesso
@@ -689,6 +742,59 @@ export default function AdminUsers() {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors"
               >
                 Excluir Permanentemente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {revokeConfirmData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#050505] border border-fuchsia-500/40 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-fuchsia-500/10 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-fuchsia-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white mb-1">CONFIRMAR REVOGAÇÃO</h3>
+                <p className="text-white/60 text-[10px] uppercase tracking-wider">Ação imediata no Grooveflix</p>
+              </div>
+            </div>
+
+            <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-lg p-3 mb-4">
+              <p className="text-white/80 text-xs mb-2">
+                Tem certeza que deseja revogar o acesso de:
+              </p>
+              <p className="text-fuchsia-200 text-sm font-bold">
+                {revokeConfirmData.full_name || '—'}
+              </p>
+              <p className="text-white/50 text-[10px] mt-1">
+                Isso cancelará o plano e bloqueará o Grooveflix imediatamente.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                disabled={revokeBusy}
+                onClick={() => setRevokeConfirmData(null)}
+                className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={revokeBusy}
+                onClick={async () => {
+                  setRevokeBusy(true);
+                  try {
+                    await handleRevokeSubscription(revokeConfirmData.id);
+                    setRevokeConfirmData(null);
+                  } finally {
+                    setRevokeBusy(false);
+                  }
+                }}
+                className="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50"
+              >
+                {revokeBusy ? 'Revogando...' : 'Revogar agora'}
               </button>
             </div>
           </div>
