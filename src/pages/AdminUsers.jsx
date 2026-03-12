@@ -324,6 +324,25 @@ export default function AdminUsers() {
     }
   };
 
+  const handleAdminOverride = async (userId) => {
+    try {
+      const { data, error } = await supabase.rpc('admin_set_admin_manual_access', { target_user_id: userId });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(String(data?.error || 'Erro'));
+
+      toast.success('OVERRIDE ATIVADO', {
+        description: 'Acesso total liberado (admin_manual).',
+        style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+      });
+      loadUsers();
+    } catch (error) {
+      toast.error('ERRO NO OVERRIDE', {
+        description: error.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -444,6 +463,12 @@ export default function AdminUsers() {
                           className="px-3 py-1 rounded-lg border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37]/10"
                         >
                           <KeyRound className="w-3 h-3 inline-block mr-1" /> Resetar senha
+                        </button>
+                        <button
+                          onClick={() => handleAdminOverride(user.id)}
+                          className="px-3 py-1 rounded-lg border border-green-500/40 text-green-300 text-[10px] font-bold uppercase tracking-widest hover:bg-green-500/10"
+                        >
+                          <ShieldCheck className="w-3 h-3 inline-block mr-1" /> Override HG
                         </button>
                         <button
                           onClick={() => setRevokeConfirmData(user)}
