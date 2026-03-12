@@ -23,7 +23,7 @@ export default function AdminUsers() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, cpf_cnpj, rg, phone, cep, address, number, complement, city, state, pix_key, is_admin, status, created_at, suspension_end')
+        .select('id, full_name, email, cpf_cnpj, rg, phone, cep, address, number, complement, city, state, pix_key, is_admin, status, created_at, suspension_end, user_level, subscription_status, subscription_plan, subscription_provider')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -262,6 +262,35 @@ export default function AdminUsers() {
     }
   };
 
+  const handleRevokeSubscription = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          user_level: 0,
+          subscription_status: 'canceled',
+          subscription_plan: null,
+          subscription_provider: null,
+          subscription_date: null,
+          subscription_trial_ends_at: null
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success('ACESSO REVOGADO', {
+        description: 'A assinatura foi cancelada manualmente',
+        style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+      });
+      loadUsers();
+    } catch (error) {
+      toast.error('ERRO AO REVOGAR', {
+        description: error.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -362,6 +391,12 @@ export default function AdminUsers() {
                           className="px-3 py-1 rounded-lg border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest hover:bg-[#D4AF37]/10"
                         >
                           <KeyRound className="w-3 h-3 inline-block mr-1" /> Resetar senha
+                        </button>
+                        <button
+                          onClick={() => handleRevokeSubscription(user.id)}
+                          className="px-3 py-1 rounded-lg border border-fuchsia-500/40 text-fuchsia-300 text-[10px] font-bold uppercase tracking-widest hover:bg-fuchsia-500/10"
+                        >
+                          <AlertTriangle className="w-3 h-3 inline-block mr-1" /> Revogar acesso
                         </button>
                       </div>
                     </td>

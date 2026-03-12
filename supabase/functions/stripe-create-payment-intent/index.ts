@@ -104,11 +104,39 @@ serve(async (req) => {
       metadata
     });
 
+    let customerId: string | null = null
+    try {
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('id', user.id)
+        .single()
+
+      if (profileRow?.stripe_customer_id) {
+        customerId = String(profileRow.stripe_customer_id)
+      } else {
+        const customer = await stripe.customers.create({
+          email: user.email || undefined,
+          metadata: { supabase_user_id: user.id }
+        })
+        customerId = customer.id
+
+        await supabase
+          .from('profiles')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', user.id)
+      }
+    } catch {
+      customerId = null
+    }
+
     // 💳 9. CRIAR PAYMENT INTENT
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount),
       currency: currency,
       metadata,
+      customer: customerId || undefined,
+      receipt_email: user.email || undefined,
       automatic_payment_methods: {
         enabled: true,
       },

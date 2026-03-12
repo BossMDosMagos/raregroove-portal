@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Crown, Gem, Shield, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
+import { fetchVisitorCountry, getCachedVisitorCountry } from '../utils/visitorCountry.js';
 
 export default function Plans() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
@@ -14,13 +15,22 @@ export default function Plans() {
   const [restrictedOpen, setRestrictedOpen] = useState(() => searchParams.get('restricted') === '1');
   const [trialBusy, setTrialBusy] = useState(false);
   const { plans: dbPlans, settings, profile, refresh } = useSubscription();
+  const [visitorCountry, setVisitorCountry] = useState(() => getCachedVisitorCountry());
+
+  useEffect(() => {
+    if (visitorCountry) return;
+    fetchVisitorCountry().then((c) => {
+      if (c) setVisitorCountry(c);
+    });
+  }, [visitorCountry]);
 
   const prefersUsd = useMemo(() => {
+    if (visitorCountry && visitorCountry !== 'BR') return true;
     const country = String(profile?.country_code || '').toUpperCase();
     if (country && country !== 'BR') return true;
     if (locale === 'en-US') return true;
     return false;
-  }, [locale, profile?.country_code]);
+  }, [locale, profile?.country_code, visitorCountry]);
 
   const currency = prefersUsd ? 'USD' : 'BRL';
 

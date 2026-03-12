@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Film, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import GrooveflixPlayer from '../components/GrooveflixPlayer';
 import GrooveflixRow from '../components/GrooveflixRow';
 import { buildGrooveflixUrl } from '../utils/grooveflix';
@@ -18,11 +19,13 @@ function safeParseJson(value) {
 
 export default function Grooveflix() {
   const { t } = useI18n();
-  const { profile, settings, isTrialing, isActive } = useSubscription();
+  const navigate = useNavigate();
+  const { profile, settings, isTrialing, isActive, refresh } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [continueMap, setContinueMap] = useState({});
+  const [meteredMap, setMeteredMap] = useState({});
 
   useEffect(() => {
     const stored = safeParseJson(localStorage.getItem('rg_grooveflix_continue_v1') || '{}') || {};
@@ -91,6 +94,40 @@ export default function Grooveflix() {
       };
     });
   }, [items, shouldUsePreviewAudio]);
+
+  useEffect(() => {
+    if (!isTrialing) return;
+    if (!activeId) return;
+    if (meteredMap[activeId]) return;
+
+    const track = (tracks || []).find((t) => t.id === activeId);
+    if (!track?.audioUrl) return;
+
+    setMeteredMap((prev) => ({ ...prev, [activeId]: true }));
+
+    const run = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('grooveflix-meter', {
+          body: { url: track.audioUrl }
+        });
+        if (error) throw error;
+        if (String(data?.status || '').toLowerCase() === 'expired') {
+          toast.error('TRIAL EXPIRADO', {
+            description: 'O limite do trial foi atingido ou o tempo expirou.',
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+          });
+          await refresh();
+          navigate('/plans?restricted=1', { replace: true });
+        } else {
+          await refresh();
+        }
+      } catch (e) {
+        void e;
+      }
+    };
+
+    run();
+  }, [activeId, isTrialing, meteredMap, navigate, refresh, tracks]);
 
   const byId = useMemo(() => {
     const map = {};

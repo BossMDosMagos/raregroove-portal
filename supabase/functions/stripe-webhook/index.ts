@@ -143,6 +143,7 @@ serve(async (req) => {
                 user_level: userLevel,
                 subscription_status: 'active',
                 subscription_plan: planId,
+                subscription_provider: 'stripe',
                 subscription_date: new Date().toISOString(),
                 subscription_trial_ends_at: null
               })

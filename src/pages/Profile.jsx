@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 const GoldInput = ({ label, ...props }) => (
   <div className="flex flex-col gap-2 group">
@@ -111,6 +112,7 @@ const fetchAddressByCEP = async (cep) => {
 export default function Profile() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { profile: subscriptionProfile } = useSubscription();
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [cepLoading, setCepLoading] = useState(false);
@@ -142,6 +144,7 @@ export default function Profile() {
   const [isElite, setIsElite] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [editingWish, setEditingWish] = useState(null);
+  const [managingSubscription, setManagingSubscription] = useState(false);
   
   // States para gerenciar endereços
   const [userAddresses, setUserAddresses] = useState([]);
@@ -263,6 +266,40 @@ export default function Profile() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
+  };
+
+  const handleManageSubscription = async () => {
+    const provider = String(subscriptionProfile?.subscription_provider || '').toLowerCase();
+    if (!provider) {
+      navigate('/plans');
+      return;
+    }
+
+    if (provider !== 'stripe') {
+      toast.message('GERENCIAR ASSINATURA', {
+        description: 'Para Mercado Pago, a gestão é feita via suporte. Abra um chamado no chat e informe seu email.',
+        style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
+      });
+      return;
+    }
+
+    setManagingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('stripe-create-billing-portal', {
+        body: { return_url: `${window.location.origin}/profile` }
+      });
+      if (error) throw error;
+      const url = data?.url ? String(data.url) : '';
+      if (!url) throw new Error('Billing portal indisponível');
+      window.location.href = url;
+    } catch (e) {
+      toast.error('ERRO AO ABRIR PORTAL', {
+        description: e.message,
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
+    } finally {
+      setManagingSubscription(false);
+    }
   };
 
   const handleAvatarUpload = async (event) => {
@@ -650,6 +687,16 @@ export default function Profile() {
             </div>
 
             <div className="flex flex-col gap-3">
+              {subscriptionProfile?.subscription_provider && (
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={managingSubscription}
+                  className="flex items-center justify-center gap-3 bg-charcoal-mid/50 text-fuchsia-200 border border-fuchsia-500/20 px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-fuchsia-500/10 hover:border-fuchsia-500/40 transition-all duration-500 shadow-xl disabled:opacity-50"
+                >
+                  {managingSubscription ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
+                  Gerenciar assinatura
+                </button>
+              )}
               <button 
                 onClick={() => setEditing(!editing)}
                 className="flex items-center justify-center gap-3 bg-charcoal-mid/50 text-gold-premium border border-gold-premium/20 px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gold-premium hover:text-charcoal-deep transition-all duration-500 shadow-xl"
