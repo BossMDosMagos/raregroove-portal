@@ -1,3 +1,9 @@
+export function getSupabaseEnv(env) {
+  const supabaseUrl = String(env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || '').trim();
+  const supabaseAnonKey = String(env?.SUPABASE_ANON_KEY || env?.VITE_SUPABASE_ANON_KEY || '').trim();
+  return { supabaseUrl, supabaseAnonKey };
+}
+
 export async function getSupabaseUserFromRequest({ supabaseUrl, supabaseAnonKey, authorization }) {
   if (!authorization || !String(authorization).toLowerCase().startsWith('bearer ')) return null;
   const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -35,4 +41,3 @@ export async function requireAdmin({ supabaseUrl, supabaseAnonKey, authorization
   if (!profile.is_admin) return { ok: false, status: 403, error: 'not_admin' };
   return { ok: true, user, profile };
 }
-

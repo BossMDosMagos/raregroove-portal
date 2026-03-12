@@ -1,5 +1,5 @@
 import { signHeaders } from './_b2sigv4.js';
-import { requireAdmin } from './_supabaseAuth.js';
+import { getSupabaseEnv, requireAdmin } from './_supabaseAuth.js';
 
 async function sha256Hex(message) {
   const msgUint8 = typeof message === 'string' ? new TextEncoder().encode(message) : message;
@@ -8,8 +8,7 @@ async function sha256Hex(message) {
 }
 
 export async function onRequestGet(context) {
-  const supabaseUrl = String(context.env.SUPABASE_URL || '').trim();
-  const supabaseAnonKey = String(context.env.SUPABASE_ANON_KEY || '').trim();
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv(context.env);
   if (!supabaseUrl || !supabaseAnonKey) {
     return new Response(JSON.stringify({ error: 'missing_supabase_env' }), { status: 500, headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
@@ -68,4 +67,3 @@ export async function onRequestGet(context) {
 
   return new Response(JSON.stringify({ objects: contents }), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
-

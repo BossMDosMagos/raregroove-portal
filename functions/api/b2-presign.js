@@ -1,5 +1,5 @@
 import { presignUrl } from './_b2sigv4.js';
-import { getSupabaseUserFromRequest, getProfileRow } from './_supabaseAuth.js';
+import { getSupabaseEnv, getSupabaseUserFromRequest, getProfileRow } from './_supabaseAuth.js';
 
 async function supabaseGetUser({ supabaseUrl, supabaseAnonKey, bearer }) {
   return await getSupabaseUserFromRequest({ supabaseUrl, supabaseAnonKey, authorization: bearer });
@@ -48,8 +48,7 @@ async function supabaseIncrementTrialUsage({ supabaseUrl, supabaseAnonKey, beare
 }
 
 export async function onRequestPost(context) {
-  const supabaseUrl = String(context.env.SUPABASE_URL || '').trim();
-  const supabaseAnonKey = String(context.env.SUPABASE_ANON_KEY || '').trim();
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv(context.env);
   if (!supabaseUrl || !supabaseAnonKey) {
     return new Response(JSON.stringify({ error: 'missing_supabase_env' }), { status: 500, headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
