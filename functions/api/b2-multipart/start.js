@@ -11,6 +11,11 @@ async function sha256Hex(message) {
   return [...new Uint8Array(hashBuffer)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function extractUploadId(xml) {
+  const m = String(xml || '').match(/<UploadId>([\s\S]*?)<\/UploadId>/i);
+  return m ? String(m[1] || '').trim() : '';
+}
+
 export async function onRequestPost(context) {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv(context.env);
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -34,7 +39,6 @@ export async function onRequestPost(context) {
 
   const body = await context.request.json().catch(() => ({}));
   const key = String(body?.key || '').trim().replace(/^\/+/, '');
-  const contentType = String(body?.content_type || 'application/octet-stream').trim();
   if (!key) {
     return new Response(JSON.stringify({ error: 'missing_key' }), { status: 400, headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
@@ -50,7 +54,7 @@ export async function onRequestPost(context) {
     accessKeyId,
     secretAccessKey,
     payloadHash,
-    extraHeaders: { 'content-type': contentType },
+    extraHeaders: {},
   });
 
   const res = await fetch(`https://${endpointHost}${pathWithQuery}`, {
@@ -63,8 +67,7 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({ error: 'b2_error', status: res.status, body: text }), { status: 502, headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
 
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
-  const uploadId = doc.querySelector('UploadId')?.textContent || '';
+  const uploadId = extractUploadId(text);
   if (!uploadId) {
     return new Response(JSON.stringify({ error: 'missing_upload_id' }), { status: 502, headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
