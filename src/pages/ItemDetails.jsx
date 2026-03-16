@@ -86,9 +86,31 @@ export default function ItemDetails() {
       if (itemData?.seller_id) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('id, full_name, avatar_url, status, suspension_end')
           .eq('id', itemData.seller_id)
           .single();
+
+        // Verificar se vendedor está ativo
+        if (profileData?.status === 'banned') {
+          toast.error('VENDEDOR BLOQUEADO', {
+            description: 'Este vendedor está temporariamente suspenso.',
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+          });
+          navigate('/catalogo');
+          return;
+        }
+
+        if (profileData?.status === 'suspended' && profileData?.suspension_end) {
+          const suspendEnd = new Date(profileData.suspension_end);
+          if (suspendEnd > new Date()) {
+            toast.error('VENDEDOR SUSPENSO', {
+              description: 'Este vendedor está temporariamente suspenso.',
+              style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+            });
+            navigate('/catalogo');
+            return;
+          }
+        }
 
         setSeller(profileData);
 

@@ -106,14 +106,27 @@ export const processPayment = async ({
     // 4. Adicionar valor à custódia do vendedor (user_balances)
     await ensureUserBalance(sellerId);
 
-    const { error: balanceError } = await supabase
-      .from('user_balances')
-      .update({
-        pending_balance: supabase.raw(`pending_balance + ${netAmount}`)
-      })
-      .eq('user_id', sellerId);
+    // Usar RPC para evitar SQL injection
+    const { error: balanceError } = await supabase.rpc('add_pending_balance', {
+      p_user_id: sellerId,
+      p_amount: netAmount
+    });
 
-    if (balanceError) throw balanceError;
+    if (balanceError) {
+      console.error('Erro ao adicionar saldo pendente:', balanceError);
+      // Fallback seguro se RPC não existir
+      const { data: current } = await supabase
+        .from('user_balances')
+        .select('pending_balance')
+        .eq('user_id', sellerId)
+        .single();
+      
+      const newBalance = (current?.pending_balance || 0) + netAmount;
+      await supabase
+        .from('user_balances')
+        .update({ pending_balance: newBalance })
+        .eq('user_id', sellerId);
+    }
 
     // 5. Registrar na ledger financeira
     await supabase
@@ -333,13 +346,27 @@ export const cancelTransaction = async (transactionId, reason) => {
       .update({ is_sold: false, sold_to_user_id: null })
       .eq('id', transaction.item_id);
 
-    // 3. Reembolsar saldo do vendedor
-    await supabase
-      .from('user_balances')
-      .update({
-        pending_balance: supabase.raw(`pending_balance - ${transaction.net_amount}`)
-      })
-      .eq('user_id', transaction.seller_id);
+    // 3. Reembolsar saldo do vendedor - usar RPC para segurança
+    const { error: refundError } = await supabase.rpc('subtract_pending_balance', {
+      p_user_id: transaction.seller_id,
+      p_amount: transaction.net_amount
+    });
+
+    if (refundError) {
+      console.error('Erro ao reembolsar saldo via RPC:', refundError);
+      // Fallback
+      const { data: current } = await supabase
+        .from('user_balances')
+        .select('pending_balance')
+        .eq('user_id', transaction.seller_id)
+        .single();
+      
+      const newBalance = Math.max(0, (current?.pending_balance || 0) - transaction.net_amount);
+      await supabase
+        .from('user_balances')
+        .update({ pending_balance: newBalance })
+        .eq('user_id', transaction.seller_id);
+    }
 
     // 4. Registrar cancelamento na ledger
     await supabase

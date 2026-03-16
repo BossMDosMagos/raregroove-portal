@@ -417,6 +417,41 @@ serve(async (req) => {
       
       console.log('[process-transaction] Tipo de venda:',  isPortalSale ? 'PORTAL (100%)' : 'MARKETPLACE (taxa)');
 
+      // VALIDAÇÃO DE SEGURANÇA: Verificar se o item pertence ao seller informado
+      if (!isPortalSale && itemId) {
+        const { data: itemData, error: itemError } = await supabase
+          .from('items')
+          .select('seller_id, is_sold, status')
+          .eq('id', itemId)
+          .single();
+
+        if (itemError || !itemData) {
+          console.error('[process-transaction] Item não encontrado:', itemId);
+          throw new Error('Item não encontrado');
+        }
+
+        if (itemData.is_sold) {
+          console.warn('[process-transaction] Item já foi vendido:', itemId);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Item já foi vendido',
+              code: 'ITEM_ALREADY_SOLD'
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            }
+          );
+        }
+
+        // Validar que o sellerId do payload corresponde ao seller real do item
+        if (itemData.seller_id !== sellerId) {
+          console.error('[process-transaction] Seller ID mismatch! Payload:', sellerId, 'DB:', itemData.seller_id);
+          throw new Error('Vendedor inválido para este item');
+        }
+      }
+
       // 1. Criar transação
       const transactionData = {
         buyer_id: buyerId,
