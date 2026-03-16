@@ -1,5 +1,5 @@
-// Edge Function para gerar URL de upload para Backblaze B2
-// Retorna URL pré-assinada para upload direto do cliente
+// Edge Function para upload para Backblaze B2
+// Versão simplificada para debug
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -16,22 +16,54 @@ const B2_REGION = Deno.env.get('B2_REGION') || '';
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 
+console.log('B2 Config:', { 
+  B2_KEY_ID: B2_KEY_ID ? 'SET' : 'MISSING',
+  B2_APPLICATION_KEY: B2_APPLICATION_KEY ? 'SET' : 'MISSING', 
+  B2_BUCKET_NAME 
+});
+
 function getSupabaseClient(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
+  // Tentar obter o token do header Authorization
+  const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+  console.log('Auth header:', authHeader ? 'Present' : 'Missing');
   
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  if (!authHeader) {
+    console.log('No auth header found');
+    return null;
+  }
+  
+  // Se começar com Bearer, usar como token
+  let token = authHeader;
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    token = authHeader.substring(7);
+  }
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  
+  console.log('Supabase URL:', supabaseUrl ? 'Present' : 'Missing');
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.log('Missing Supabase config');
+    return null;
+  }
   
   return createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false }
   });
 }
 
 async function getB2Auth() {
+  if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
+    console.error('B2 credentials missing');
+    return null;
+  }
+  
   const credentials = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
   const encoded = btoa(credentials);
+  
+  console.log('Authenticating with B2...');
   
   const response = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
     method: 'POST',
@@ -43,6 +75,7 @@ async function getB2Auth() {
     return null;
   }
   const data = await response.json();
+  console.log('B2 auth success');
   return data;
 }
 
@@ -71,53 +104,63 @@ function validateFileType(filename: string, category: string): string | null {
   };
   
   const allowed = validations[category];
-  if (!allowed) {
-    return `Categoria desconhecida: ${category}`;
-  }
+  if (!allowed) return null;
   if (!ext || !allowed.includes(ext)) {
-    return `Extensão .${ext || 'unknown'} não permitida para ${category}. Allowed: ${allowed.join(', ')}`;
+    return `Extensão .${ext} não permitida para ${category}`;
   }
   return null;
 }
 
 serve(async (req) => {
+  console.log('=== b2-upload-url called ===');
+  console.log('Method:', req.method);
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Verificar autenticação
+    // Verificar autenticação do Supabase
     const supabase = getSupabaseClient(req);
     if (!supabase) {
-      return new Response(JSON.stringify({ error: 'missing_auth', message: 'Faça login para fazer upload' }), { 
+      console.log('Returning 401: No supabase client');
+      return new Response(JSON.stringify({ 
+        error: 'missing_auth', 
+        message: 'Token de autenticação não encontrado. Faça login novamente.' 
+      }), { 
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'invalid_auth', message: 'Sessão expirada' }), { 
+    // Verificar usuário
+    let user = null;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      user = data?.user;
+      console.log('User:', user?.id || 'Not found', error?.message || '');
+    } catch (e) {
+      console.log('Auth error:', e.message);
+    }
+    
+    if (!user) {
+      console.log('Returning 401: No user');
+      return new Response(JSON.stringify({ 
+        error: 'invalid_auth', 
+        message: 'Sessão expirada ou inválida. Faça login novamente.' 
+      }), { 
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Verificar perfil e assinatura - COMENTADO PARA TESTES
-    // const { data: profile } = await supabase
-    //   .from('profiles')
-    //   .select('id, user_level, subscription_status')
-    //   .eq('id', user.id)
-    //   .single();
-    // const status = profile?.subscription_status?.toLowerCase() || 'inactive';
-    // if (status !== 'active' && status !== 'trialing') {
-    //   return new Response(JSON.stringify({ error: 'no_subscription', message: 'Assinatura necessária' }), { 
-    //     status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    //   });
-    // }
+    console.log('User authenticated:', user.id);
 
-    // Verificar B2 configurado
+    // Verificar B2
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
-      console.error('B2 not configured:', { B2_KEY_ID: !!B2_KEY_ID, B2_APPLICATION_KEY: !!B2_APPLICATION_KEY, B2_BUCKET_NAME: !!B2_BUCKET_NAME });
-      return new Response(JSON.stringify({ error: 'b2_not_configured', message: 'B2 não configurado no servidor' }), { 
+      console.log('Returning 500: B2 not configured');
+      return new Response(JSON.stringify({ 
+        error: 'b2_not_configured', 
+        message: 'B2 não configurado no servidor' 
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -125,25 +168,24 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { filename, category, fileSize } = body;
 
-    console.log('Upload request:', { filename, category, fileSize });
+    console.log('Request:', { filename, category, fileSize });
 
     if (!filename || !category) {
-      return new Response(JSON.stringify({ error: 'missing_params', message: 'Parâmetros filename e category são obrigatórios' }), { 
+      return new Response(JSON.stringify({ 
+        error: 'missing_params', 
+        message: 'Parâmetros filename e category são obrigatórios' 
+      }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Validar tipo de arquivo
+    // Validar tipo
     const validationError = validateFileType(filename, category);
     if (validationError) {
-      return new Response(JSON.stringify({ error: 'invalid_file_type', message: validationError }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    // Validar tamanho (800MB max)
-    if (fileSize && fileSize > 800 * 1024 * 1024) {
-      return new Response(JSON.stringify({ error: 'file_too_large', message: 'Arquivo muito grande. Máximo: 800MB' }), { 
+      return new Response(JSON.stringify({ 
+        error: 'invalid_file_type', 
+        message: validationError 
+      }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -151,20 +193,26 @@ serve(async (req) => {
     // Obter autorização B2
     const b2Auth = await getB2Auth();
     if (!b2Auth) {
-      return new Response(JSON.stringify({ error: 'b2_auth_failed', message: 'Falha ao autenticar com B2' }), { 
+      return new Response(JSON.stringify({ 
+        error: 'b2_auth_failed', 
+        message: 'Falha ao autenticar com B2. Verifique as credenciais.' 
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Encontrar bucket ID
+    // Encontrar bucket
     const bucketsRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_list_buckets', {
       headers: { 'Authorization': b2Auth.authorizationToken }
     });
     const bucketsData = await bucketsRes.json();
     
     if (!bucketsData.buckets) {
-      console.error('No buckets found:', bucketsData);
-      return new Response(JSON.stringify({ error: 'bucket_error', message: 'Erro ao buscar buckets' }), { 
+      console.log('Bucket error:', bucketsData);
+      return new Response(JSON.stringify({ 
+        error: 'bucket_error', 
+        message: 'Erro ao buscar buckets' 
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -172,8 +220,11 @@ serve(async (req) => {
     const bucket = bucketsData.buckets.find((b: any) => b.bucketName === B2_BUCKET_NAME);
     
     if (!bucket) {
-      console.error('Bucket not found:', B2_BUCKET_NAME, 'Available:', bucketsData.buckets.map((b: any) => b.bucketName));
-      return new Response(JSON.stringify({ error: 'bucket_not_found', message: `Bucket ${B2_BUCKET_NAME} não encontrado` }), { 
+      console.log('Bucket not found:', B2_BUCKET_NAME, 'Available:', bucketsData.buckets.map((b: any) => b.bucketName));
+      return new Response(JSON.stringify({ 
+        error: 'bucket_not_found', 
+        message: `Bucket ${B2_BUCKET_NAME} não encontrado` 
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -181,17 +232,20 @@ serve(async (req) => {
     // Obter URL de upload
     const uploadUrlData = await getUploadUrl(bucket.bucketId, b2Auth.authorizationToken);
     if (!uploadUrlData) {
-      return new Response(JSON.stringify({ error: 'upload_url_failed', message: 'Falha ao obter URL de upload' }), { 
+      return new Response(JSON.stringify({ 
+        error: 'upload_url_failed', 
+        message: 'Falha ao obter URL de upload' 
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Gerar path do arquivo
+    // Gerar path
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = `grooveflix/${user.id}/${category}/${timestamp}_${safeFilename}`;
 
-    console.log('Returning upload URL for:', filePath);
+    console.log('Success! Returning upload URL for:', filePath);
 
     return new Response(
       JSON.stringify({
@@ -207,7 +261,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('B2 Upload URL Error:', error);
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: 'internal_error', message: error.message || 'Erro interno' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
