@@ -77,8 +77,8 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       body: {
         filename: file.name,
         category: fileCategory,
-        fileSize: file.size,
-        userId: userId
+        userId: userId,
+        contentType: file.type || 'application/octet-stream'
       }
     });
 
@@ -87,20 +87,28 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       throw new Error(error?.message || data?.error || 'Falha ao obter URL de upload');
     }
 
-    // Upload direto para B2
+    // Calcular SHA1 do arquivo
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Upload direto para B2 usando POST
     const response = await fetch(data.uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': data.uploadAuthToken,
-        'Content-Type': file.type || 'application/octet-stream',
+        'Content-Type': data.contentType,
         'X-Bz-File-Name': data.filePath,
         'Content-Length': file.size.toString(),
+        'X-Bz-Info-sha1': sha1Hash
       },
       body: file
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('B2 upload failed:', response.status, errorText);
       throw new Error(`Upload falhou: ${response.status} - ${errorText}`);
     }
 
