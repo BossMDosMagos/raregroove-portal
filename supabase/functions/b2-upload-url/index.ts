@@ -1,7 +1,6 @@
-// Direct Upload to B2 - com validação manual de JWT
+// Direct Upload to B2 - SEM verificação de JWT (apenas para teste)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,46 +13,6 @@ const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
 const B2_REGION = Deno.env.get('B2_REGION') || 'us-east-005';
 
-// Valida o token JWT do Supabase manualmente
-async function validateSupabaseToken(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  
-  if (!authHeader) {
-    return { valid: false, error: 'No authorization header' };
-  }
-  
-  // Extrair o token
-  let token = authHeader;
-  if (authHeader.toLowerCase().startsWith('bearer ')) {
-    token = authHeader.substring(7);
-  }
-  
-  if (!token) {
-    return { valid: false, error: 'No token' };
-  }
-  
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { valid: false, error: 'No Supabase config' };
-  }
-  
-  // Criar cliente e verificar token
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false }
-  });
-  
-  const { data, error } = await supabase.auth.getUser();
-  
-  if (error || !data?.user) {
-    return { valid: false, error: error?.message || 'Invalid token', user: null };
-  }
-  
-  return { valid: true, user: data.user, error: null };
-}
-
 serve(async (req) => {
   console.log('=== b2-upload-url called ===');
   
@@ -62,15 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    // Validar token do Supabase
-    const tokenValidation = await validateSupabaseToken(req);
-    console.log('Token validation:', tokenValidation.valid ? 'OK' : tokenValidation.error);
-    
-    if (!tokenValidation.valid) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', message: tokenValidation.error }), { 
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
+    // SEM verificação de JWT - apenas fala com B2
 
     // Verificar B2
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
@@ -80,9 +31,11 @@ serve(async (req) => {
       });
     }
 
-    // Autenticar com B2
-    const credentials = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
-    const encoded = btoa(credentials);
+    // Autenticar com B2 usando Basic Auth
+    const authString = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
+    const encoded = btoa(authString);
+    
+    console.log('Auth string (first 20):', authString.substring(0, 20) + '...');
     
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
@@ -94,14 +47,14 @@ serve(async (req) => {
 
     if (!authRes.ok) {
       const err = await authRes.text();
-      console.log('B2 auth failed:', err);
-      return new Response(JSON.stringify({ error: 'B2 auth failed', details: err }), { 
+      console.log('B2 auth failed:', authRes.status, err);
+      return new Response(JSON.stringify({ error: 'B2 auth failed', status: authRes.status, details: err }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     const authData = await authRes.json();
-    console.log('B2 auth OK');
+    console.log('B2 auth OK, accountId:', authData.accountId);
 
     // Obter body
     const body = await req.json().catch(() => ({}));
@@ -119,6 +72,7 @@ serve(async (req) => {
     });
     
     const bucketData = await bucketRes.json();
+    console.log('Buckets found:', bucketData.buckets?.map((b: any) => b.bucketName));
     
     const bucket = bucketData.buckets?.find((b: any) => b.bucketName === B2_BUCKET_NAME);
     if (!bucket) {
@@ -127,6 +81,8 @@ serve(async (req) => {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
+    
+    console.log('Bucket found:', bucket.bucketName, bucket.bucketId);
 
     // Obter URL de upload
     const uploadUrlRes = await fetch(`https://api.backblazeb2.com/b2api/v2/b2_get_upload_url?bucketId=${bucket.bucketId}`, {
@@ -136,8 +92,8 @@ serve(async (req) => {
     const uploadUrlData = await uploadUrlRes.json();
     
     if (!uploadUrlData.uploadUrl) {
-      console.log('Failed to get upload URL');
-      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload' }), { 
+      console.log('Failed to get upload URL:', uploadUrlData);
+      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload', details: uploadUrlData }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -145,10 +101,10 @@ serve(async (req) => {
     // Gerar path do arquivo
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const userId = tokenValidation.user?.id || 'anon';
-    const filePath = `grooveflix/${userId}/${category}/${timestamp}_${safeFilename}`;
+    const filePath = `grooveflix/test/${category}/${timestamp}_${safeFilename}`;
 
-    console.log('Success! Path:', filePath);
+    console.log('Success! uploadUrl:', uploadUrlData.uploadUrl.substring(0, 50) + '...');
+    console.log('filePath:', filePath);
 
     return new Response(
       JSON.stringify({
