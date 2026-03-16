@@ -92,23 +92,17 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       throw new Error(data.error || data.message || `Erro ${response.status}`);
     }
 
-    // Calcular SHA1 do arquivo
-    const arrayBuffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
     // Upload direto para B2 usando POST
     const uploadResponse = await fetch(data.uploadUrl, {
       method: 'POST',
+      body: file,
       headers: {
         'Authorization': data.uploadAuthToken,
-        'Content-Type': data.contentType,
         'X-Bz-File-Name': data.filePath,
+        'Content-Type': data.contentType,
         'Content-Length': file.size.toString(),
-        'X-Bz-Info-sha1': sha1Hash
-      },
-      body: file
+        'X-Bz-Info-sha1': 'none'
+      }
     });
 
     if (!uploadResponse.ok) {
