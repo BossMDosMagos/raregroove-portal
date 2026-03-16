@@ -73,18 +73,32 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || 'anon';
     
-    const { data, error } = await supabase.functions.invoke('b2-upload-url', {
-      body: {
+    // Obter token de acesso
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    
+    // Chamar Edge Function diretamente via fetch para evitar verificação de JWT automática
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
         filename: file.name,
         category: fileCategory,
         userId: userId,
         contentType: file.type || 'application/octet-stream'
-      }
+      })
     });
 
-    if (error || !data?.uploadUrl) {
-      console.error('Upload URL error:', error, data);
-      throw new Error(error?.message || data?.error || 'Falha ao obter URL de upload');
+    const data = await response.json();
+    
+    if (!response.ok || !data.uploadUrl) {
+      console.error('Upload URL error:', response.status, data);
+      throw new Error(data.error || `Erro ${response.status}: Falha ao obter URL de upload`);
     }
 
     // Calcular SHA1 do arquivo
@@ -94,7 +108,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Upload direto para B2 usando POST
-    const response = await fetch(data.uploadUrl, {
+    const uploadResponse = await fetch(data.uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': data.uploadAuthToken,
@@ -106,13 +120,13 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       body: file
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('B2 upload failed:', response.status, errorText);
-      throw new Error(`Upload falhou: ${response.status} - ${errorText}`);
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('B2 upload failed:', uploadResponse.status, errorText);
+      throw new Error(`Upload falhou: ${uploadResponse.status} - ${errorText}`);
     }
 
-    const result = await response.json();
+    const result = await uploadResponse.json();
     return {
       fileId: result.fileId,
       fileName: result.fileName,
