@@ -123,26 +123,9 @@ END;
 $$;
 
 -- ==============================================================================
--- FUNÇÃO: release_item_reservation (já deve existir, verificar)
--- Libera reserva de item se expirou
+-- FUNÇÃO: release_item_reservation (não recriar - já existe)
+-- Apenas garante permissões
 -- ==============================================================================
-CREATE OR REPLACE FUNCTION release_item_reservation(item_uuid UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE items
-  SET 
-    status = 'disponivel',
-    reserved_by = NULL,
-    reserved_until = NULL,
-    updated_at = NOW()
-  WHERE id = item_uuid
-    AND status = 'reservado'
-    AND (reserved_until IS NULL OR reserved_until < NOW());
-END;
-$$;
 
 -- ==============================================================================
 -- GRANT permissões para as funções

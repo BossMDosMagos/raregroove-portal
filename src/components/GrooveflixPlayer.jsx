@@ -23,30 +23,19 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const activeIndex = useMemo(() => tracks.findIndex((t) => t.id === activeId), [tracks, activeId]);
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
 
-  const getAuthHeader = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token ? String(session.access_token) : '';
-    return token ? `Bearer ${token}` : '';
-  };
-
   const presign = async ({ filePath, mode, filename }) => {
-    const auth = await getAuthHeader();
-    if (!auth) throw new Error('Sessão expirada');
-    const res = await fetch('/api/b2-presign', {
-      method: 'POST',
-      headers: {
-        authorization: auth,
-        'content-type': 'application/json; charset=utf-8',
-      },
-      body: JSON.stringify({
+    
+    // Usar Edge Function do Supabase
+    const { data, error } = await supabase.functions.invoke('b2-presign', {
+      body: {
         file_path: filePath,
         mode,
         filename: filename || undefined,
-      })
+      }
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const err = new Error(String(data?.error || 'Erro ao gerar link'));
+
+    if (error || !data?.url) {
+      const err = new Error(String(data?.error || error?.message || 'Erro ao gerar link'));
       err.code = data?.error || null;
       throw err;
     }
