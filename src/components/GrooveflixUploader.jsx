@@ -149,7 +149,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
         cover_path: null,
       };
 
-      // Upload de capa (opcional)
+      // Upload de capa (opcional) - não bloqueia se falhar
       if (files.cover) {
         setUploadProgress(p => ({ ...p, cover: 'uploading' }));
         try {
@@ -158,9 +158,11 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
           setUploadProgress(p => ({ ...p, cover: 'done' }));
         } catch (e) {
           console.error('Cover upload error:', e);
-          toast.warning('Capa não foi enviada, continuando...');
           setUploadProgress(p => ({ ...p, cover: 'error' }));
         }
+      } else {
+        // Se não tem capa, usa URL externa se disponível
+        grooveflixData.cover_url = metadata.coverUrl || null;
       }
 
       // Upload de pasta com músicas (álbum/coletânea)
