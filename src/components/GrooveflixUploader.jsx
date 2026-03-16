@@ -11,6 +11,13 @@ const CATEGORIES = [
   { id: 'iso', label: 'ISO', icon: File, description: 'CD completo (imagem)' },
 ];
 
+const FILE_TYPES = {
+  audio: { accept: 'audio/*', maxSize: 500 * 1024 * 1024, label: 'Áudio (MP3/FLAC/WAV)', required: true },
+  preview: { accept: 'audio/*', maxSize: 50 * 1024 * 1024, label: 'Preview (opcional)', required: false },
+  iso: { accept: '.iso', maxSize: 800 * 1024 * 1024, label: 'ISO (CD Completo)', required: false },
+  booklet: { accept: '.pdf', maxSize: 50 * 1024 * 1024, label: 'Encarte/PDF (opcional)', required: false },
+};
+
 export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess }) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
@@ -33,25 +40,11 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de arquivo
-    const validations = {
-      audio: ['audio/mpeg', 'audio/flac', 'audio/wav', 'audio/x-wav', 'audio/mp3'],
-      preview: ['audio/mpeg', 'audio/mp3', 'audio/flac'],
-      iso: ['application/x-iso9660-image'],
-      booklet: ['application/pdf'],
-    };
-
-    if (validations[type] && !validations[type].includes(file.type)) {
-      toast.error('Tipo de arquivo inválido', {
-        description: `Aceitos: ${validations[type].join(', ')}`,
-      });
-      return;
-    }
-
-    // Limite de 500MB
-    if (file.size > 500 * 1024 * 1024) {
+    const validation = FILE_TYPES[type];
+    
+    if (file.size > validation.maxSize) {
       toast.error('Arquivo muito grande', {
-        description: 'Máximo: 500MB',
+        description: `Máximo: ${(validation.maxSize / 1024 / 1024).toFixed(0)}MB`,
       });
       return;
     }
@@ -59,27 +52,46 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const uploadFile = async (file, path) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado');
+  const uploadToB2 = async (file, category) => {
+    // 1. Obter URL de upload do Supabase Function
+    const { data, error } = await supabase.functions.invoke('b2-upload-url', {
+      body: {
+        filename: file.name,
+        category,
+        fileSize: file.size
+      }
+    });
 
-    const filePath = `${user.id}/${Date.now()}_${file.name}`;
-    
-    const { error } = await supabase.storage
-      .from('grooveflix')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
+    if (error || !data?.uploadUrl) {
+      throw new Error(error?.message || 'Falha ao obter URL de upload');
+    }
 
-    if (error) throw error;
+    // 2. Fazer upload direto para o B2
+    const response = await fetch(data.uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': data.uploadAuthToken,
+        'Content-Type': file.type || 'application/octet-stream',
+        'X-Bz-File-Name': data.filePath,
+        'Content-Length': file.size.toString(),
+      },
+      body: file
+    });
 
-    // Obter URL pública (signed URL por 1 ano)
-    const { data: { signedUrl } } = await supabase.storage
-      .from('grooveflix')
-      .createSignedUrl(filePath, 31536000);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
 
-    return { path: filePath, url: signedUrl };
+    // 3. Retornar informações do arquivo
+    const result = await response.json();
+    return {
+      fileId: result.fileId,
+      fileName: result.fileName,
+      filePath: data.filePath,
+      contentType: file.type,
+      size: file.size
+    };
   };
 
   const handleUpload = async () => {
@@ -107,37 +119,37 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
 
       // Upload de áudio principal
       if (files.audio) {
-        setUploadProgress(p => ({ ...p, audio: 'updating' }));
-        const audioResult = await uploadFile(files.audio, 'audio');
-        grooveflixData.audio_path = audioResult.path;
-        grooveflixData.audio_url = audioResult.url;
+        setUploadProgress(p => ({ ...p, audio: 'uploading' }));
+        const audioResult = await uploadToB2(files.audio, 'audio');
+        grooveflixData.audio_path = audioResult.filePath;
+        grooveflixData.audio_fileId = audioResult.fileId;
         setUploadProgress(p => ({ ...p, audio: 'done' }));
       }
 
       // Upload de preview (opcional)
       if (files.preview) {
-        setUploadProgress(p => ({ ...p, preview: 'updating' }));
-        const previewResult = await uploadFile(files.preview, 'preview');
-        grooveflixData.preview_path = previewResult.path;
-        grooveflixData.preview_url = previewResult.url;
+        setUploadProgress(p => ({ ...p, preview: 'uploading' }));
+        const previewResult = await uploadToB2(files.preview, 'preview');
+        grooveflixData.preview_path = previewResult.filePath;
+        grooveflixData.preview_fileId = previewResult.fileId;
         setUploadProgress(p => ({ ...p, preview: 'done' }));
       }
 
       // Upload de ISO (opcional)
       if (files.iso) {
-        setUploadProgress(p => ({ ...p, iso: 'updating' }));
-        const isoResult = await uploadFile(files.iso, 'iso');
-        grooveflixData.iso_path = isoResult.path;
-        grooveflixData.iso_url = isoResult.url;
+        setUploadProgress(p => ({ ...p, iso: 'uploading' }));
+        const isoResult = await uploadToB2(files.iso, 'iso');
+        grooveflixData.iso_path = isoResult.filePath;
+        grooveflixData.iso_fileId = isoResult.fileId;
         setUploadProgress(p => ({ ...p, iso: 'done' }));
       }
 
       // Upload de encarte (opcional)
       if (files.booklet) {
-        setUploadProgress(p => ({ ...p, booklet: 'updating' }));
-        const bookletResult = await uploadFile(files.booklet, 'booklet');
-        grooveflixData.booklet_path = bookletResult.path;
-        grooveflixData.booklet_url = bookletResult.url;
+        setUploadProgress(p => ({ ...p, booklet: 'uploading' }));
+        const bookletResult = await uploadToB2(files.booklet, 'booklet');
+        grooveflixData.booklet_path = bookletResult.filePath;
+        grooveflixData.booklet_fileId = bookletResult.fileId;
         setUploadProgress(p => ({ ...p, booklet: 'done' }));
       }
 
@@ -155,7 +167,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       };
 
       if (item?.id) {
-        // Atualizar item existente
         const { error: updateError } = await supabase
           .from('items')
           .update(itemData)
@@ -164,7 +175,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
         if (updateError) throw updateError;
         toast.success('CD atualizado com sucesso!');
       } else {
-        // Criar novo item
         const { data: { user } } = await supabase.auth.getUser();
         itemData.seller_id = user.id;
         itemData.price = 0;
@@ -181,7 +191,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       onSuccess?.();
       onClose();
       
-      // Limpar estados
       setFiles({ audio: null, preview: null, iso: null, booklet: null });
       setMetadata({ title: '', artist: '', year: '', genre: '' });
 
@@ -206,10 +215,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
           <h2 className="text-xl font-black uppercase tracking-wider text-white">
             Adicionar ao Grooveflix
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 transition"
-          >
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 transition">
             <X className="w-5 h-5 text-white/60" />
           </button>
         </div>
@@ -301,7 +307,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                 onChange={(e) => handleFileSelect('audio', e)}
                 icon={FileAudio}
                 progress={uploadProgress.audio}
-                accept="audio/*"
+                accept={FILE_TYPES.audio.accept}
               />
             </div>
 
@@ -314,7 +320,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                 onChange={(e) => handleFileSelect('preview', e)}
                 icon={Music}
                 progress={uploadProgress.preview}
-                accept="audio/*"
+                accept={FILE_TYPES.preview.accept}
               />
             </div>
 
@@ -328,7 +334,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                   onChange={(e) => handleFileSelect('iso', e)}
                   icon={Disc}
                   progress={uploadProgress.iso}
-                  accept=".iso"
+                  accept={FILE_TYPES.iso.accept}
                 />
               </div>
             )}
@@ -342,10 +348,14 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                 onChange={(e) => handleFileSelect('booklet', e)}
                 icon={FileText}
                 progress={uploadProgress.booklet}
-                accept=".pdf"
+                accept={FILE_TYPES.booklet.accept}
               />
             </div>
           </div>
+
+          <p className="text-xs text-white/40 text-center">
+            Os arquivos são enviados diretamente para o Backblaze B2 (Bucket: Cofre-RareGroove-01)
+          </p>
         </div>
 
         <div className="p-6 border-t border-white/10 flex gap-4">
@@ -363,7 +373,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
             {uploading ? (
               <>
                 <Loader2 className="animate-spin w-4 h-4" />
-                Enviando...
+                Enviando para B2...
               </>
             ) : (
               <>
@@ -407,10 +417,10 @@ function FileUploadZone({ file, onChange, icon: Icon, progress, accept }) {
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       />
       
-      {progress === 'updating' ? (
+      {progress === 'uploading' ? (
         <div className="flex items-center justify-center gap-2 text-fuchsia-400">
           <Loader2 className="animate-spin w-6 h-6" />
-          <span className="text-sm font-medium">Enviando...</span>
+          <span className="text-sm font-medium">Enviando para B2...</span>
         </div>
       ) : progress === 'done' ? (
         <div className="flex items-center justify-center gap-2 text-green-400">
