@@ -69,25 +69,17 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
   };
 
   const uploadToB2 = async (file, fileCategory) => {
-    // Obter userId e token
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = user?.id || 'anon';
-    const token = session?.access_token || '';
-    
-    // Chamar Edge Function com token JWT
+    // Chamar Edge Function SEM Authorization header
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         filename: file.name,
         category: fileCategory,
-        userId: userId,
         contentType: file.type || 'application/octet-stream'
       })
     });
