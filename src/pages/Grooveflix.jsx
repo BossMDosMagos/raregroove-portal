@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Film, Sparkles, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -27,7 +27,8 @@ export default function Grooveflix() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
 
-  const loadItems = useEffect(() => {
+  // Carregar items ao montar componente
+  useEffect(() => {
     const stored = safeParseJson(localStorage.getItem('rg_grooveflix_continue_v1') || '{}') || {};
     setContinueMap(stored);
 
@@ -56,6 +57,7 @@ export default function Grooveflix() {
     load();
   }, []);
 
+  // Função para recarregar items
   const refreshItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -233,8 +235,8 @@ export default function Grooveflix() {
             {loading ? (t('grooveflix.loading') || 'Carregando...') : `${tracks.length} ${t('grooveflix.albums') || 'álbuns'}`}
           </div>
 
-          {/* Botão Adicionar */}
-          {(isActive || isTrialing) && (
+          {/* Botão Adicionar CD - visível para todos usuários autenticados */}
+          {profile && (
             <button
               onClick={() => setShowUploader(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 text-xs font-black uppercase tracking-widest hover:bg-fuchsia-500/30 transition"
