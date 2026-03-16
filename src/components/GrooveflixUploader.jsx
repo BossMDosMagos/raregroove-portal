@@ -138,8 +138,8 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     setUploading(true);
     setUploadProgress({});
 
-    try {
-      const grooveflixData: any = {
+      try {
+      const grooveflixData = {
         category,
         audio_path: null,
         audio_files: [],
