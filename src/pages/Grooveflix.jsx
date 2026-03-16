@@ -27,7 +27,6 @@ export default function Grooveflix() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
 
-  // Carregar items ao montar componente
   useEffect(() => {
     const stored = safeParseJson(localStorage.getItem('rg_grooveflix_continue_v1') || '{}') || {};
     setContinueMap(stored);
@@ -37,7 +36,7 @@ export default function Grooveflix() {
       try {
         const { data, error } = await supabase
           .from('items')
-          .select('id, title, artist, image_url, created_at, metadata')
+          .select('id, title, artist, band, image_url, created_at, metadata')
           .order('created_at', { ascending: false })
           .limit(80);
 
@@ -57,7 +56,6 @@ export default function Grooveflix() {
     load();
   }, []);
 
-  // Função para recarregar items
   const refreshItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -80,6 +78,12 @@ export default function Grooveflix() {
   }, []);
 
   useEffect(() => {
+    if (!isTrialing) return;
+    if (!activeId) return;
+    if (meteredMap[activeId]) return;
+    setMeteredMap((prev) => ({ ...prev, [activeId]: true }));
+    void refresh();
+  }, [activeId, isTrialing, meteredMap, refresh]);
 
   const canDownload = useMemo(() => {
     const lvl = Number(profile?.user_level || 0);
@@ -93,48 +97,40 @@ export default function Grooveflix() {
     return String(settings?.max_trial_quality || 'preview') === 'preview';
   }, [isTrialing, settings?.limit_audio_quality_on_trial, settings?.max_trial_quality]);
 
-  const allTracks = useMemo(() => {
+  const tracks = useMemo(() => {
     return (items || [])
       .map((item) => {
-      const meta = item?.metadata || {};
-      const gf = meta?.grooveflix || {};
+        const meta = item?.metadata || {};
+        const gf = meta?.grooveflix || {};
 
-      const category = String(gf?.category || '').toLowerCase();
-      const audioPath = shouldUsePreviewAudio
-        ? (gf?.preview_path || gf?.audio_path || gf?.flac_path || '')
-        : (gf?.audio_path || gf?.flac_path || gf?.preview_path || '');
+        const category = String(gf?.category || '').toLowerCase();
+        const audioPath = shouldUsePreviewAudio
+          ? (gf?.preview_path || gf?.audio_path || gf?.flac_path || '')
+          : (gf?.audio_path || gf?.flac_path || gf?.preview_path || '');
 
-      const isoPath = gf?.iso_path || '';
-      const bookletPath = gf?.booklet_path || gf?.encarte_path || '';
-      if (!audioPath && !isoPath && !bookletPath) return null;
+        const isoPath = gf?.iso_path || '';
+        const bookletPath = gf?.booklet_path || gf?.encarte_path || '';
+        if (!audioPath && !isoPath && !bookletPath) return null;
 
-      return {
-        id: item.id,
-        title: item.title || 'Untitled',
-        artist: item.artist || '',
-        coverUrl: item.image_url || '',
-        category: category || 'single',
-        audioPath: audioPath || null,
-        isoPath: isoPath || null,
-        bookletPath: bookletPath || null,
-      };
-    })
+        return {
+          id: item.id,
+          title: item.title || 'Untitled',
+          artist: item.artist || '',
+          coverUrl: item.image_url || '',
+          category: category || 'single',
+          audioPath: audioPath || null,
+          isoPath: isoPath || null,
+          bookletPath: bookletPath || null,
+        };
+      })
       .filter(Boolean);
   }, [items, shouldUsePreviewAudio]);
 
-  const tracks = useMemo(() => {
+  const filteredTracks = useMemo(() => {
     const c = String(categoryFilter || 'all').toLowerCase();
-    if (c === 'all') return allTracks;
-    return (allTracks || []).filter((t) => String(t.category || '').toLowerCase() === c);
-  }, [allTracks, categoryFilter]);
-
-  useEffect(() => {
-    if (!isTrialing) return;
-    if (!activeId) return;
-    if (meteredMap[activeId]) return;
-    setMeteredMap((prev) => ({ ...prev, [activeId]: true }));
-    void refresh();
-  }, [activeId, isTrialing, meteredMap, refresh]);
+    if (c === 'all') return tracks;
+    return (tracks || []).filter((t) => String(t.category || '').toLowerCase() === c);
+  }, [tracks, categoryFilter]);
 
   const byId = useMemo(() => {
     const map = {};
@@ -175,17 +171,6 @@ export default function Grooveflix() {
     });
     return result;
   }, [continueListening, recentlyImmortalized, japanesePressings, forgottenBrazil]);
-
-  const categoryCounts = useMemo(() => {
-    const counts = { all: allTracks.length, single: 0, coletanea: 0, iso: 0 };
-    (allTracks || []).forEach((t) => {
-      const c = String(t.category || '').toLowerCase();
-      if (c === 'single') counts.single += 1;
-      else if (c === 'coletanea') counts.coletanea += 1;
-      else if (c === 'iso') counts.iso += 1;
-    });
-    return counts;
-  }, [allTracks]);
 
   useEffect(() => {
     if (activeId) return;
@@ -235,7 +220,6 @@ export default function Grooveflix() {
             {loading ? (t('grooveflix.loading') || 'Carregando...') : `${tracks.length} ${t('grooveflix.albums') || 'álbuns'}`}
           </div>
 
-          {/* Botão Adicionar CD - visível para todos usuários autenticados */}
           {profile && (
             <button
               onClick={() => setShowUploader(true)}
@@ -249,10 +233,11 @@ export default function Grooveflix() {
 
         <div className="flex flex-wrap gap-2">
           {[
-            { id: 'all', label: 'Todos', count: categoryCounts.all },
-            { id: 'single', label: 'Single', count: categoryCounts.single },
-            { id: 'coletanea', label: 'Coletânea', count: categoryCounts.coletanea },
-            { id: 'iso', label: 'ISO', count: categoryCounts.iso },
+            { id: 'all', label: 'Todos' },
+            { id: 'single', label: 'Single' },
+            { id: 'album', label: 'Álbum' },
+            { id: 'coletanea', label: 'Coletânea' },
+            { id: 'iso', label: 'ISO' },
           ].map((c) => (
             <button
               key={c.id}
@@ -264,7 +249,7 @@ export default function Grooveflix() {
                   : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
               }`}
             >
-              {c.label} <span className="text-white/40">{c.count}</span>
+              {c.label}
             </button>
           ))}
         </div>
