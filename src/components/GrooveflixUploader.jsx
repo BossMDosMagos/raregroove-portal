@@ -69,11 +69,16 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
   };
 
   const uploadToB2 = async (file, fileCategory) => {
+    // Obter userId diretamente
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || 'anon';
+    
     const { data, error } = await supabase.functions.invoke('b2-upload-url', {
       body: {
         filename: file.name,
         category: fileCategory,
-        fileSize: file.size
+        fileSize: file.size,
+        userId: userId
       }
     });
 
@@ -82,6 +87,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       throw new Error(error?.message || data?.error || 'Falha ao obter URL de upload');
     }
 
+    // Upload direto para B2
     const response = await fetch(data.uploadUrl, {
       method: 'POST',
       headers: {
