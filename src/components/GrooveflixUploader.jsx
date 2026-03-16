@@ -94,9 +94,10 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
 
     const data = await response.json();
     
+    console.log('Upload URL response:', response.status, data);
+    
     if (!response.ok || !data.uploadUrl) {
-      console.error('Upload URL error:', response.status, data);
-      throw new Error(data.error || data.message || `Erro ${response.status}: Falha ao obter URL`);
+      throw new Error(data.error || data.message || `Erro ${response.status}`);
     }
 
     // Calcular SHA1 do arquivo
