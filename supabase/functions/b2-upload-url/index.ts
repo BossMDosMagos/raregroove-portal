@@ -1,4 +1,4 @@
-// Direct Upload to B2 usando Native API corretamente
+// Direct Upload to B2 - sem verificação automática de JWT
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,7 +12,6 @@ const corsHeaders = {
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
-const B2_REGION = Deno.env.get('B2_REGION') || 'us-east-005';
 
 serve(async (req) => {
   console.log('=== b2-upload-url called ===');
@@ -30,7 +29,7 @@ serve(async (req) => {
       });
     }
 
-    // Autenticar
+    // Autenticar com B2
     const credentials = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
     const encoded = btoa(credentials);
     
@@ -51,7 +50,7 @@ serve(async (req) => {
     }
 
     const authData = await authRes.json();
-    console.log('B2 auth OK, token:', authData.authorizationToken.substring(0, 20) + '...');
+    console.log('B2 auth OK');
 
     // Obter body
     const body = await req.json().catch(() => ({}));
@@ -69,7 +68,6 @@ serve(async (req) => {
     });
     
     const bucketData = await bucketRes.json();
-    console.log('Buckets:', bucketData.buckets?.map((b: any) => b.bucketName));
     
     const bucket = bucketData.buckets?.find((b: any) => b.bucketName === B2_BUCKET_NAME);
     if (!bucket) {
@@ -87,7 +85,7 @@ serve(async (req) => {
     const uploadUrlData = await uploadUrlRes.json();
     
     if (!uploadUrlData.uploadUrl) {
-      console.log('Failed to get upload URL:', uploadUrlData);
+      console.log('Failed to get upload URL');
       return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -98,17 +96,13 @@ serve(async (req) => {
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = `grooveflix/${userId || 'anon'}/${category}/${timestamp}_${safeFilename}`;
 
-    console.log('Success! Returning:', { 
-      uploadUrl: uploadUrlData.uploadUrl.substring(0, 50) + '...',
-      filePath 
-    });
+    console.log('Success! Path:', filePath);
 
     return new Response(
       JSON.stringify({
         uploadUrl: uploadUrlData.uploadUrl,
         uploadAuthToken: uploadUrlData.authorizationToken,
         filePath: filePath,
-        bucketId: bucket.bucketId,
         contentType: contentType || 'application/octet-stream'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -73,18 +73,13 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || 'anon';
     
-    // Obter token de acesso
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    
-    // Chamar Edge Function diretamente via fetch para evitar verificação de JWT automática
+    // Chamar Edge Function sem JWT
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         filename: file.name,
@@ -98,7 +93,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     
     if (!response.ok || !data.uploadUrl) {
       console.error('Upload URL error:', response.status, data);
-      throw new Error(data.error || `Erro ${response.status}: Falha ao obter URL de upload`);
+      throw new Error(data.error || `Erro ${response.status}: Falha ao obter URL`);
     }
 
     // Calcular SHA1 do arquivo
