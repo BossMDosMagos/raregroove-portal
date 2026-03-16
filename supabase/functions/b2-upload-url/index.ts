@@ -1,4 +1,4 @@
-// Direct Upload to B2 - sem verificação automática de JWT
+// Direct Upload to B2 - com validação manual de JWT
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,6 +12,47 @@ const corsHeaders = {
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
+const B2_REGION = Deno.env.get('B2_REGION') || 'us-east-005';
+
+// Valida o token JWT do Supabase manualmente
+async function validateSupabaseToken(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    return { valid: false, error: 'No authorization header' };
+  }
+  
+  // Extrair o token
+  let token = authHeader;
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    token = authHeader.substring(7);
+  }
+  
+  if (!token) {
+    return { valid: false, error: 'No token' };
+  }
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { valid: false, error: 'No Supabase config' };
+  }
+  
+  // Criar cliente e verificar token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false }
+  });
+  
+  const { data, error } = await supabase.auth.getUser();
+  
+  if (error || !data?.user) {
+    return { valid: false, error: error?.message || 'Invalid token', user: null };
+  }
+  
+  return { valid: true, user: data.user, error: null };
+}
 
 serve(async (req) => {
   console.log('=== b2-upload-url called ===');
@@ -21,6 +62,16 @@ serve(async (req) => {
   }
 
   try {
+    // Validar token do Supabase
+    const tokenValidation = await validateSupabaseToken(req);
+    console.log('Token validation:', tokenValidation.valid ? 'OK' : tokenValidation.error);
+    
+    if (!tokenValidation.valid) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', message: tokenValidation.error }), { 
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
     // Verificar B2
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
       console.log('B2 not configured');
@@ -44,7 +95,7 @@ serve(async (req) => {
     if (!authRes.ok) {
       const err = await authRes.text();
       console.log('B2 auth failed:', err);
-      return new Response(JSON.stringify({ error: 'B2 auth failed' }), { 
+      return new Response(JSON.stringify({ error: 'B2 auth failed', details: err }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -54,7 +105,7 @@ serve(async (req) => {
 
     // Obter body
     const body = await req.json().catch(() => ({}));
-    const { filename, category, userId, contentType } = body;
+    const { filename, category, contentType } = body;
 
     if (!filename || !category) {
       return new Response(JSON.stringify({ error: 'filename e category obrigatórios' }), { 
@@ -94,7 +145,8 @@ serve(async (req) => {
     // Gerar path do arquivo
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = `grooveflix/${userId || 'anon'}/${category}/${timestamp}_${safeFilename}`;
+    const userId = tokenValidation.user?.id || 'anon';
+    const filePath = `grooveflix/${userId}/${category}/${timestamp}_${safeFilename}`;
 
     console.log('Success! Path:', filePath);
 
