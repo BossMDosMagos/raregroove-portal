@@ -1,21 +1,23 @@
-import React, { useCallback, useState } from 'react';
-import { Upload, X, FileAudio, File, FileText, CheckCircle, AlertCircle, Loader2, Music, Disc, FolderOpen } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, X, FileAudio, File, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 const CATEGORIES = [
-  { id: 'single', label: 'Single', icon: Music, description: 'Faixas individuais' },
-  { id: 'album', label: 'Álbum', icon: Disc, description: 'Álbum completo' },
+  { id: 'single', label: 'Single', icon: Music, description: 'Uma faixa individual' },
+  { id: 'album', label: 'Álbum', icon: Disc, description: 'Pasta com todas as músicas' },
   { id: 'coletanea', label: 'Coletânea', icon: FolderOpen, description: 'Compilação de faixas' },
-  { id: 'iso', label: 'ISO', icon: File, description: 'CD completo (imagem)' },
+  { id: 'iso', label: 'ISO', icon: File, description: 'CD completo (imagem ISO)' },
 ];
 
 const FILE_TYPES = {
   audio: { accept: 'audio/*', maxSize: 500 * 1024 * 1024, label: 'Áudio (MP3/FLAC/WAV)', required: true },
+  folder: { accept: '', maxSize: 2000 * 1024 * 1024, label: 'Pasta com músicas', required: true },
   preview: { accept: 'audio/*', maxSize: 50 * 1024 * 1024, label: 'Preview (opcional)', required: false },
-  iso: { accept: '.iso', maxSize: 800 * 1024 * 1024, label: 'ISO (CD Completo)', required: false },
+  iso: { accept: '.iso,.bin,.img', maxSize: 800 * 1024 * 1024, label: 'ISO (CD Completo)', required: false },
   booklet: { accept: '.pdf', maxSize: 50 * 1024 * 1024, label: 'Encarte/PDF (opcional)', required: false },
+  cover: { accept: 'image/jpeg,.jpg,.jpeg,.png,.webp,.gif', maxSize: 10 * 1024 * 1024, label: 'Capa (imagem)', required: false },
 };
 
 export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess }) {
@@ -25,9 +27,11 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
   const [category, setCategory] = useState(item?.metadata?.grooveflix?.category || 'album');
   const [files, setFiles] = useState({
     audio: null,
+    folder: null,
     preview: null,
     iso: null,
     booklet: null,
+    cover: null,
   });
   const [metadata, setMetadata] = useState({
     title: item?.title || '',
@@ -37,10 +41,22 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
   });
 
   const handleFileSelect = (type, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    let selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
     const validation = FILE_TYPES[type];
+    
+    // Para pasta, aceita múltiplos arquivos
+    if (type === 'folder') {
+      if (selectedFiles.length < 2) {
+        toast.error('Selecione uma pasta com pelo menos 2 músicas');
+        return;
+      }
+      setFiles(prev => ({ ...prev, folder: selectedFiles }));
+      return;
+    }
+
+    const file = selectedFiles[0];
     
     if (file.size > validation.maxSize) {
       toast.error('Arquivo muito grande', {
@@ -52,21 +68,20 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const uploadToB2 = async (file, category) => {
-    // 1. Obter URL de upload do Supabase Function
+  const uploadToB2 = async (file, fileCategory) => {
     const { data, error } = await supabase.functions.invoke('b2-upload-url', {
       body: {
         filename: file.name,
-        category,
+        category: fileCategory,
         fileSize: file.size
       }
     });
 
     if (error || !data?.uploadUrl) {
-      throw new Error(error?.message || 'Falha ao obter URL de upload');
+      console.error('Upload URL error:', error, data);
+      throw new Error(error?.message || data?.error || 'Falha ao obter URL de upload');
     }
 
-    // 2. Fazer upload direto para o B2
     const response = await fetch(data.uploadUrl, {
       method: 'POST',
       headers: {
@@ -80,10 +95,9 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      throw new Error(`Upload falhou: ${response.status} - ${errorText}`);
     }
 
-    // 3. Retornar informações do arquivo
     const result = await response.json();
     return {
       fileId: result.fileId,
@@ -100,7 +114,23 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       return;
     }
 
-    if (!files.audio && !files.iso) {
+    // Validar conforme categoria
+    if (category === 'album' && !files.folder && !files.audio) {
+      toast.error('Selecione uma pasta com as músicas ou um arquivo de áudio');
+      return;
+    }
+    
+    if (category === 'single' && !files.audio) {
+      toast.error('Selecione um arquivo de áudio');
+      return;
+    }
+
+    if (category === 'iso' && !files.iso) {
+      toast.error('Selecione um arquivo ISO');
+      return;
+    }
+
+    if (!files.audio && !files.folder && !files.iso) {
       toast.error('Adicione pelo menos um arquivo de áudio ou ISO');
       return;
     }
@@ -109,20 +139,63 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     setUploadProgress({});
 
     try {
-      const grooveflixData = {
+      const grooveflixData: any = {
         category,
         audio_path: null,
+        audio_files: [],
         preview_path: null,
         iso_path: null,
         booklet_path: null,
+        cover_path: null,
       };
 
-      // Upload de áudio principal
+      // Upload de capa (opcional)
+      if (files.cover) {
+        setUploadProgress(p => ({ ...p, cover: 'uploading' }));
+        try {
+          const coverResult = await uploadToB2(files.cover, 'cover');
+          grooveflixData.cover_path = coverResult.filePath;
+          setUploadProgress(p => ({ ...p, cover: 'done' }));
+        } catch (e) {
+          console.error('Cover upload error:', e);
+          toast.warning('Capa não foi enviada, continuando...');
+          setUploadProgress(p => ({ ...p, cover: 'error' }));
+        }
+      }
+
+      // Upload de pasta com músicas (álbum/coletânea)
+      if (files.folder && files.folder.length > 0) {
+        const audioFiles = [];
+        for (let i = 0; i < files.folder.length; i++) {
+          const file = files.folder[i];
+          // Pular se não for arquivo de áudio
+          if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)) {
+            continue;
+          }
+          
+          setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
+          try {
+            const result = await uploadToB2(file, 'audio');
+            audioFiles.push({
+              name: file.name,
+              path: result.filePath,
+              size: file.size
+            });
+            setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done' }));
+          } catch (e) {
+            console.error(`Upload error for ${file.name}:`, e);
+            setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'error' }));
+          }
+        }
+        grooveflixData.audio_files = audioFiles;
+      }
+
+      // Upload de áudio único (single)
       if (files.audio) {
         setUploadProgress(p => ({ ...p, audio: 'uploading' }));
         const audioResult = await uploadToB2(files.audio, 'audio');
         grooveflixData.audio_path = audioResult.filePath;
-        grooveflixData.audio_fileId = audioResult.fileId;
+        grooveflixData.audio_files = [{ name: files.audio.name, path: audioResult.filePath, size: files.audio.size }];
         setUploadProgress(p => ({ ...p, audio: 'done' }));
       }
 
@@ -131,16 +204,14 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
         setUploadProgress(p => ({ ...p, preview: 'uploading' }));
         const previewResult = await uploadToB2(files.preview, 'preview');
         grooveflixData.preview_path = previewResult.filePath;
-        grooveflixData.preview_fileId = previewResult.fileId;
         setUploadProgress(p => ({ ...p, preview: 'done' }));
       }
 
-      // Upload de ISO (opcional)
+      // Upload de ISO
       if (files.iso) {
         setUploadProgress(p => ({ ...p, iso: 'uploading' }));
         const isoResult = await uploadToB2(files.iso, 'iso');
         grooveflixData.iso_path = isoResult.filePath;
-        grooveflixData.iso_fileId = isoResult.fileId;
         setUploadProgress(p => ({ ...p, iso: 'done' }));
       }
 
@@ -149,7 +220,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
         setUploadProgress(p => ({ ...p, booklet: 'uploading' }));
         const bookletResult = await uploadToB2(files.booklet, 'booklet');
         grooveflixData.booklet_path = bookletResult.filePath;
-        grooveflixData.booklet_fileId = bookletResult.fileId;
         setUploadProgress(p => ({ ...p, booklet: 'done' }));
       }
 
@@ -191,7 +261,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       onSuccess?.();
       onClose();
       
-      setFiles({ audio: null, preview: null, iso: null, booklet: null });
+      setFiles({ audio: null, folder: null, preview: null, iso: null, booklet: null, cover: null });
       setMetadata({ title: '', artist: '', year: '', genre: '' });
 
     } catch (error) {
@@ -210,7 +280,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative w-full max-w-2xl bg-charcoal-deep border border-fuchsia-500/30 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-2xl bg-charcoal-deep border border-fuchsia-500/30 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <h2 className="text-xl font-black uppercase tracking-wider text-white">
             Adicionar ao Grooveflix
@@ -220,7 +290,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Categoria */}
           <div>
             <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-3">
@@ -298,36 +368,59 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
 
           {/* Arquivos */}
           <div className="space-y-4">
+            {/* Capa - sempre disponível */}
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
-                Arquivo de Áudio (MP3/FLAC/WAV) *
+                Capa do Álbum (imagem)
               </label>
               <FileUploadZone
-                file={files.audio}
-                onChange={(e) => handleFileSelect('audio', e)}
-                icon={FileAudio}
-                progress={uploadProgress.audio}
-                accept={FILE_TYPES.audio.accept}
+                file={files.cover}
+                onChange={(e) => handleFileSelect('cover', e)}
+                icon={Image}
+                progress={uploadProgress.cover}
+                accept={FILE_TYPES.cover.accept}
+                placeholder="Selecione a capa (JPEG, PNG)"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
-                Preview (versão reduzida, opcional)
-              </label>
-              <FileUploadZone
-                file={files.preview}
-                onChange={(e) => handleFileSelect('preview', e)}
-                icon={Music}
-                progress={uploadProgress.preview}
-                accept={FILE_TYPES.preview.accept}
-              />
-            </div>
+            {/* Áudio ou Pasta conforme categoria */}
+            {category === 'album' || category === 'coletanea' ? (
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
+                  Pasta com Músicas *
+                </label>
+                <FileUploadZone
+                  file={files.folder}
+                  isFolder
+                  fileCount={files.folder?.length || 0}
+                  onChange={(e) => handleFileSelect('folder', e)}
+                  icon={FolderOpen}
+                  progress={uploadProgress.folder_0}
+                  accept=""
+                  placeholder="Selecione a pasta com todas as músicas"
+                />
+              </div>
+            ) : category === 'single' ? (
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
+                  Arquivo de Áudio (MP3/FLAC/WAV) *
+                </label>
+                <FileUploadZone
+                  file={files.audio}
+                  onChange={(e) => handleFileSelect('audio', e)}
+                  icon={FileAudio}
+                  progress={uploadProgress.audio}
+                  accept={FILE_TYPES.audio.accept}
+                  placeholder="Selecione o arquivo de áudio"
+                />
+              </div>
+            ) : null}
 
+            {/* ISO para categoria ISO */}
             {category === 'iso' && (
               <div>
                 <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
-                  Arquivo ISO (CD Completo)
+                  Arquivo ISO (CD Completo) *
                 </label>
                 <FileUploadZone
                   file={files.iso}
@@ -335,10 +428,27 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                   icon={Disc}
                   progress={uploadProgress.iso}
                   accept={FILE_TYPES.iso.accept}
+                  placeholder="Selecione o arquivo ISO"
                 />
               </div>
             )}
 
+            {/* Preview (opcional) */}
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
+                Preview (30-60 segundos, opcional)
+              </label>
+              <FileUploadZone
+                file={files.preview}
+                onChange={(e) => handleFileSelect('preview', e)}
+                icon={Music}
+                progress={uploadProgress.preview}
+                accept={FILE_TYPES.preview.accept}
+                placeholder="Selecione o preview"
+              />
+            </div>
+
+            {/* Encarte (opcional) */}
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-white/60 mb-2">
                 Encarte/Livreto (PDF, opcional)
@@ -349,12 +459,13 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
                 icon={FileText}
                 progress={uploadProgress.booklet}
                 accept={FILE_TYPES.booklet.accept}
+                placeholder="Selecione o encarte em PDF"
               />
             </div>
           </div>
 
           <p className="text-xs text-white/40 text-center">
-            Os arquivos são enviados diretamente para o Backblaze B2 (Bucket: Cofre-RareGroove-01)
+            Os arquivos são enviados diretamente para o Backblaze B2
           </p>
         </div>
 
@@ -373,7 +484,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
             {uploading ? (
               <>
                 <Loader2 className="animate-spin w-4 h-4" />
-                Enviando para B2...
+                Enviando...
               </>
             ) : (
               <>
@@ -388,15 +499,15 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
   );
 }
 
-function FileUploadZone({ file, onChange, icon: Icon, progress, accept }) {
+function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progress, accept, placeholder }) {
   const [dragOver, setDragOver] = useState(false);
 
   return (
     <div
-      className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition ${
+      className={`relative border-2 border-dashed rounded-2xl p-4 text-center transition ${
         dragOver
           ? 'border-fuchsia-500 bg-fuchsia-500/10'
-          : file
+          : file || fileCount > 0
           ? 'border-fuchsia-500/50 bg-fuchsia-500/5'
           : 'border-white/10 hover:border-white/20'
       }`}
@@ -406,7 +517,23 @@ function FileUploadZone({ file, onChange, icon: Icon, progress, accept }) {
         e.preventDefault();
         setDragOver(false);
         const dt = new DataTransfer();
-        dt.files = e.dataTransfer.files;
+        
+        if (isFolder) {
+          // Para pasta, tentar obter todos os arquivos
+          const items = e.dataTransfer.items;
+          if (items) {
+            for (let i = 0; i < items.length; i++) {
+              const item = items[i];
+              if (item.kind === 'file') {
+                const f = item.getAsFile();
+                if (f) dt.files.push(f);
+              }
+            }
+          }
+        } else {
+          dt.files = e.dataTransfer.files;
+        }
+        
         onChange({ target: dt });
       }}
     >
@@ -414,31 +541,41 @@ function FileUploadZone({ file, onChange, icon: Icon, progress, accept }) {
         type="file"
         accept={accept}
         onChange={onChange}
+        {...(isFolder ? { webkitdirectory: '', directory: '' } : {})}
+        multiple={isFolder}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       />
       
       {progress === 'uploading' ? (
         <div className="flex items-center justify-center gap-2 text-fuchsia-400">
-          <Loader2 className="animate-spin w-6 h-6" />
-          <span className="text-sm font-medium">Enviando para B2...</span>
+          <Loader2 className="animate-spin w-5 h-5" />
+          <span className="text-sm">Enviando...</span>
         </div>
       ) : progress === 'done' ? (
         <div className="flex items-center justify-center gap-2 text-green-400">
-          <CheckCircle className="w-6 h-6" />
-          <span className="text-sm font-medium">Enviado!</span>
+          <CheckCircle className="w-5 h-5" />
+          <span className="text-sm">Enviado!</span>
         </div>
-      ) : file ? (
+      ) : progress === 'error' ? (
+        <div className="flex items-center justify-center gap-2 text-red-400">
+          <span className="text-sm">Erro</span>
+        </div>
+      ) : file || fileCount > 0 ? (
         <div className="flex items-center justify-center gap-3">
-          <Icon className="w-8 h-8 text-fuchsia-400" />
+          <Icon className="w-6 h-6 text-fuchsia-400" />
           <div className="text-left">
-            <p className="text-white font-medium text-sm">{file.name}</p>
-            <p className="text-white/50 text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            <p className="text-white font-medium text-sm">
+              {isFolder ? `${fileCount} arquivos selecionados` : file.name}
+            </p>
+            {!isFolder && file && (
+              <p className="text-white/50 text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            )}
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 text-white/40">
-          <Icon className="w-10 h-10" />
-          <p className="text-sm">Arraste ou clique para selecionar</p>
+        <div className="flex flex-col items-center gap-2 text-white/40 py-2">
+          <Icon className="w-8 h-8" />
+          <p className="text-sm">{placeholder || 'Arraste ou clique para selecionar'}</p>
         </div>
       )}
     </div>
