@@ -111,68 +111,38 @@ export default function CheckoutDynamic() {
         const available = [];
         const isSandbox = finalSettings.gateway_mode !== 'production';
 
-        // Debug: forçar todos os métodos para teste visual
-        // Stripe
+        // SEMPRE adicionar os 4 métodos de pagamento - FORÇA TOTAL
+        // Stripe - Cartão
         available.push({
           id: 'stripe',
           name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
           icon: CreditCard
         });
 
-        // Mercado Pago - sempre mostrar
-        const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
-        if (mpKey) {
-          available.push({
-            id: 'mercado_pago',
-            name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago',
-            icon: Disc
-          });
-        } else {
-          // Fallback: mostrar mesmo sem chave para visualização
-          available.push({
-            id: 'mercado_pago',
-            name: 'Mercado Pago',
-            icon: Disc
-          });
-        }
+        // Mercado Pago
+        available.push({
+          id: 'mercado_pago',
+          name: 'Mercado Pago',
+          icon: Disc
+        });
 
         // PayPal
-        const paypalKey = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-        if (paypalKey) {
-          available.push({
-            id: 'paypal',
-            name: isSandbox ? 'PayPal (Teste)' : 'PayPal',
-            icon: Shield
-          });
-        } else {
-          // Fallback: mostrar mesmo sem chave
-          available.push({
-            id: 'paypal',
-            name: 'PayPal',
-            icon: Shield
-          });
-        }
+        available.push({
+          id: 'paypal',
+          name: 'PayPal',
+          icon: Shield
+        });
 
-        // PIX do Portal - mostrar sempre
-        const pixKey = finalSettings.pix_enabled || finalSettings.pix_key;
-        if (pixKey) {
-          available.push({
-            id: 'pix_portal',
-            name: 'PIX do Portal',
-            icon: QrCode
-          });
-        } else {
-          // Fallback: mostrar para visualização
-          available.push({
-            id: 'pix_portal',
-            name: 'PIX Portal',
-            icon: QrCode
-          });
-        }
+        // PIX Portal
+        available.push({
+          id: 'pix_portal',
+          name: 'PIX do Portal',
+          icon: QrCode
+        });
 
-        setAvailableGateways(available);
+        console.log('[CheckoutDynamic] Gateway disponíveis:', available.map(a => a.id));
         
-        // Padrão: Mercado Pago
+        setAvailableGateways(available);
         setSelectedGateway('mercado_pago');
       } catch (e) {
         toast.error('Erro ao iniciar checkout', { description: e.message });
