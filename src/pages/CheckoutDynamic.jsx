@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CreditCard, Crown, Gem, Loader2, Sparkles, Disc, Shield, QrCode } from 'lucide-react';
+import { CreditCard, Crown, Gem, Loader2, Sparkles, Disc, Shield, QrCode, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import PaymentGateway from '../components/PaymentGateway';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
+import NixieTubes from '../components/NixieTubes.jsx';
+import AcrylicLedClock from '../components/AcrylicLedClock.jsx';
 
 export default function CheckoutDynamic() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
@@ -235,7 +237,17 @@ export default function CheckoutDynamic() {
         <div className="absolute top-10 right-[-160px] w-[680px] h-[680px] bg-purple-600/14 blur-[160px]" />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-4 md:px-6 space-y-10">
+      {/* Relógios Vintage - Rodapé */}
+      <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
+        <div className="hifi-display-left pointer-events-auto">
+          <NixieTubes digits={6} />
+        </div>
+        <div className="hifi-display-right pointer-events-auto">
+          <AcrylicLedClock />
+        </div>
+      </div>
+
+      <div className="relative max-w-5xl mx-auto px-4 md:px-6 md:pl-[170px] md:pr-[190px] space-y-10">
         <header className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-500/30 bg-white/5 text-[10px] font-black uppercase tracking-[0.22em]">
             <Sparkles className="w-4 h-4 text-fuchsia-400" />
@@ -272,26 +284,82 @@ export default function CheckoutDynamic() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-white/50">
                 {t('checkout.subscription.gateway') || 'Método de Pagamento'}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {availableGateways.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setSelectedGateway(g.id)}
-                    className={`px-4 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition ${
-                      selectedGateway === g.id
-                        ? 'bg-gradient-to-r from-fuchsia-500/20 to-purple-500/10 border-fuchsia-500/40 text-white'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:border-white/20'
-                    }`}
-                  >
-                    {g.name}
-                  </button>
-                ))}
+              
+              {/* Grid de 4 Cards de Pagamento */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {availableGateways.map((g) => {
+                  const IconComponent = g.icon || CreditCard;
+                  const isSelected = selectedGateway === g.id;
+                  
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGateway(g.id);
+                        setShowPayment(false);
+                      }}
+                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 group ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/50 shadow-lg shadow-amber-500/20'
+                          : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'
+                      }`}
+                    >
+                      {/* Ícone grande */}
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 transition-all ${
+                        isSelected 
+                          ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black' 
+                          : 'bg-white/10 text-white/60 group-hover:text-white group-hover:bg-white/20'
+                      }`}>
+                        <IconComponent size={24} />
+                      </div>
+                      
+                      {/* Nome do gateway */}
+                      <div className={`text-[10px] font-black uppercase tracking-wider text-center ${
+                        isSelected ? 'text-amber-400' : 'text-white/60'
+                      }`}>
+                        {g.name}
+                      </div>
+                      
+                      {/* Indicador de seleção */}
+                      {isSelected && (
+                        <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                          <CheckCircle size={12} className="text-black" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Preview do método selecionado */}
+              {selectedGateway && !showPayment && (
+                <div className="bg-gradient-to-r from-white/5 to-transparent border border-white/10 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {selectedGateway === 'stripe' && <CreditCard className="text-amber-400" size={20} />}
+                      {selectedGateway === 'mercado_pago' && <Disc className="text-amber-400" size={20} />}
+                      {selectedGateway === 'paypal' && <Shield className="text-amber-400" size={20} />}
+                      {selectedGateway === 'pix_portal' && <QrCode className="text-amber-400" size={20} />}
+                      <div>
+                        <p className="text-white text-sm font-bold">
+                          {selectedGateway === 'stripe' && 'Cartão de Crédito via Stripe'}
+                          {selectedGateway === 'mercado_pago' && 'Mercado Pago'}
+                          {selectedGateway === 'paypal' && 'PayPal'}
+                          {selectedGateway === 'pix_portal' && 'PIX - Transferência Instantânea'}
+                        </p>
+                        <p className="text-white/40 text-xs">
+                          {selectedGateway === 'pix_portal' ? 'Pagamento direto para o portal' : 'Ambiente seguro de pagamento'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {!showPayment && (
@@ -299,10 +367,13 @@ export default function CheckoutDynamic() {
                 type="button"
                 disabled={displayedGateways.length === 0 || paying}
                 onClick={() => setShowPayment(true)}
-                className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.22em] text-xs border transition bg-gradient-to-r ${plan.accent} hover:opacity-95 disabled:opacity-30`}
+                className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.22em] text-xs border transition bg-gradient-to-r ${plan.accent} hover:opacity-95 disabled:opacity-30 flex items-center justify-center gap-2`}
               >
-                <CreditCard className="inline mr-2 w-5 h-5" />
-                {t('checkout.subscription.cta') || 'Confirmar e Pagar'}
+                {selectedGateway === 'stripe' && <CreditCard className="w-5 h-5" />}
+                {selectedGateway === 'mercado_pago' && <Disc className="w-5 h-5" />}
+                {selectedGateway === 'paypal' && <Shield className="w-5 h-5" />}
+                {selectedGateway === 'pix_portal' && <QrCode className="w-5 h-5" />}
+                {selectedGateway === 'pix_portal' ? 'Gerar Código PIX' : 'Confirmar e Pagar'}
               </button>
             )}
 
