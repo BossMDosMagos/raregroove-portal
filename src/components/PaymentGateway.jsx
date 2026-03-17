@@ -333,7 +333,9 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
     
     if (config && mpLoaded && preferenceId && !brickReady) {
       console.log('[MP] Tentando renderizar brick...');
-      setTimeout(() => renderPaymentBrick(), 500);
+      requestAnimationFrame(() => {
+        setTimeout(() => renderPaymentBrick(), 100);
+      });
     }
   }, [config, mpLoaded, preferenceId, brickReady]);
 
@@ -343,32 +345,38 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
     console.log('[MP] preferenceId:', preferenceId);
     console.log('[MP] amount:', amount);
     
-    const container = document.getElementById(containerId);
-    console.log('[MP] Container encontrado:', !!container);
-    
-    if (!container) {
-      console.error('[MP] Container não encontrado!');
-      setError('Container não encontrado. Recarregue a página.');
-      return;
-    }
+    const tryRender = (attempts = 0) => {
+      const container = document.getElementById(containerId);
+      console.log(`[MP] Tentativa ${attempts + 1} - Container encontrado:`, !!container);
+      
+      if (!container) {
+        if (attempts < 10) {
+          console.log(`[MP] Container não encontrado, tentando novamente em 300ms...`);
+          setTimeout(() => tryRender(attempts + 1), 300);
+        } else {
+          console.error('[MP] Container não encontrado após 10 tentativas!');
+          setError('Container não encontrado. Recarregue a página.');
+        }
+        return;
+      }
 
-    if (!window.MercadoPago) {
-      console.error('[MP] SDK não carregou!');
-      setError('SDK do Mercado Pago não carregou.');
-      return;
-    }
+      if (!window.MercadoPago) {
+        console.error('[MP] SDK não carregou!');
+        setError('SDK do Mercado Pago não carregou.');
+        return;
+      }
 
-    if (!preferenceId) {
-      console.error('[MP] Preference ID não definido!');
-      setError('Preferência de pagamento não criada.');
-      return;
-    }
+      if (!preferenceId) {
+        console.error('[MP] Preference ID não definido!');
+        setError('Preferência de pagamento não criada.');
+        return;
+      }
 
-    container.innerHTML = '';
-    console.log('[MP] Criando brick...');
+      container.innerHTML = '';
+      console.log('[MP] Criando brick no container:', containerId);
 
-    try {
-      window.MercadoPago.bricks().create('payment', containerId, {
+      try {
+        window.MercadoPago.bricks().create('payment', containerId, {
         initialization: {
           preferenceId: preferenceId,
           amount: amount,
@@ -434,6 +442,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           }
         }
       });
+      tryRender();
     } catch (err) {
       console.error('[MP] Erro ao criar brick:', err);
       setError(err.message);
