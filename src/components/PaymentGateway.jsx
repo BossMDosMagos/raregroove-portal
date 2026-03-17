@@ -225,40 +225,62 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   const [brickReady, setBrickReady] = useState(false);
   const [error, setError] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
+  const containerId = 'paymentBrick_container';
 
   useEffect(() => {
-    if (currency !== 'BRL') {
-      onError(new Error('Mercado Pago suporta apenas BRL'));
-      return;
+    console.log('[MP] selectedGateway mudou:', selectedGateway);
+    if (selectedGateway === 'mercado_pago') {
+      if (currency !== 'BRL') {
+        onError(new Error('Mercado Pago suporta apenas BRL'));
+        return;
+      }
+      init();
     }
-    init();
-  }, [currency]);
+  }, [selectedGateway, currency]);
 
   const init = async () => {
     setInitializing(true);
+    setDebugInfo('Iniciando...');
     try {
+      console.log('[MP] Carregando config...');
+      setDebugInfo('Carregando configuração...');
+      
       const cfg = await getGatewayConfig(selectedGateway);
       setConfig(cfg);
+      console.log('[MP] Config carregada:', cfg.publicKey ? '✅ Com chave' : '❌ Sem chave');
+      setDebugInfo(`Config: ${cfg.publicKey ? 'OK' : 'Falta chave'}`);
 
-      if (!window.MercadoPago && cfg.publicKey) {
-        const script = document.createElement('script');
-        script.src = 'https://sdk.mercadopago.com/js/v2';
-        script.async = true;
-        script.onload = () => {
-          window.MercadoPago = new window.MercadoPago(cfg.publicKey, {
-            locale: 'pt-BR'
-          });
-          setMpLoaded(true);
-        };
-        script.onerror = () => {
-          setError('Erro ao carregar SDK do Mercado Pago');
-          setInitializing(false);
-        };
-        document.body.appendChild(script);
-      } else if (window.MercadoPago) {
+      if (!window.MercadoPago) {
+        console.log('[MP] Carregando SDK...');
+        setDebugInfo('Carregando SDK do Mercado Pago...');
+        
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://sdk.mercadopago.com/js/v2';
+          script.async = true;
+          script.onload = () => {
+            console.log('[MP] Script carregado');
+            window.MercadoPago = new window.MercadoPago(cfg.publicKey, {
+              locale: 'pt-BR'
+            });
+            setMpLoaded(true);
+            resolve();
+          };
+          script.onerror = () => {
+            console.error('[MP] Erro ao carregar script');
+            reject(new Error('Erro ao carregar SDK'));
+          };
+          document.body.appendChild(script);
+        });
+      } else {
+        console.log('[MP] SDK já está disponível');
         setMpLoaded(true);
       }
 
+      console.log('[MP] Criando preferência...');
+      setDebugInfo('Criando preferência de pagamento...');
+      
       const transactionId = `RG${Date.now()}`;
       
       const { data, error: fnError } = await supabase.functions.invoke('mp-create-preference', {
@@ -282,9 +304,12 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       });
 
       if (fnError) {
-        console.error('❌ [MP] Erro ao criar preferência:', fnError);
+        console.error('[MP] Erro ao criar preferência:', fnError);
         throw new Error(fnError.message);
       }
+
+      console.log('[MP] Preferência criada:', data);
+      setDebugInfo(`Preferência: ${data?.id || 'erro'}`);
 
       if (data?.preference_id) {
         setPreferenceId(data.preference_id);
@@ -294,8 +319,9 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         throw new Error('Não foi possível criar a preferência de pagamento');
       }
     } catch (err) {
-      console.error('❌ [MP] Erro na inicialização:', err);
+      console.error('[MP] Erro na inicialização:', err);
       setError(err.message);
+      setDebugInfo(`Erro: ${err.message}`);
       onError(err);
     } finally {
       setInitializing(false);
@@ -303,104 +329,146 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   };
 
   useEffect(() => {
-    if (config?.publicKey && mpLoaded && preferenceId && !brickReady) {
-      renderPaymentBrick();
+    console.log('[MP] Estado:', { mpLoaded, preferenceId, brickReady, config: !!config });
+    
+    if (config && mpLoaded && preferenceId && !brickReady) {
+      console.log('[MP] Tentando renderizar brick...');
+      setTimeout(() => renderPaymentBrick(), 500);
     }
-  }, [config, mpLoaded, preferenceId]);
+  }, [config, mpLoaded, preferenceId, brickReady]);
 
   const renderPaymentBrick = () => {
-    const container = document.getElementById('mp-payment-brick-container');
-    if (!container || !window.MercadoPago || !preferenceId) return;
+    console.log('[MP] renderPaymentBrick chamado');
+    console.log('[MP] window.MercadoPago:', !!window.MercadoPago);
+    console.log('[MP] preferenceId:', preferenceId);
+    console.log('[MP] amount:', amount);
+    
+    const container = document.getElementById(containerId);
+    console.log('[MP] Container encontrado:', !!container);
+    
+    if (!container) {
+      console.error('[MP] Container não encontrado!');
+      setError('Container não encontrado. Recarregue a página.');
+      return;
+    }
+
+    if (!window.MercadoPago) {
+      console.error('[MP] SDK não carregou!');
+      setError('SDK do Mercado Pago não carregou.');
+      return;
+    }
+
+    if (!preferenceId) {
+      console.error('[MP] Preference ID não definido!');
+      setError('Preferência de pagamento não criada.');
+      return;
+    }
 
     container.innerHTML = '';
+    console.log('[MP] Criando brick...');
 
-    window.MercadoPago.bricks().create('payment', 'mp-payment-brick-container', {
-      initialization: {
-        preferenceId: preferenceId,
-        amount: amount,
-        payer: {
-          email: metadata.buyerEmail || 'comprador@email.com'
-        }
-      },
-      customization: {
-        visual: {
-          style: {
-            customVariables: {
-              theme: 'dark',
-              themePrimaryColor: '#D4AF37',
-              backgroundColor: '#1a1a1a',
-              backgroundColorCard: '#2a2a2a',
-              backgroundColorInput: '#333333',
-              backgroundColorApp: '#1a1a1a',
-              textColor: '#ffffff',
-              textColorSecondary: '#cccccc',
-              textColorThird: '#999999',
-              fontColorPrimary: '#ffffff',
-              fontColorSecondary: '#cccccc',
-              fontFamily: 'Inter, sans-serif',
-              borderRadiusMedium: '12px',
-              borderRadiusSmall: '8px'
-            }
+    try {
+      window.MercadoPago.bricks().create('payment', containerId, {
+        initialization: {
+          preferenceId: preferenceId,
+          amount: amount,
+          payer: {
+            email: metadata.buyerEmail || 'comprador@email.com'
           }
         },
-        paymentMethods: {
-          creditCard: { 
-            cardholders: { 
-              identificationType: 'CPF' 
+        customization: {
+          visual: {
+            style: {
+              customVariables: {
+                theme: 'dark',
+                themePrimaryColor: '#D4AF37',
+                backgroundColor: '#1a1a1a',
+                backgroundColorCard: '#2a2a2a',
+                backgroundColorInput: '#333333',
+                backgroundColorApp: '#1a1a1a',
+                textColor: '#ffffff',
+                textColorSecondary: '#cccccc',
+                textColorThird: '#999999',
+                fontColorPrimary: '#ffffff',
+                fontColorSecondary: '#cccccc',
+                fontFamily: 'Inter, sans-serif',
+                borderRadiusMedium: '12px',
+                borderRadiusSmall: '8px'
+              }
+            }
+          },
+          paymentMethods: {
+            creditCard: { 
+              cardholders: { 
+                identificationType: 'CPF' 
+              },
+              installments: { 
+                maxInstallments: 12 
+              }
             },
-            installments: { 
-              maxInstallments: 12 
+            debitCard: { 
+              cardholders: { 
+                identificationType: 'CPF' 
+              } 
+            },
+            pix: {
+              enabled: true
+            },
+            ticket: {
+              enabled: true
             }
+          }
+        },
+        callbacks: {
+          onReady: () => {
+            console.log('✅ Payment Brick pronto!');
+            setBrickReady(true);
           },
-          debitCard: { 
-            cardholders: { 
-              identificationType: 'CPF' 
-            } 
+          onError: (err) => {
+            console.error('❌ Erro no Payment Brick:', err);
+            setError('Erro ao renderizar formulário de pagamento');
+            onError(err);
           },
-          pix: {
-            enabled: true
-          },
-          ticket: {
-            enabled: true
+          onSubmit: async (formData) => {
+            console.log('📤 [MP] Pagamento submetido:', formData);
           }
         }
-      },
-      callbacks: {
-        onReady: () => {
-          console.log('✅ Payment Brick pronto');
-          setBrickReady(true);
-        },
-        onError: (err) => {
-          console.error('❌ Erro no Payment Brick:', err);
-          setError('Erro ao processar pagamento');
-          onError(err);
-        },
-        onSubmit: async (formData) => {
-          console.log('📤 [MP] Pagamento submetido:', formData);
-        }
-      }
-    });
+      });
+    } catch (err) {
+      console.error('[MP] Erro ao criar brick:', err);
+      setError(err.message);
+    }
   };
 
   if (initializing) {
     return (
-      <div className="flex items-center justify-center py-12 text-white/60">
-        <Disc className="animate-spin mr-2" size={24} />
-        <span>Iniciando Mercado Pago...</span>
+      <div className="space-y-4">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+          <Disc className="animate-spin mx-auto mb-4 text-[#D4AF37]" size={32} />
+          <p className="text-white/60 mb-2">Iniciando Mercado Pago...</p>
+          <p className="text-white/30 text-xs font-mono">{debugInfo}</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center space-y-4">
-        <p className="text-red-300">{error}</p>
-        <button 
-          onClick={() => { setError(null); init(); }}
-          className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
-        >
-          Tentar novamente
-        </button>
+      <div className="space-y-4">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center space-y-4">
+          <p className="text-red-300">{error}</p>
+          <p className="text-white/30 text-xs font-mono">{debugInfo}</p>
+          <button 
+            onClick={() => { setError(null); setBrickReady(false); init(); }}
+            className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
+          >
+            Tentar novamente
+          </button>
+        </div>
+        <div 
+          id={containerId} 
+          className="min-h-[400px] bg-white/5 border border-white/10 rounded-xl"
+        ></div>
       </div>
     );
   }
@@ -408,9 +476,9 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   return (
     <div className="space-y-4">
       <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div id="mp-payment-brick-container" className="min-h-[350px]"></div>
+        <div id={containerId} className="min-h-[450px]"></div>
       </div>
-
+      
       <p className="text-xs text-white/40 text-center">
         🔒 Pagamento processado de forma segura pelo Mercado Pago
       </p>
