@@ -44,6 +44,7 @@ const AdminRefundTasks = lazy(() => import('./pages/AdminRefundTasks'));
 const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 const AdminUpload = lazy(() => import('./pages/AdminUpload'));
+const AdminTrash = lazy(() => import('./pages/AdminTrash'));
 
 // Páginas de Usuário (Lazy Loading)
 const MyItems = lazy(() => import('./pages/MyItems'));
@@ -498,6 +499,20 @@ export default function App() {
                   ? null
                   : isAdmin
                   ? <DebugPayments />
+                  : <Navigate to="/" />
+                : <Navigate to="/" />
+            }
+          />
+
+          {/* Rota Admin Lixeira Total (Protegida + Admin) */}
+          <Route
+            path="/admin/trash"
+            element={
+              session
+                ? adminLoading
+                  ? null
+                  : isAdmin
+                  ? <AdminTrash />
                   : <Navigate to="/" />
                 : <Navigate to="/" />
             }
