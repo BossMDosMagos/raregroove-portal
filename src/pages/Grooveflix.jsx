@@ -193,73 +193,91 @@ export default function Grooveflix() {
 
   return (
     <div className="min-h-screen bg-black text-white pb-28">
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-black" />
-        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] bg-fuchsia-600/15 blur-[120px]" />
-        <div className="absolute top-10 right-[-160px] w-[620px] h-[620px] bg-purple-600/12 blur-[140px]" />
-        <div className="absolute bottom-[-220px] left-1/3 w-[640px] h-[640px] bg-fuchsia-600/10 blur-[160px]" />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-fuchsia-600/10 blur-[150px]" />
+        <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
+        <div className="absolute bottom-[-300px] left-1/4 w-[800px] h-[800px] bg-fuchsia-600/5 blur-[180px]" />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-fuchsia-500/10 to-transparent" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 md:px-6 pt-28 space-y-10">
-        <header className="flex items-end justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-500/30 bg-white/5 text-[10px] font-black uppercase tracking-[0.22em]">
-              <Sparkles className="w-4 h-4 text-fuchsia-400" />
-              {t('grooveflix.badge') || 'HI-FI STREAMING'}
+      <div className="relative max-w-[1600px] mx-auto px-4 md:px-6 pt-28 space-y-12">
+        <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8">
+          <div className="relative">
+            <div className="absolute -top-6 -left-4 w-24 h-24 bg-fuchsia-500/10 rounded-full blur-2xl" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30">
+                <Sparkles className="w-3 h-3 text-fuchsia-400" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-fuchsia-300">{t('grooveflix.badge') || 'HI-FI STREAMING'}</span>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter">
               GROOVEFLIX<span className="text-fuchsia-400">.</span>
             </h1>
-            <p className="text-white/55 text-sm md:text-base max-w-2xl">
-              {t('grooveflix.subtitle') || 'O sarcófago digital do colecionador. Streaming e curadoria em estética Hi‑Fi.'}
-            </p>
+            <div className="flex items-center gap-4 mt-4">
+              <div className="h-[2px] w-16 bg-gradient-to-r from-fuchsia-500 to-transparent" />
+              <p className="text-white/40 text-sm md:text-base max-w-xl font-medium tracking-wide">
+                {t('grooveflix.subtitle') || 'O sarcófago digital do colecionador. Streaming e curadoria em estética Hi‑Fi.'}
+              </p>
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 text-white/50 text-xs uppercase tracking-widest">
-            <Film className="w-4 h-4" />
-            {loading ? (t('grooveflix.loading') || 'Carregando...') : `${tracks.length} ${t('grooveflix.albums') || 'álbuns'}`}
-          </div>
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="hidden md:flex items-center gap-3 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <Film className="w-4 h-4 text-white/50" />
+              <span className="text-white/60 text-xs font-medium uppercase tracking-widest">
+                {loading ? (t('grooveflix.loading') || 'Carregando...') : `${tracks.length} ${t('grooveflix.albums') || 'Álbuns'}`}
+              </span>
+            </div>
 
-          {profile && (
-            <button
-              onClick={() => setShowUploader(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 text-xs font-black uppercase tracking-widest hover:bg-fuchsia-500/30 transition"
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar CD
-            </button>
-          )}
+            {profile && (
+              <button
+                onClick={() => setShowUploader(true)}
+                className="group relative flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 border border-fuchsia-400/30 text-white text-[11px] font-black uppercase tracking-widest overflow-hidden transition-all hover:shadow-lg hover:shadow-fuchsia-500/20"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Plus className="w-4 h-4 relative z-10" />
+                <span className="relative z-10">Adicionar CD</span>
+              </button>
+            )}
+          </div>
         </header>
 
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'single', label: 'Single' },
-            { id: 'album', label: 'Álbum' },
-            { id: 'coletanea', label: 'Coletânea' },
-            { id: 'iso', label: 'ISO' },
-          ].map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCategoryFilter(c.id)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition ${
-                categoryFilter === c.id
-                  ? 'bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-200'
-                  : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+        <div className="relative rounded-2xl p-1 bg-gradient-to-r from-fuchsia-500/20 via-purple-500/10 to-transparent">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-fuchsia-500/5 to-transparent" />
+          <div className="relative flex flex-wrap gap-2 p-4">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'single', label: 'Single' },
+              { id: 'album', label: 'Álbum' },
+              { id: 'coletanea', label: 'Coletânea' },
+              { id: 'iso', label: 'ISO' },
+            ].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategoryFilter(c.id)}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                  categoryFilter === c.id
+                    ? 'bg-fuchsia-500/20 border-fuchsia-500/50 text-fuchsia-200 shadow-lg shadow-fuchsia-500/10'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:bg-white/10'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-12">
-          <GrooveflixRow
-            title={t('grooveflix.rows.continue') || 'Continuar Ouvindo'}
-            items={continueListening}
-            onPick={onPick}
-          />
+        <div className="space-y-14">
+          {continueListening.length > 0 && (
+            <GrooveflixRow
+              title={t('grooveflix.rows.continue') || 'Continuar Ouvindo'}
+              items={continueListening}
+              onPick={onPick}
+            />
+          )}
           <GrooveflixRow
             title={t('grooveflix.rows.recent') || 'Recém Imortalizados'}
             items={recentlyImmortalized}
