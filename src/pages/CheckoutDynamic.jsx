@@ -109,34 +109,34 @@ export default function CheckoutDynamic() {
         const available = [];
         const isSandbox = finalSettings.gateway_mode !== 'production';
 
-        if (finalSettings.gateway_provider === 'stripe' || !finalSettings.gateway_provider) {
-          if (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
-            available.push({
-              id: 'stripe',
-              name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito (Stripe)',
-              icon: CreditCard
-            });
-          }
+        // Stripe
+        const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if ((!finalSettings.gateway_provider || finalSettings.gateway_provider === 'stripe') && stripeKey) {
+          available.push({
+            id: 'stripe',
+            name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
+            icon: CreditCard
+          });
         }
 
-        if (finalSettings.gateway_provider === 'mercado_pago') {
-          if (import.meta.env.VITE_MP_PUBLIC_KEY) {
-            available.push({
-              id: 'mercado_pago',
-              name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago',
-              icon: CreditCard
-            });
-          }
+        // Mercado Pago
+        const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+        if (finalSettings.gateway_provider === 'mercado_pago' && mpKey) {
+          available.push({
+            id: 'mercado_pago',
+            name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago',
+            icon: CreditCard
+          });
         }
 
-        if (finalSettings.gateway_provider === 'paypal') {
-          if (import.meta.env.VITE_PAYPAL_CLIENT_ID) {
-            available.push({
-              id: 'paypal',
-              name: isSandbox ? 'PayPal (Teste)' : 'PayPal',
-              icon: CreditCard
-            });
-          }
+        // PayPal
+        const paypalKey = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+        if (finalSettings.gateway_provider === 'paypal' && paypalKey) {
+          available.push({
+            id: 'paypal',
+            name: isSandbox ? 'PayPal (Teste)' : 'PayPal',
+            icon: CreditCard
+          });
         }
 
         setAvailableGateways(available);

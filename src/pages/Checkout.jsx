@@ -181,35 +181,38 @@ export default function Checkout() {
         const available = [];
         const isSandbox = finalSettings.gateway_mode !== 'production';
         
-        // Stripe
+        // Stripe - chave do .env.local: VITE_STRIPE_PUBLISHABLE_KEY
         if (finalSettings.gateway_provider === 'stripe' || !finalSettings.gateway_provider) {
-          if (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+          const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+          if (stripeKey) {
             available.push({ 
               id: 'stripe', 
-              name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito (Stripe)', 
+              name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito', 
               icon: CreditCard 
             });
           }
         }
 
-        // Mercado Pago
+        // Mercado Pago - chave do .env.local: VITE_MP_PUBLIC_KEY
         if (finalSettings.gateway_provider === 'mercado_pago') {
-          if (import.meta.env.VITE_MP_PUBLIC_KEY) {
+          const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+          if (mpKey) {
             available.push({ 
               id: 'mercado_pago', 
               name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago', 
-              icon: CreditCard 
+              icon: Disc 
             });
           }
         }
         
-        // PayPal
+        // PayPal - chave do .env.local: VITE_PAYPAL_CLIENT_ID
         if (finalSettings.gateway_provider === 'paypal') {
-          if (import.meta.env.VITE_PAYPAL_CLIENT_ID) {
+          const paypalKey = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+          if (paypalKey) {
             available.push({ 
               id: 'paypal', 
               name: isSandbox ? 'PayPal (Teste)' : 'PayPal', 
-              icon: CreditCard 
+              icon: Shield 
             });
           }
         }
