@@ -377,71 +377,34 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
 
       try {
         window.MercadoPago.bricks().create('payment', containerId, {
-        initialization: {
-          preferenceId: preferenceId,
-          amount: amount,
-          payer: {
-            email: metadata.buyerEmail || 'comprador@email.com'
-          }
-        },
-        customization: {
-          visual: {
-            style: {
-              customVariables: {
-                theme: 'dark',
-                themePrimaryColor: '#D4AF37',
-                backgroundColor: '#1a1a1a',
-                backgroundColorCard: '#2a2a2a',
-                backgroundColorInput: '#333333',
-                backgroundColorApp: '#1a1a1a',
-                textColor: '#ffffff',
-                textColorSecondary: '#cccccc',
-                textColorThird: '#999999',
-                fontColorPrimary: '#ffffff',
-                fontColorSecondary: '#cccccc',
-                fontFamily: 'Inter, sans-serif',
-                borderRadiusMedium: '12px',
-                borderRadiusSmall: '8px'
-              }
-            }
+          initialization: {
+            preferenceId: preferenceId,
+            amount: parseFloat(amount),
           },
-          paymentMethods: {
-            creditCard: { 
-              cardholders: { 
-                identificationType: 'CPF' 
-              },
-              installments: { 
-                maxInstallments: 12 
-              }
+          customization: {
+            paymentMethods: {
+              ticket: 'all',
+              bankTransfer: 'all',
+              creditCard: 'all',
+              debitCard: 'all',
+              mercadoPago: 'all',
             },
-            debitCard: { 
-              cardholders: { 
-                identificationType: 'CPF' 
-              } 
+          },
+          callbacks: {
+            onReady: () => {
+              console.log('✅ Payment Brick pronto!');
+              setBrickReady(true);
             },
-            pix: {
-              enabled: true
+            onError: (err) => {
+              console.error('❌ Erro no Payment Brick:', err);
+              setError('Erro ao renderizar formulário de pagamento');
+              onError(err);
             },
-            ticket: {
-              enabled: true
+            onSubmit: async (formData) => {
+              console.log('📤 [MP] Pagamento submetido:', formData);
             }
           }
-        },
-        callbacks: {
-          onReady: () => {
-            console.log('✅ Payment Brick pronto!');
-            setBrickReady(true);
-          },
-          onError: (err) => {
-            console.error('❌ Erro no Payment Brick:', err);
-            setError('Erro ao renderizar formulário de pagamento');
-            onError(err);
-          },
-          onSubmit: async (formData) => {
-            console.log('📤 [MP] Pagamento submetido:', formData);
-          }
-        }
-      });
+        });
       tryRender();
     } catch (err) {
       console.error('[MP] Erro ao criar brick:', err);
