@@ -396,11 +396,13 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
             }
           }
         });
-      tryRender();
-    } catch (err) {
-      console.error('[MP] Erro ao criar brick:', err);
-      setError(err.message);
-    }
+      } catch (err) {
+        console.error('[MP] Erro ao criar brick:', err);
+        setError(err.message);
+      }
+    };
+
+    tryRender();
   };
 
   if (initializing) {
