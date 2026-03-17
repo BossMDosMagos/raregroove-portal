@@ -92,29 +92,25 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       throw new Error(data.error || data.message || `Erro ${response.status}`);
     }
 
+    // Extrair o token de upload da resposta da Edge Function
+    const { uploadUrl, uploadAuthToken, filePath, contentType } = data;
+    
     console.log('=== B2 UPLOAD DEBUG ===');
-    console.log('uploadUrl:', data.uploadUrl);
-    console.log('uploadAuthToken:', data.uploadAuthToken);
-    console.log('filePath:', data.filePath);
-    console.log('contentType:', data.contentType);
-    console.log('file.size:', file.size);
+    console.log('uploadUrl:', uploadUrl);
+    console.log('uploadAuthToken (primeiros 30 chars):', uploadAuthToken?.substring(0, 30));
+    console.log('filePath:', filePath);
     console.log('file.type:', file.type);
 
-    // Headers obrigatórios para o B2
-    const uploadHeaders = new Headers();
-    uploadHeaders.append('Authorization', data.uploadAuthToken);
-    uploadHeaders.append('X-Bz-File-Name', data.filePath);
-    uploadHeaders.append('Content-Type', data.contentType || 'b2/x-auto');
-    uploadHeaders.append('Content-Length', file.size.toString());
-    uploadHeaders.append('X-Bz-Content-Sha1', 'do_not_verify');
-
-    console.log('Headers to send:', Object.fromEntries(uploadHeaders));
-
-    // Upload direto para B2 usando POST
-    const uploadResponse = await fetch(data.uploadUrl, {
+    // POST direto para o B2 com os headers obrigatórios da API Nativa
+    const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       body: file,
-      headers: uploadHeaders
+      headers: {
+        'Authorization': uploadAuthToken,
+        'X-Bz-File-Name': encodeURIComponent(filePath),
+        'Content-Type': file.type || 'b2/x-auto',
+        'X-Bz-Content-Sha1': 'do_not_verify'
+      }
     });
 
     if (!uploadResponse.ok) {
@@ -124,10 +120,12 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
     }
 
     const result = await uploadResponse.json();
+    console.log('B2 upload success:', result);
+
     return {
       fileId: result.fileId,
       fileName: result.fileName,
-      filePath: data.filePath,
+      filePath: filePath,
       contentType: file.type,
       size: file.size
     };
