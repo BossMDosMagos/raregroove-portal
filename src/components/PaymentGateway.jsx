@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Disc, CreditCard, CheckCircle, Lock } from 'lucide-react';
+import { Disc, CreditCard, CheckCircle, Lock, QrCode } from 'lucide-react';
 import { getGatewayConfig, createStripePaymentIntent } from '../utils/paymentGateway';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { generatePixBrcode, getQRCodeURL } from '../utils/pixBrcode';
 
 /**
  * COMPONENTE DE PAGAMENTO REAL - STRIPE
@@ -614,6 +615,185 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
 }
 
 /**
+ * COMPONENTE DE PAGAMENTO - PIX PORTAL
+ * Utiliza configuração do admin em /admin/fees
+ */
+function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
+  const [processing, setProcessing] = useState(false);
+  const [pixConfig, setPixConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [brcode, setBrcode] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    loadPixConfig();
+  }, []);
+
+  const loadPixConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('pix_enabled, pix_key, pix_beneficiary')
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+
+      if (!data.pix_enabled || !data.pix_key) {
+        throw new Error('PIX não está configurado pelo administrador');
+      }
+
+      setPixConfig(data);
+
+      const txid = `RG${Date.now()}`;
+      const generatedBrcode = generatePixBrcode(data.pix_key, amount, {
+        merchantName: data.pix_beneficiary || 'RAREGROOVE',
+        merchantCity: 'BRASIL',
+        txid: txid
+      });
+
+      setBrcode(generatedBrcode);
+      setQrCodeUrl(getQRCodeURL(generatedBrcode));
+    } catch (error) {
+      console.error('❌ [PIX Portal] Erro ao carregar config:', error);
+      onError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyPix = () => {
+    navigator.clipboard.writeText(brcode);
+    setCopied(true);
+    toast.success('Código PIX copiado!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleConfirmPayment = async () => {
+    setProcessing(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      onSuccess({
+        paymentId: `PIX-${Date.now()}`,
+        provider: 'pix_portal',
+        status: 'pending',
+        pixBrcode: brcode,
+        amount: amount
+      });
+    } catch (error) {
+      onError(error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8 text-white/60">
+        <Disc className="animate-spin mr-2" size={20} />
+        Carregando dados do PIX...
+      </div>
+    );
+  }
+
+  if (!pixConfig) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300">
+        PIX não está disponível no momento. Entre em contato com o suporte.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+        <div className="flex items-center justify-center">
+          <QrCode size={48} className="text-[#D4AF37]" />
+        </div>
+        
+        <div className="text-center space-y-2">
+          <p className="text-white font-semibold text-lg">Pague com PIX</p>
+          <p className="text-white/60 text-sm">
+            Escaneie o QR Code ou copie o código abaixo
+          </p>
+        </div>
+
+        {qrCodeUrl && (
+          <div className="flex justify-center">
+            <div className="bg-white p-4 rounded-xl">
+              <img 
+                src={qrCodeUrl} 
+                alt="QR Code PIX" 
+                className="w-48 h-48"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs text-white/50 text-center uppercase tracking-widest">
+            Valor
+          </p>
+          <p className="text-2xl text-[#D4AF37] font-bold text-center">
+            R$ {amount.toFixed(2)}
+          </p>
+        </div>
+
+        {pixConfig.pix_beneficiary && (
+          <div className="text-center">
+            <p className="text-xs text-white/50">Beneficiário</p>
+            <p className="text-white font-medium">{pixConfig.pix_beneficiary}</p>
+          </div>
+        )}
+
+        <div className="bg-gray-900/50 border border-white/10 rounded-lg p-3">
+          <p className="text-xs text-white/50 text-center mb-2">Código PIX (copie e cole)</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs text-white/70 font-mono break-all line-clamp-2">
+              {brcode.substring(0, 50)}...
+            </code>
+            <button
+              onClick={handleCopyPix}
+              className="bg-[#D4AF37] text-black px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap"
+            >
+              {copied ? 'Copiado!' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-white/40 text-center">
+          O pagamento será confirmado automaticamente após a transferência
+        </p>
+      </div>
+
+      <button
+        onClick={handleConfirmPayment}
+        disabled={processing}
+        className="w-full bg-[#D4AF37] text-black py-4 rounded-2xl font-black uppercase text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {processing ? (
+          <>
+            <Disc className="animate-spin" size={18} />
+            Confirmando...
+          </>
+        ) : (
+          <>
+            <CheckCircle size={18} />
+            Já fiz o pagamento
+          </>
+        )}
+      </button>
+
+      <p className="text-xs text-white/40 text-center">
+        🔒 Pagamento processado via PIX do Portal RareGroove
+      </p>
+    </div>
+  );
+}
+
+/**
  * ORQUESTRADOR DE PAGAMENTO
  */
 export default function PaymentGateway({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
@@ -702,6 +882,17 @@ export default function PaymentGateway({ amount, selectedGateway, metadata, onSu
 
       {selectedGateway === 'paypal' && (
         <PayPalPaymentForm
+          amount={amount}
+          selectedGateway={selectedGateway}
+          metadata={metadata}
+          onSuccess={onSuccess}
+          onError={onError}
+          currency={currency}
+        />
+      )}
+
+      {selectedGateway === 'pix_portal' && (
+        <PixPortalPaymentForm
           amount={amount}
           selectedGateway={selectedGateway}
           metadata={metadata}
