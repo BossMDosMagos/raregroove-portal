@@ -323,11 +323,11 @@ export default function App() {
           {/* Rota do Checkout (Protegida) */}
           <Route
             path="/checkout"
-            element={session ? <CheckoutDynamic /> : <Navigate to="/" />}
+            element={session ? <CheckoutDynamic key={location.pathname} /> : <Navigate to="/" />}
           />
           <Route 
             path="/checkout/:itemId" 
-            element={session ? <Checkout /> : <Navigate to="/" />} 
+            element={session ? <Checkout key={location.pathname} /> : <Navigate to="/" />} 
           />
 
           {/* Rota de Pagamento de Taxa de Swap (Protegida) */}
