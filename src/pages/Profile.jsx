@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { fetchProfile, upsertProfile, uploadAvatar } from '../utils/profileService';
 import { fetchUserAddresses, createAddress, updateAddress, deleteAddress, setAddressAsDefault, validateAddress } from '../utils/addressService';
-import { formatPixKeyDisplay, normalizePixKeyForBrcode } from '../utils/pixFormatter';
 import Avatar from '../components/Avatar';
 import { RatingDisplay, EliteBadge, ReviewCard, RatingStats } from '../components/RatingComponents';
 import { WishlistModal, WishlistCard, WishlistEmptyState } from '../components/WishlistComponents';
 import { FinancialDashboard } from '../components/FinancialComponents';
-import { PixQRCodePreview } from '../components/PixQRCodePreview';
 import { InfoBox, Pill } from '../components/UIComponents';
 import {
   User, Star, RefreshCw, ShoppingBag, Settings, LogOut, Loader2, Gift,
@@ -133,7 +131,6 @@ export default function Profile() {
     complement: '',
     city: '',
     state: '',
-    pix_key: '',
     avatar_url: ''
   });
   const [items, setItems] = useState([]);
@@ -195,7 +192,6 @@ export default function Profile() {
         complement: profileData?.complement || '',
         city: profileData?.city || '',
         state: profileData?.state || '',
-        pix_key: profileData?.pix_key ? formatPixKeyDisplay(profileData.pix_key) : '',
         avatar_url: profileData?.avatar_url || ''
       });
 
@@ -340,8 +336,6 @@ export default function Profile() {
         return;
       }
 
-      const normalizedPixKey = normalizePixKeyForBrcode(editData.pix_key || '');
-
       // Salvar na tabela profiles (update direto)
       await upsertProfile(currentUser.id, {
         email: editData.email,
@@ -354,8 +348,7 @@ export default function Profile() {
         number: editData.number,
         complement: editData.complement,
         city: editData.city,
-        state: editData.state,
-        pix_key: normalizedPixKey
+        state: editData.state
       });
 
       toast.success('PERFIL ATUALIZADO', {
@@ -379,7 +372,6 @@ export default function Profile() {
           complement: updatedProfile.complement || '',
           city: updatedProfile.city || '',
           state: updatedProfile.state || '',
-          pix_key: updatedProfile.pix_key ? formatPixKeyDisplay(updatedProfile.pix_key) : '',
           avatar_url: updatedProfile.avatar_url || ''
         });
       }
@@ -416,19 +408,6 @@ export default function Profile() {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
     }
-  };
-
-  const handlePixKeyChange = (e) => {
-    const nextRaw = e.target.value;
-    lastPixKeyRef.current = nextRaw;
-    setEditData((prev) => ({ ...prev, pix_key: nextRaw }));
-  };
-
-  const handlePixKeyBlur = () => {
-    const raw = String(lastPixKeyRef.current || editData.pix_key || '');
-    const normalized = normalizePixKeyForBrcode(raw);
-    const display = normalized ? formatPixKeyDisplay(normalized) : '';
-    setEditData((prev) => ({ ...prev, pix_key: display || raw.trimStart() }));
   };
 
   const handleCEPChange = async (cep) => {
@@ -1030,10 +1009,6 @@ export default function Profile() {
                       <p className="text-silver-premium/40 text-[10px] uppercase font-black tracking-widest mb-1">Estado</p>
                       <p className="text-white font-medium">{editData.state || '—'}</p>
                     </div>
-                    <div className="glass-card rounded-2xl p-5 border-gold-premium/10 md:col-span-2">
-                      <p className="text-silver-premium/40 text-[10px] uppercase font-black tracking-widest mb-1">Chave PIX</p>
-                      <p className="text-white font-medium break-words">{editData.pix_key ? '••••••••••••••••' : '—'}</p>
-                    </div>
                   </div>
                   <div className="pt-4">
                     <button
@@ -1144,25 +1119,6 @@ export default function Profile() {
                       disabled={cepLoading}
                     />
                   </div>
-
-                  <GoldInput
-                    label={t('profile.form.pixKey')}
-                    value={editData.pix_key || ''}
-                    onChange={handlePixKeyChange}
-                    onBlur={handlePixKeyBlur}
-                    placeholder={t('profile.form.pixKeyPlaceholder')}
-                  />
-
-                  {/* Preview do QR Code PIX */}
-                  {editData.pix_key && (
-                    <div className="mt-6 glass-card rounded-3xl p-6 border-gold-premium/10 shadow-inner">
-                      <PixQRCodePreview 
-                        pixKey={editData.pix_key}
-                        merchantName="RAREGROOVE"
-                        merchantCity="BRASIL"
-                      />
-                    </div>
-                  )}
 
                   <InfoBox type="info">
                     <p className="font-semibold text-gold-premium mb-2">{t('profile.form.dataInfoTitle')}</p>
