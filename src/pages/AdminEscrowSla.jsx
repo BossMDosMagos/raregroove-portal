@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { Clock, Loader2, RefreshCw, Search, Shield, AlertTriangle } from 'lucide-react';
+import { Clock, Loader2, RefreshCw, Search, Shield, AlertTriangle, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const toastSuccessStyle = { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' };
@@ -11,6 +11,7 @@ export default function AdminEscrowSla() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [deleting, setDeleting] = useState({});
   const [events, setEvents] = useState([]);
   const [transactionsMap, setTransactionsMap] = useState({});
   const [profilesMap, setProfilesMap] = useState({});
@@ -115,6 +116,34 @@ export default function AdminEscrowSla() {
       });
     } finally {
       setRunning(false);
+    }
+  };
+
+  const handleDelete = async (eventId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este evento SLA?')) return;
+    
+    setDeleting((prev) => ({ ...prev, [eventId]: true }));
+    try {
+      const { error } = await supabase
+        .from('escrow_sla_events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      toast.success('EVENTO EXCLUÍDO', {
+        description: 'Evento SLA removido com sucesso.',
+        style: toastSuccessStyle,
+      });
+
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    } catch (error) {
+      toast.error('ERRO AO EXCLUIR', {
+        description: error.message || 'Falha ao excluir evento.',
+        style: toastErrorStyle,
+      });
+    } finally {
+      setDeleting((prev) => ({ ...prev, [eventId]: false }));
     }
   };
 
@@ -270,6 +299,18 @@ export default function AdminEscrowSla() {
                                 Abrir disputa
                               </button>
                             ) : null}
+                            <button
+                              onClick={() => handleDelete(e.id)}
+                              disabled={deleting[e.id]}
+                              className="px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-red-500/20 hover:border-red-400 transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                              {deleting[e.id] ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Excluir
+                            </button>
                           </div>
                         </td>
                       </tr>
