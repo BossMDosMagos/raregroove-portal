@@ -219,13 +219,24 @@ export function CartProvider({ children }) {
   useEffect(() => {
     const stored = loadFromStorage();
     if (stored.length === 0) return;
-    setCartItems(stored);
+    
+    const now = nowMs();
+    const EXPIRY_BUFFER = 5000;
+    const validItems = stored.filter(item => item.reservedUntilMs && (item.reservedUntilMs + EXPIRY_BUFFER) > now);
+    
+    if (validItems.length !== stored.length) {
+      persist(validItems);
+    }
+    
+    setCartItems(validItems);
 
-    const itemIds = stored.map(item => item.itemId);
-    fetchMultipleItemsDetails(itemIds)
-      .then(d => setItemsDetails(d))
-      .catch(() => setItemsDetails({}));
-  }, [fetchMultipleItemsDetails, loadFromStorage]);
+    const itemIds = validItems.map(item => item.itemId);
+    if (itemIds.length > 0) {
+      fetchMultipleItemsDetails(itemIds)
+        .then(d => setItemsDetails(d))
+        .catch(() => setItemsDetails({}));
+    }
+  }, [fetchMultipleItemsDetails, loadFromStorage, persist]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((v) => v + 1), 1000);
@@ -237,7 +248,8 @@ export function CartProvider({ children }) {
     if (releasingRef.current) return;
 
     const now = nowMs();
-    const expiredItems = cartItems.filter(item => item.reservedUntilMs && item.reservedUntilMs <= now);
+    const EXPIRY_BUFFER = 5000;
+    const expiredItems = cartItems.filter(item => item.reservedUntilMs && (item.reservedUntilMs + EXPIRY_BUFFER) <= now);
     
     if (expiredItems.length > 0) {
       expiredItems.forEach(async (item) => {
