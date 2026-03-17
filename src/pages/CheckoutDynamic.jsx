@@ -111,22 +111,27 @@ export default function CheckoutDynamic() {
         const available = [];
         const isSandbox = finalSettings.gateway_mode !== 'production';
 
+        // Debug: forçar todos os métodos para teste visual
         // Stripe
-        const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-        if (stripeKey) {
-          available.push({
-            id: 'stripe',
-            name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
-            icon: CreditCard
-          });
-        }
+        available.push({
+          id: 'stripe',
+          name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
+          icon: CreditCard
+        });
 
-        // Mercado Pago - sempre mostrar se tiver chave
+        // Mercado Pago - sempre mostrar
         const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
         if (mpKey) {
           available.push({
             id: 'mercado_pago',
             name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago',
+            icon: Disc
+          });
+        } else {
+          // Fallback: mostrar mesmo sem chave para visualização
+          available.push({
+            id: 'mercado_pago',
+            name: 'Mercado Pago',
             icon: Disc
           });
         }
@@ -139,9 +144,16 @@ export default function CheckoutDynamic() {
             name: isSandbox ? 'PayPal (Teste)' : 'PayPal',
             icon: Shield
           });
+        } else {
+          // Fallback: mostrar mesmo sem chave
+          available.push({
+            id: 'paypal',
+            name: 'PayPal',
+            icon: Shield
+          });
         }
 
-        // PIX do Portal - se tiver configuração
+        // PIX do Portal - mostrar sempre
         const pixKey = finalSettings.pix_enabled || finalSettings.pix_key;
         if (pixKey) {
           available.push({
@@ -149,18 +161,19 @@ export default function CheckoutDynamic() {
             name: 'PIX do Portal',
             icon: QrCode
           });
-        }
-
-        // Se não houver nenhum, adicionar Stripe como fallback
-        if (available.length === 0 && stripeKey) {
-          available.push({ id: 'stripe', name: 'Stripe', icon: CreditCard });
+        } else {
+          // Fallback: mostrar para visualização
+          available.push({
+            id: 'pix_portal',
+            name: 'PIX Portal',
+            icon: QrCode
+          });
         }
 
         setAvailableGateways(available);
         
-        // Padrão: Mercado Pago se disponível, senão primeiro da lista
-        const defaultGateway = available.find(g => g.id === 'mercado_pago')?.id || available[0]?.id;
-        setSelectedGateway(defaultGateway);
+        // Padrão: Mercado Pago
+        setSelectedGateway('mercado_pago');
       } catch (e) {
         toast.error('Erro ao iniciar checkout', { description: e.message });
         navigate('/plans');
