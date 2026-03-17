@@ -13,7 +13,7 @@ export default function Navbar() {
   const location = useLocation();
   const { unreadCount: unreadMessagesCount } = useUnreadMessages();
   const { locale, setLocale, t } = useI18n();
-  const { cartItem, setOpen } = useCart();
+  const { cartItems, setOpen } = useCart();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -26,7 +26,7 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const notificationsRef = useRef(null);
 
-  const cartCount = cartItem?.itemId ? 1 : 0;
+  const cartCount = cartItems.length;
   const unreadNotificationsCount = notifications.filter(n => !n.is_read).length;
   const totalUnreadCount = unreadNotificationsCount + unreadMessagesCount;
 

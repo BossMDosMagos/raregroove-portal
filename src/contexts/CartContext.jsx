@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 const CartContext = createContext(null);
 
-const STORAGE_KEY = 'rg_cart_v1';
+const STORAGE_KEY = 'rg_cart_v2';
 
 function safeJsonParse(value, fallback) {
   try {
@@ -31,19 +31,20 @@ export function CartProvider({ children }) {
   const reserveMs = Number.isFinite(reserveMinutes) ? reserveMinutes * 60 * 1000 : 15 * 60 * 1000;
 
   const [open, setOpen] = useState(false);
-  const [cartItem, setCartItem] = useState(null);
-  const [itemDetails, setItemDetails] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+  const [itemsDetails, setItemsDetails] = useState({});
   const [tick, setTick] = useState(0);
   const releasingRef = useRef(false);
 
   const loadFromStorage = useCallback(() => {
     const stored = safeJsonParse(localStorage.getItem(STORAGE_KEY) || 'null', null);
-    if (!stored?.itemId || !stored?.reservedUntilMs) return null;
-    return stored;
+    if (!stored || !Array.isArray(stored) || stored.length === 0) return [];
+    const valid = stored.filter(item => item?.itemId && item?.reservedUntilMs);
+    return valid;
   }, []);
 
   const persist = useCallback((next) => {
-    if (!next) {
+    if (!next || next.length === 0) {
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
@@ -53,12 +54,27 @@ export function CartProvider({ children }) {
   const fetchItemDetails = useCallback(async (itemId) => {
     const { data, error } = await supabase
       .from('items')
-      .select('id, title, artist, price, image_url, status, is_sold')
+      .select('id, title, artist, price, image_url, status, is_sold, seller_id')
       .eq('id', itemId)
       .maybeSingle();
 
     if (error) throw error;
     return data || null;
+  }, []);
+
+  const fetchMultipleItemsDetails = useCallback(async (itemIds) => {
+    if (!itemIds || itemIds.length === 0) return {};
+    const { data, error } = await supabase
+      .from('items')
+      .select('id, title, artist, price, image_url, status, is_sold, seller_id')
+      .in('id', itemIds);
+
+    if (error) throw error;
+    const details = {};
+    (data || []).forEach(item => {
+      details[item.id] = item;
+    });
+    return details;
   }, []);
 
   const releaseReservation = useCallback(async (itemId) => {
@@ -82,18 +98,23 @@ export function CartProvider({ children }) {
     }
   }, []);
 
-  const removeFromCart = useCallback(async ({ silent } = { silent: false }) => {
-    if (!cartItem?.itemId) return;
+  const removeFromCart = useCallback(async (itemId, { silent } = { silent: false }) => {
+    if (!itemId || cartItems.length === 0) return;
 
-    const itemId = cartItem.itemId;
-    setCartItem(null);
-    setItemDetails(null);
-    persist(null);
+    const newCartItems = cartItems.filter(item => item.itemId !== itemId);
+    setCartItems(newCartItems);
+    persist(newCartItems);
+
+    setItemsDetails(prev => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
 
     try {
       await releaseReservation(itemId);
       if (!silent) {
-        toast.success('RESERVA CANCELADA', {
+        toast.success('ITEM REMOVIDO', {
           description: 'O item voltou ao catálogo.',
           style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
         });
@@ -106,29 +127,29 @@ export function CartProvider({ children }) {
         });
       }
     }
-  }, [cartItem?.itemId, persist, releaseReservation]);
+  }, [cartItems, persist, releaseReservation]);
 
-  const clearLocalCart = useCallback((itemId) => {
-    if (!cartItem?.itemId) return;
-    if (itemId && cartItem.itemId !== itemId) return;
-    setCartItem(null);
-    setItemDetails(null);
-    persist(null);
-  }, [cartItem?.itemId, persist]);
+  const clearLocalCart = useCallback(async () => {
+    if (cartItems.length === 0) return;
+    
+    for (const item of cartItems) {
+      try {
+        await releaseReservation(item.itemId);
+      } catch (e) {
+        console.error('Erro ao liberar reserva:', e);
+      }
+    }
+    
+    setCartItems([]);
+    setItemsDetails({});
+    persist([]);
+  }, [cartItems, persist, releaseReservation]);
 
   const addToCart = useCallback(async (itemId) => {
-    if (cartItem?.itemId && cartItem.itemId !== itemId) {
-      toast.error('CARRINHO DE ELITE', {
-        description: 'Apenas 1 raridade por vez. Finalize ou cancele a reserva atual.',
-        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
-      });
+    const existingItem = cartItems.find(item => item.itemId === itemId);
+    if (existingItem) {
       setOpen(true);
-      return null;
-    }
-
-    if (cartItem?.itemId === itemId) {
-      setOpen(true);
-      return cartItem;
+      return existingItem;
     }
 
     const { data: userData } = await supabase.auth.getUser();
@@ -173,35 +194,38 @@ export function CartProvider({ children }) {
     }
 
     const reservedUntilMs = data?.reserved_until ? new Date(data.reserved_until).getTime() : nowMs() + reserveMs;
-    const next = { itemId, reservedUntilMs };
-    setCartItem(next);
-    persist(next);
+    const newItem = { itemId, reservedUntilMs };
+    const nextCartItems = [...cartItems, newItem];
+    
+    setCartItems(nextCartItems);
+    persist(nextCartItems);
     setOpen(true);
 
     try {
       const details = await fetchItemDetails(itemId);
-      setItemDetails(details);
+      setItemsDetails(prev => ({ ...prev, [itemId]: details }));
     } catch {
-      setItemDetails(null);
+      setItemsDetails(prev => ({ ...prev, [itemId]: null }));
     }
 
-    toast.success('RARIDADE RESERVADA', {
+    toast.success('ITEM ADICIONADO', {
       description: `Reserva garantida por ${reserveMinutes} minutos.`,
       style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
     });
 
-    return next;
-  }, [cartItem?.itemId, fetchItemDetails, persist, reserveMinutes, reserveMs]);
+    return newItem;
+  }, [cartItems, fetchItemDetails, persist, reserveMinutes, reserveMs]);
 
   useEffect(() => {
     const stored = loadFromStorage();
-    if (!stored) return;
-    setCartItem(stored);
+    if (stored.length === 0) return;
+    setCartItems(stored);
 
-    fetchItemDetails(stored.itemId)
-      .then((d) => setItemDetails(d))
-      .catch(() => setItemDetails(null));
-  }, [fetchItemDetails, loadFromStorage]);
+    const itemIds = stored.map(item => item.itemId);
+    fetchMultipleItemsDetails(itemIds)
+      .then(d => setItemsDetails(d))
+      .catch(() => setItemsDetails({}));
+  }, [fetchMultipleItemsDetails, loadFromStorage]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((v) => v + 1), 1000);
@@ -209,28 +233,58 @@ export function CartProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!cartItem?.itemId || !cartItem?.reservedUntilMs) return;
+    if (cartItems.length === 0) return;
     if (releasingRef.current) return;
-    const remaining = cartItem.reservedUntilMs - nowMs();
-    if (remaining > 0) return;
-    removeFromCart({ silent: true }).catch(() => void 0);
-  }, [cartItem?.itemId, cartItem?.reservedUntilMs, removeFromCart, tick]);
 
-  const remainingMs = cartItem?.reservedUntilMs ? Math.max(0, cartItem.reservedUntilMs - nowMs()) : 0;
-  const remainingText = cartItem?.reservedUntilMs ? formatRemaining(remainingMs) : null;
+    const now = nowMs();
+    const expiredItems = cartItems.filter(item => item.reservedUntilMs && item.reservedUntilMs <= now);
+    
+    if (expiredItems.length > 0) {
+      expiredItems.forEach(async (item) => {
+        await removeFromCart(item.itemId, { silent: true });
+      });
+      
+      if (cartItems.length === expiredItems.length) {
+        toast.error('RESERVAS EXPIRADAS', {
+          description: 'Todos os itens expiraram e foram removidos.',
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+        });
+      }
+    }
+  }, [cartItems, removeFromCart, tick]);
+
+  const totalItems = cartItems.length;
+  
+  const totalPrice = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const details = itemsDetails[item.itemId];
+      return sum + (Number(details?.price) || 0);
+    }, 0);
+  }, [cartItems, itemsDetails]);
+
+  const earliestExpiry = useMemo(() => {
+    if (cartItems.length === 0) return null;
+    const minExpiry = Math.min(...cartItems.map(item => item.reservedUntilMs || 0));
+    return minExpiry > 0 ? minExpiry : null;
+  }, [cartItems]);
+
+  const remainingMs = earliestExpiry ? Math.max(0, earliestExpiry - nowMs()) : 0;
+  const remainingText = earliestExpiry ? formatRemaining(remainingMs) : null;
 
   const value = useMemo(() => ({
     open,
     setOpen,
-    cartItem,
-    itemDetails,
+    cartItems,
+    itemsDetails,
     addToCart,
     removeFromCart,
     clearLocalCart,
+    totalItems,
+    totalPrice,
     remainingMs,
     remainingText,
     reserveMinutes,
-  }), [addToCart, cartItem, clearLocalCart, itemDetails, open, remainingMs, remainingText, removeFromCart, reserveMinutes]);
+  }), [addToCart, cartItems, clearLocalCart, itemsDetails, open, remainingMs, remainingText, removeFromCart, reserveMinutes, totalItems, totalPrice]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -6,10 +6,9 @@ import { useCart } from '../contexts/CartContext.jsx';
 
 export default function CartDrawer() {
   const navigate = useNavigate();
-  const { open, setOpen, cartItem, itemDetails, removeFromCart, remainingText } = useCart();
+  const { open, setOpen, cartItems, itemsDetails, removeFromCart, remainingText, totalPrice } = useCart();
 
-  const price = Number(itemDetails?.price || 0);
-  const totalText = useMemo(() => price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), [price]);
+  const totalText = useMemo(() => totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), [totalPrice]);
   const MotionDiv = motion.div;
   const MotionAside = motion.aside;
 
@@ -54,60 +53,67 @@ export default function CartDrawer() {
             </div>
 
             <div className="p-5 space-y-4 flex-1 overflow-auto">
-              {cartItem?.itemId ? (
+              {cartItems.length > 0 ? (
                 <>
-                  <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-4 flex items-start gap-4">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0">
-                      {itemDetails?.image_url ? (
-                        <img src={itemDetails.image_url} alt={itemDetails.title || 'Item'} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white/20">
-                          <Sparkles className="w-6 h-6" />
+                  <div className="space-y-3">
+                    {cartItems.map((cartItem) => {
+                      const itemDetails = itemsDetails[cartItem.itemId];
+                      const price = Number(itemDetails?.price || 0);
+                      
+                      return (
+                        <div key={cartItem.itemId} className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-4 flex items-start gap-4">
+                          <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0">
+                            {itemDetails?.image_url ? (
+                              <img src={itemDetails.image_url} alt={itemDetails.title || 'Item'} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white/20">
+                                <Sparkles className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-black uppercase tracking-wider text-sm truncate">
+                              {itemDetails?.title || 'Raridade'}
+                            </p>
+                            <p className="text-white/50 text-xs truncate">
+                              {itemDetails?.artist || '—'}
+                            </p>
+                            <p className="mt-2 text-[#D4AF37] font-black">
+                              {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => removeFromCart(cartItem.itemId)}
+                            className="p-2 rounded-xl hover:bg-red-500/10 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-colors"
+                            aria-label="Remover"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-black uppercase tracking-wider text-sm truncate">
-                        {itemDetails?.title || 'Raridade'}
-                      </p>
-                      <p className="text-white/50 text-xs truncate">
-                        {itemDetails?.artist || '—'}
-                      </p>
-                      <p className="mt-2 text-[#D4AF37] font-black">
-                        {totalText}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => removeFromCart()}
-                      className="p-2 rounded-xl hover:bg-red-500/10 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-colors"
-                      aria-label="Remover"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      );
+                    })}
                   </div>
 
-                  <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Timer className="w-4 h-4 text-orange-300" />
-                      <p className="text-orange-200 text-[10px] font-black uppercase tracking-[0.25em]">
-                        Reserva garantida por:
+                  {remainingText && (
+                    <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Timer className="w-4 h-4 text-orange-300" />
+                        <p className="text-orange-200 text-[10px] font-black uppercase tracking-[0.25em]">
+                          Reserva garantida por:
+                        </p>
+                      </div>
+                      <p className="text-orange-200 font-black text-sm tabular-nums">
+                        {remainingText}
                       </p>
                     </div>
-                    <p className="text-orange-200 font-black text-sm tabular-nums">
-                      {remainingText || '00:00'}
-                    </p>
-                  </div>
+                  )}
 
                   <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-white/50 text-[10px] uppercase tracking-[0.35em] font-black">Total</p>
+                      <p className="text-white/50 text-[10px] uppercase tracking-[0.35em] font-black">Total ({cartItems.length} itens)</p>
                       <p className="text-white font-black">{totalText}</p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-white/50 text-[10px] uppercase tracking-[0.35em] font-black">Descontos</p>
-                      <p className="text-white/60 font-black">—</p>
                     </div>
                   </div>
                 </>
@@ -118,7 +124,7 @@ export default function CartDrawer() {
                       <ShoppingCart className="w-8 h-8" />
                     </div>
                     <p className="text-white/70 font-black uppercase tracking-wider">Seu carrinho está vazio</p>
-                    <p className="text-white/40 text-xs uppercase tracking-widest">Escolha uma raridade para reservar</p>
+                    <p className="text-white/40 text-xs uppercase tracking-widest">Escolha raridades para reservar</p>
                   </div>
                 </div>
               )}
@@ -126,17 +132,17 @@ export default function CartDrawer() {
 
             <div className="p-5 border-t border-white/5 space-y-3">
               <button
-                disabled={!cartItem?.itemId}
+                disabled={cartItems.length === 0}
                 onClick={() => {
-                  if (!cartItem?.itemId) return;
+                  if (cartItems.length === 0) return;
                   close();
-                  navigate(`/checkout/${cartItem.itemId}`);
+                  navigate(`/checkout`);
                 }}
                 className="group relative overflow-hidden w-full py-4 rounded-2xl font-black uppercase tracking-[0.25em] text-[11px] transition-all duration-500 disabled:opacity-40 disabled:cursor-not-allowed bg-[#D4AF37] text-black shadow-[0_0_30px_rgba(212,175,55,0.25)] hover:shadow-[0_0_50px_rgba(212,175,55,0.45)]"
               >
                 <span className="relative z-10 flex items-center justify-center gap-3">
                   <Sparkles className="w-4 h-4" />
-                  Finalizar Compra
+                  Finalizar Compra ({cartItems.length})
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">

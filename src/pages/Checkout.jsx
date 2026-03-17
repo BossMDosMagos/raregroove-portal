@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, CreditCard, CheckCircle, Disc, Shield, Loader2, AlertTriangle, QrCode } from 'lucide-react';
+import { Eye, EyeOff, CreditCard, CheckCircle, Disc, Shield, Loader2, AlertTriangle, QrCode, ShoppingBag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Pill } from '../components/UIComponents';
@@ -12,7 +12,7 @@ export default function Checkout() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const { clearLocalCart } = useCart();
+  const { cartItems, itemsDetails, clearLocalCart } = useCart();
 
   // 💰 SELETOR DE MOEDA
   const [currency, setCurrency] = useState(locale === 'en-US' ? 'USD' : 'BRL');
@@ -22,8 +22,8 @@ export default function Checkout() {
   }, [locale]);
   
   const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState(null);
-  const [seller, setSeller] = useState(null);
+  const [items, setItems] = useState([]);
+  const [sellers, setSellers] = useState({});
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
   
@@ -37,6 +37,18 @@ export default function Checkout() {
   useEffect(() => {
     const init = async () => {
       try {
+        // Se não tem itemId mas tem itens no carrinho, redirecionar para o primeiro
+        if (!itemId && cartItems.length > 0) {
+          navigate(`/checkout/${cartItems[0].itemId}`);
+          return;
+        }
+
+        if (!itemId && cartItems.length === 0) {
+          toast.error('Nenhum item no carrinho');
+          navigate('/catalogo');
+          return;
+        }
+
         // Buscar usuário autenticado
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) {
@@ -72,17 +84,8 @@ export default function Checkout() {
           const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
 
           if (!reservedUntilMs) {
-            try {
-              const stored = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
-              const ok = stored?.itemId === itemData.id && Number(stored?.reservedUntilMs || 0) > Date.now();
-              if (!ok) {
-                toast.error('ITEM INDISPONÍVEL', {
-                  description: 'Este item está reservado/em negociação.',
-                });
-                navigate('/catalogo');
-                return;
-              }
-            } catch {
+            const cartItem = cartItems.find(ci => ci.itemId === itemId);
+            if (!cartItem || !cartItem.reservedUntilMs || cartItem.reservedUntilMs <= Date.now()) {
               toast.error('ITEM INDISPONÍVEL', {
                 description: 'Este item está reservado/em negociação.',
               });
@@ -92,25 +95,14 @@ export default function Checkout() {
           }
 
           if (hasActiveReserve && !isReservedByMe) {
-            let ok = false;
-            try {
-              const stored = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
-              ok = stored?.itemId === itemData.id && Number(stored?.reservedUntilMs || 0) > Date.now();
-            } catch {
-              ok = false;
-            }
-
-            if (!ok) {
+            const cartItem = cartItems.find(ci => ci.itemId === itemId);
+            if (!cartItem || !cartItem.reservedUntilMs || cartItem.reservedUntilMs <= Date.now()) {
               toast.error('ITEM RESERVADO', {
                 description: 'Outro colecionador está com reserva ativa.',
               });
               navigate('/catalogo');
               return;
             }
-          }
-
-          if (!hasActiveReserve) {
-            await supabase.rpc('release_item_reservation', { item_uuid: itemData.id });
           }
         }
 
@@ -223,7 +215,7 @@ export default function Checkout() {
       }
     };
     init();
-  }, [itemId, navigate]);
+  }, [itemId, navigate, cartItems]);
 
   const handlePaymentSuccess = async (paymentData) => {
     try {

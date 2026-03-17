@@ -16,7 +16,7 @@ export default function ItemDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatCurrency } = useI18n();
-  const { addToCart, cartItem, remainingText, setOpen } = useCart();
+  const { addToCart, cartItems, remainingText, setOpen } = useCart();
   const [item, setItem] = useState(null);
   const [seller, setSeller] = useState(null);
   const [sellerRating, setSellerRating] = useState(null);
@@ -394,7 +394,7 @@ export default function ItemDetails() {
               </div>
 
               {/* Action Buttons */}
-              {(cartItem?.itemId === item?.id || reservedByMe || localReserveForThis) && (
+              {(cartItems.some(ci => ci.itemId === item?.id) || reservedByMe || localReserveForThis) && (
                 <div className="mb-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl px-5 py-4 flex items-center justify-between">
                   <p className="text-orange-200 text-[10px] font-black uppercase tracking-[0.25em]">Reserva garantida por:</p>
                   <button
