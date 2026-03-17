@@ -86,15 +86,6 @@ const TABLES = [
     filters: ['is_read']
   },
   { 
-    id: 'archived_conversations', 
-    label: 'Conversas Arquivadas', 
-    icon: Archive, 
-    primary: 'participant_ids',
-    secondary: 'last_message',
-    date: 'archived_at',
-    filters: []
-  },
-  { 
     id: 'wishlist', 
     label: 'Wishlist', 
     icon: Heart, 
@@ -215,6 +206,7 @@ export default function AdminTrash() {
 
   const loadRecords = async () => {
     setLoadingRecords(true);
+    setRecords([]);
     try {
       const { data, error } = await supabase
         .from(selectedTable)
@@ -222,14 +214,26 @@ export default function AdminTrash() {
         .order('created_at', { ascending: false })
         .limit(200);
 
-      if (error) throw error;
-      setRecords(data || []);
+      if (error) {
+        if (error.message.includes('does not exist') || error.code === '42P01') {
+          toast.error('TABELA NÃO EXISTE', {
+            description: `A tabela ${selectedTable} não existe no banco.`,
+            style: toastErrorStyle,
+          });
+          setRecords([]);
+        } else {
+          throw error;
+        }
+      } else {
+        setRecords(data || []);
+      }
     } catch (error) {
       console.error('Erro ao carregar registros:', error);
       toast.error('ERRO AO CARREGAR', {
         description: error.message,
         style: toastErrorStyle,
       });
+      setRecords([]);
     } finally {
       setLoadingRecords(false);
     }
@@ -245,14 +249,27 @@ export default function AdminTrash() {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-
-      toast.success('🗑️ EXCLUÍDO', {
-        description: 'Registro removido permanentemente.',
-        style: toastSuccessStyle,
-      });
-
-      setRecords((prev) => prev.filter((r) => r.id !== id));
+      if (error) {
+        if (error.message.includes('does not exist') || error.code === '42P01') {
+          toast.error('TABELA NÃO EXISTE', {
+            description: 'Política de delete não existe. Execute a migration no Supabase.',
+            style: toastErrorStyle,
+          });
+        } else if (error.message.includes('permission')) {
+          toast.error('SEM PERMISSÃO', {
+            description: 'Você não tem permissão para excluir esta tabela.',
+            style: toastErrorStyle,
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success('🗑️ EXCLUÍDO', {
+          description: 'Registro removido permanentemente.',
+          style: toastSuccessStyle,
+        });
+        setRecords((prev) => prev.filter((r) => r.id !== id));
+      }
     } catch (error) {
       toast.error('ERRO AO EXCLUIR', {
         description: error.message,
