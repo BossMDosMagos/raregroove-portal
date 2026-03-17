@@ -215,400 +215,204 @@ function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
 }
 
 /**
- * COMPONENTE DE PAGAMENTO REAL - MERCADO PAGO
+ * COMPONENTE DE PAGAMENTO REAL - MERCADO PAGO (Payment Brick)
  */
 function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
   const [processing, setProcessing] = useState(false);
   const [config, setConfig] = useState(null);
-  const [manualCheckoutUrl, setManualCheckoutUrl] = useState('');
-  const [manualReturnUrl, setManualReturnUrl] = useState('');
-  const [externalReference, setExternalReference] = useState('');
-  const [pollingInterval, setPollingInterval] = useState(null);
+  const [mpLoaded, setMpLoaded] = useState(false);
+  const [preferenceId, setPreferenceId] = useState(null);
+  const [brickReady, setBrickReady] = useState(false);
+  const [error, setError] = useState(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     if (currency !== 'BRL') {
       onError(new Error('Mercado Pago suporta apenas BRL'));
       return;
     }
-    loadConfig();
+    init();
+  }, [currency]);
 
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-    };
-  }, [currency, pollingInterval]);
-
-  const loadConfig = async () => {
-    // ... (mesmo código de loadConfig)
-    const cfg = await getGatewayConfig(selectedGateway);
-    setConfig(cfg);
-
-    if (!window.MercadoPago && cfg.publicKey) {
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.onload = () => {
-        window.MercadoPago = new window.MercadoPago(cfg.publicKey);
-      };
-      document.body.appendChild(script);
-    }
-  };
-
-  const startPolling = (ref) => {
-    console.log('🔄 [MP] Iniciando polling para referência:', ref);
-    const interval = setInterval(async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('verify-payment-status', {
-          body: {
-            provider: 'mercado_pago',
-            externalReference: ref
-          }
-        });
-
-        if (error) {
-          console.warn('⚠️ [MP] Erro no polling:', error);
-          return;
-        }
-
-        if (data && (data.status === 'approved' || data.status === 'succeeded')) {
-          console.log('✅ [MP] Pagamento confirmado via polling!', data);
-          clearInterval(interval);
-          setPollingInterval(null);
-          onSuccess({
-            paymentId: data.id,
-            provider: 'mercado_pago',
-            status: data.status
-          });
-        } else if (data && data.status) {
-          console.log('⏳ [MP] Status do pagamento:', data.status);
-        }
-      } catch (e) {
-        console.error('Erro polling:', e);
-      }
-    }, 5000); // Checar a cada 5 segundos
-
-    setPollingInterval(interval);
-  };
-
-  const handlePayment = async () => {
+  const init = async () => {
+    setInitializing(true);
     try {
-      setProcessing(true);
+      const cfg = await getGatewayConfig(selectedGateway);
+      setConfig(cfg);
 
-      const newExternalRef = metadata.transactionId || `TRX-${Date.now()}`;
-      setExternalReference(newExternalRef);
+      if (!window.MercadoPago && cfg.publicKey) {
+        const script = document.createElement('script');
+        script.src = 'https://sdk.mercadopago.com/js/v2';
+        script.async = true;
+        script.onload = () => {
+          window.MercadoPago = new window.MercadoPago(cfg.publicKey, {
+            locale: 'pt-BR'
+          });
+          setMpLoaded(true);
+        };
+        script.onerror = () => {
+          setError('Erro ao carregar SDK do Mercado Pago');
+          setInitializing(false);
+        };
+        document.body.appendChild(script);
+      } else if (window.MercadoPago) {
+        setMpLoaded(true);
+      }
 
-      console.log('📤 [MP] Iniciando pagamento com config:', {
-        accessToken: config.accessToken ? '✅ Presente' : '❌ Faltando',
-        accessTokenLength: config.accessToken?.length,
-        mode: config.mode,
-        publicKey: config.publicKey ? '✅ Presente' : '❌ Faltando'
-      });
-
-      const returnParams = new URLSearchParams({
-        payment_provider: 'mercado_pago',
-        item_id: String(metadata.itemId || ''),
-        buyer_id: String(metadata.buyerId || ''),
-        seller_id: String(metadata.sellerId || ''),
-        item_price: String(metadata.itemPrice ?? ''),
-        platform_fee: String(metadata.platformFee ?? ''),
-        processing_fee: String(metadata.processingFee ?? ''),
-        total_amount: String(metadata.totalAmount ?? amount),
-        external_reference: String(newExternalRef),
-      });
-
-      const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-
-      // Criar preferência (formato simplificado)
-      const transactionType = (metadata?.transactionType || metadata?.transaction_type || 'venda');
-      const requestBody = {
-        item: {
-          title: metadata.itemTitle,
-          quantity: 1,
-          unit_price: amount
-        },
-        payer: {
-          email: metadata.buyerEmail
-        },
-        // Back URLs agora são forçadas pelo backend para evitar localhost
-        back_urls: {
-          success: `${window.location.origin}/payment/success?${returnParams.toString()}`,
-          failure: `${window.location.origin}/payment/failure?${returnParams.toString()}`,
-          pending: `${window.location.origin}/payment/pending?${returnParams.toString()}`
-        },
-        auto_return: 'approved', // Sempre aprovado, backend trata se deve ou não usar
-        external_reference: newExternalRef,
-        // IMPORTANTE: Passar metadata explicitamente para o backend do MP
-        metadata: {
+      const transactionId = `RG${Date.now()}`;
+      
+      const { data, error: fnError } = await supabase.functions.invoke('mp-create-preference', {
+        body: {
+          items: [{
+            title: metadata.itemTitle || 'Compra RareGroove',
+            quantity: 1,
+            unit_price: amount,
+            currency_id: 'BRL'
+          }],
+          payer: {
+            email: metadata.buyerEmail,
+            name: metadata.buyerName || 'Comprador'
+          },
+          external_reference: transactionId,
+          metadata: {
             ...metadata,
-            transaction_type: transactionType,
-            net_amount: metadata.netAmount, // Garantir snake_case se backend esperar
-            platform_fee: metadata.platformFee
-        }
-      };
-
-      console.log('📤 [MP] Body enviado para Edge Function:', {
-        itemTitle: requestBody.item.title,
-        amount: requestBody.item.unit_price,
-        buyerEmail: requestBody.payer.email,
-        externalReference: requestBody.external_reference,
-        hasMetadata: !!requestBody.metadata
-      });
-
-      const { data, error } = await supabase.functions.invoke('mp-create-preference', {
-        body: requestBody
-      });
-
-      console.log('📥 [MP] Resposta da Edge Function:', { data, error });
-
-      if (error) {
-        // ... (código de erro existente)
-        console.error('❌ [MP] Edge Function retornou erro:', error);
-
-        let detailedMessage = error.message || 'Erro ao processar pagamento no Mercado Pago';
-
-        // Tentar extrair mensagem detalhada do backend
-        if (error.context) {
-          try {
-            const errorBody = await error.context.json();
-            console.error('❌ [MP] Detalhe do erro (JSON):', errorBody);
-            
-            if (errorBody.error) {
-              if (typeof errorBody.error === 'string') {
-                detailedMessage = errorBody.error;
-              } else if (errorBody.error.message) {
-                detailedMessage = errorBody.error.message;
-              } else {
-                detailedMessage = JSON.stringify(errorBody.error);
-              }
-            }
-          } catch (e) {
-            console.warn('⚠️ [MP] Não foi possível ler JSON do erro:', e);
+            transactionId
           }
         }
+      });
 
-        // Exibir toast com erro detalhado
-        toast.error(`Erro no Mercado Pago: ${detailedMessage}`);
-        throw new Error(detailedMessage);
+      if (fnError) {
+        console.error('❌ [MP] Erro ao criar preferência:', fnError);
+        throw new Error(fnError.message);
       }
 
-      // Iniciar polling IMEDIATAMENTE após receber a URL de checkout
-      startPolling(newExternalRef);
-
-      // Redirecionar para checkout do Mercado Pago
-      // IMPORTANTE: usar init_point como prioridade aumenta a confiabilidade
-      // do retorno automático, inclusive em modo sandbox.
-      const checkoutUrl = data.init_point || data.sandbox_init_point;
-
-      if (checkoutUrl && isLocalDev) {
-        const manualUrl = `${window.location.origin}/payment/success?${returnParams.toString()}&status=approved`;
-
-        setManualCheckoutUrl(checkoutUrl);
-        setManualReturnUrl(manualUrl);
-        // setProcessing(false); // Manter processando enquanto espera o polling ou usuário voltar
-
-        window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-        toast.success('Checkout aberto em nova aba. O sistema verificará o pagamento automaticamente.');
-        return;
-      }
-
-      if (data.init_point) {
-        console.log('🔄 [MP] Redirecionando para init_point:', data.init_point);
-        window.location.href = data.init_point;
-      } else if (data.sandbox_init_point) {
-        console.log('🔄 [MP] Redirecionando para sandbox_init_point:', data.sandbox_init_point);
-        window.location.href = data.sandbox_init_point;
+      if (data?.preference_id) {
+        setPreferenceId(data.preference_id);
+      } else if (data?.id) {
+        setPreferenceId(data.id);
       } else {
-        throw new Error('Nenhuma URL de checkout retornada pelo Mercado Pago');
+        throw new Error('Não foi possível criar a preferência de pagamento');
       }
-    } catch (error) {
-      console.error('❌ [MP] Erro completo no pagamento:', error);
-      onError(error);
-      setProcessing(false);
-      if (pollingInterval) clearInterval(pollingInterval);
+    } catch (err) {
+      console.error('❌ [MP] Erro na inicialização:', err);
+      setError(err.message);
+      onError(err);
+    } finally {
+      setInitializing(false);
     }
   };
+
+  useEffect(() => {
+    if (config?.publicKey && mpLoaded && preferenceId && !brickReady) {
+      renderPaymentBrick();
+    }
+  }, [config, mpLoaded, preferenceId]);
+
+  const renderPaymentBrick = () => {
+    const container = document.getElementById('mp-payment-brick-container');
+    if (!container || !window.MercadoPago || !preferenceId) return;
+
+    container.innerHTML = '';
+
+    window.MercadoPago.bricks().create('payment', 'mp-payment-brick-container', {
+      initialization: {
+        preferenceId: preferenceId,
+        amount: amount,
+        payer: {
+          email: metadata.buyerEmail || 'comprador@email.com'
+        }
+      },
+      customization: {
+        visual: {
+          style: {
+            customVariables: {
+              theme: 'dark',
+              themePrimaryColor: '#D4AF37',
+              backgroundColor: '#1a1a1a',
+              backgroundColorCard: '#2a2a2a',
+              backgroundColorInput: '#333333',
+              backgroundColorApp: '#1a1a1a',
+              textColor: '#ffffff',
+              textColorSecondary: '#cccccc',
+              textColorThird: '#999999',
+              fontColorPrimary: '#ffffff',
+              fontColorSecondary: '#cccccc',
+              fontFamily: 'Inter, sans-serif',
+              borderRadiusMedium: '12px',
+              borderRadiusSmall: '8px'
+            }
+          }
+        },
+        paymentMethods: {
+          creditCard: { 
+            cardholders: { 
+              identificationType: 'CPF' 
+            },
+            installments: { 
+              maxInstallments: 12 
+            }
+          },
+          debitCard: { 
+            cardholders: { 
+              identificationType: 'CPF' 
+            } 
+          },
+          pix: {
+            enabled: true
+          },
+          ticket: {
+            enabled: true
+          }
+        }
+      },
+      callbacks: {
+        onReady: () => {
+          console.log('✅ Payment Brick pronto');
+          setBrickReady(true);
+        },
+        onError: (err) => {
+          console.error('❌ Erro no Payment Brick:', err);
+          setError('Erro ao processar pagamento');
+          onError(err);
+        },
+        onSubmit: async (formData) => {
+          console.log('📤 [MP] Pagamento submetido:', formData);
+        }
+      }
+    });
+  };
+
+  if (initializing) {
+    return (
+      <div className="flex items-center justify-center py-12 text-white/60">
+        <Disc className="animate-spin mr-2" size={24} />
+        <span>Iniciando Mercado Pago...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center space-y-4">
+        <p className="text-red-300">{error}</p>
+        <button 
+          onClick={() => { setError(null); init(); }}
+          className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
-        <p className="text-white/80">
-          Você será redirecionado para o checkout seguro do <strong>Mercado Pago</strong>
-        </p>
-        <ul className="text-sm text-white/60 space-y-1">
-          <li>✓ Pague com cartão, boleto ou Pix</li>
-          <li>✓ Parcelamento em até 12x</li>
-          <li>✓ Proteção MercadoPago</li>
-        </ul>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+        <div id="mp-payment-brick-container" className="min-h-[350px]"></div>
       </div>
-
-      <button
-        onClick={handlePayment}
-        disabled={processing || !config}
-        className="w-full bg-[#D4AF37] text-black py-4 rounded-2xl font-black uppercase text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {processing ? (
-          <>
-            <Disc className="animate-spin" size={18} />
-            {manualCheckoutUrl ? 'Aguardando Pagamento...' : 'Redirecionando...'}
-          </>
-        ) : (
-          <>
-            Pagar com Mercado Pago
-          </>
-        )}
-      </button>
 
       <p className="text-xs text-white/40 text-center">
         🔒 Pagamento processado de forma segura pelo Mercado Pago
-      </p>
-
-      {manualCheckoutUrl && manualReturnUrl && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-          <p className="text-xs text-white/70 text-center">
-            Ambiente local: o Mercado Pago abriu em nova aba.
-            O sistema está verificando o pagamento automaticamente.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button
-              onClick={() => window.open(manualCheckoutUrl, '_blank', 'noopener,noreferrer')}
-              className="w-full bg-white/10 text-white py-3 rounded-xl font-bold text-sm border border-white/20"
-            >
-              Abrir checkout novamente
-            </button>
-            <button
-              onClick={() => { window.location.href = manualReturnUrl; }}
-              className="w-full bg-[#D4AF37] text-black py-3 rounded-xl font-black text-sm"
-            >
-              Simular Retorno Sucesso
-            </button>
-          </div>
-          <div className="flex justify-center pt-2">
-             <div className="animate-pulse flex items-center text-green-400 text-xs gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-400"></span>
-                Verificando status do pagamento...
-             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * COMPONENTE DE PAGAMENTO REAL - PAYPAL
- */
-function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
-  const [processing, setProcessing] = useState(false);
-  const [config, setConfig] = useState(null);
-  const [paypalLoaded, setPaypalLoaded] = useState(false);
-
-  useEffect(() => {
-    loadConfig();
-  }, [currency]);
-
-  const loadConfig = async () => {
-    const cfg = await getGatewayConfig(selectedGateway);
-    setConfig(cfg);
-
-    // Carregar script do PayPal
-    if (!window.paypal && cfg.clientId) {
-      const script = document.createElement('script');
-      // Adicionar suporte a moeda
-      const mode = cfg.mode === 'sandbox' ? '&buyer-country=BR' : '';
-      script.src = `https://www.paypal.com/sdk/js?client-id=${cfg.clientId}&currency=${currency}${mode}`;
-      script.onload = () => {
-        setPaypalLoaded(true);
-        renderPayPalButtons(cfg);
-      };
-      document.body.appendChild(script);
-    } else if (window.paypal) {
-      setPaypalLoaded(true);
-      renderPayPalButtons(cfg);
-    }
-  };
-
-  const renderPayPalButtons = (activeConfig = config) => {
-    if (!window.paypal || !activeConfig) return;
-
-    const container = document.getElementById('paypal-button-container');
-    if (container) {
-      container.innerHTML = '';
-    }
-
-    window.paypal.Buttons({
-      createOrder: async () => {
-        const { data, error } = await supabase.functions.invoke('paypal-create-order', {
-          body: {
-            amount: amount.toFixed(2),
-            currency: currency,
-            metadata: metadata,
-            clientId: activeConfig.clientId,
-            clientSecret: activeConfig.clientSecret,
-            mode: activeConfig.mode
-          }
-        });
-
-        if (error) throw error;
-        return data.orderId;
-      },
-      onApprove: async (data) => {
-        setProcessing(true);
-        try {
-          const { data: captureData, error } = await supabase.functions.invoke('paypal-capture-order', {
-            body: {
-              orderId: data.orderID,
-              clientId: activeConfig.clientId,
-              clientSecret: activeConfig.clientSecret,
-              mode: activeConfig.mode
-            }
-          });
-
-          if (error) throw error;
-
-          if (captureData.status === 'COMPLETED') {
-            onSuccess({
-              paymentId: data.orderID,
-              provider: 'paypal',
-              status: 'completed'
-            });
-          } else {
-            throw new Error('Pagamento não foi completado');
-          }
-        } catch (error) {
-          onError(error);
-        } finally {
-          setProcessing(false);
-        }
-      },
-      onError: (err) => {
-        console.error('Erro PayPal:', err);
-        onError(err);
-      }
-    }).render('#paypal-button-container');
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
-        <p className="text-white/80">
-          Pague de forma segura com <strong>PayPal</strong>
-        </p>
-        <ul className="text-sm text-white/60 space-y-1">
-          <li>✓ Proteção ao comprador PayPal</li>
-          <li>✓ Pague com saldo ou cartão</li>
-          <li>✓ Aceito mundialmente</li>
-        </ul>
-      </div>
-
-      {processing && (
-        <div className="flex items-center justify-center py-4 text-white/60">
-          <Disc className="animate-spin mr-2" size={20} />
-          Processando pagamento...
-        </div>
-      )}
-
-      <div id="paypal-button-container" className="min-h-[150px]"></div>
-
-      <p className="text-xs text-white/40 text-center">
-        🔒 Pagamento processado de forma segura pelo PayPal
       </p>
     </div>
   );
