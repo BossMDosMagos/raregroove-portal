@@ -378,27 +378,18 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       try {
         window.MercadoPago.bricks().create('payment', containerId, {
           initialization: {
-            preferenceId: preferenceId,
             amount: parseFloat(amount),
-          },
-          customization: {
-            paymentMethods: {
-              ticket: 'all',
-              bankTransfer: 'all',
-              creditCard: 'all',
-              debitCard: 'all',
-              mercadoPago: 'all',
-            },
+            preferenceId: preferenceId,
           },
           callbacks: {
             onReady: () => {
               console.log('✅ Payment Brick pronto!');
               setBrickReady(true);
             },
-            onError: (err) => {
-              console.error('❌ Erro no Payment Brick:', err);
-              setError('Erro ao renderizar formulário de pagamento');
-              onError(err);
+            onError: (error) => {
+              console.error('❌ Erro completo no Payment Brick:', JSON.stringify(error, null, 2));
+              setError(`Erro: ${error?.message || JSON.stringify(error)}`);
+              onError(error);
             },
             onSubmit: async (formData) => {
               console.log('📤 [MP] Pagamento submetido:', formData);
