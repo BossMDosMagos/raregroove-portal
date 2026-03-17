@@ -5,7 +5,7 @@ import {
   Trash2, Loader2, Search, Package, CreditCard, RefreshCw, 
   MessageSquare, AlertTriangle, MapPin, Star, Bell, Archive,
   ShoppingCart, DollarSign, Users, FileText, Truck, Webhook,
-  BarChart3, Crown, Wallet, CheckCircle, Mail, Heart
+  BarChart3, Crown, Wallet, CheckCircle, Mail, Heart, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,7 +20,7 @@ const TABLES = [
     primary: 'title',
     secondary: 'artist',
     date: 'created_at',
-    filters: ['is_sold', 'status', 'genre']
+    cascade: true
   },
   { 
     id: 'transactions', 
@@ -28,8 +28,7 @@ const TABLES = [
     icon: CreditCard, 
     primary: 'status',
     secondary: 'total_amount',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
   },
   { 
     id: 'swaps', 
@@ -37,8 +36,7 @@ const TABLES = [
     icon: RefreshCw, 
     primary: 'status',
     secondary: 'initiator_id',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
   },
   { 
     id: 'disputes', 
@@ -46,8 +44,7 @@ const TABLES = [
     icon: AlertTriangle, 
     primary: 'status',
     secondary: 'reason',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
   },
   { 
     id: 'messages', 
@@ -55,8 +52,7 @@ const TABLES = [
     icon: MessageSquare, 
     primary: 'sender_id',
     secondary: 'content',
-    date: 'created_at',
-    filters: []
+    date: 'created_at'
   },
   { 
     id: 'user_addresses', 
@@ -64,8 +60,7 @@ const TABLES = [
     icon: MapPin, 
     primary: 'label',
     secondary: 'street',
-    date: 'created_at',
-    filters: []
+    date: 'created_at'
   },
   { 
     id: 'reviews', 
@@ -73,8 +68,7 @@ const TABLES = [
     icon: Star, 
     primary: 'rating',
     secondary: 'comment',
-    date: 'created_at',
-    filters: ['rating']
+    date: 'created_at'
   },
   { 
     id: 'notifications', 
@@ -82,17 +76,7 @@ const TABLES = [
     icon: Bell, 
     primary: 'type',
     secondary: 'title',
-    date: 'created_at',
-    filters: ['is_read']
-  },
-  { 
-    id: 'wishlist', 
-    label: 'Wishlist', 
-    icon: Heart, 
-    primary: 'user_id',
-    secondary: 'item_id',
-    date: 'created_at',
-    filters: []
+    date: 'created_at'
   },
   { 
     id: 'withdrawals', 
@@ -100,8 +84,7 @@ const TABLES = [
     icon: DollarSign, 
     primary: 'status',
     secondary: 'amount',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
   },
   { 
     id: 'financial_ledger', 
@@ -109,8 +92,7 @@ const TABLES = [
     icon: FileText, 
     primary: 'type',
     secondary: 'amount',
-    date: 'created_at',
-    filters: ['type']
+    date: 'created_at'
   },
   { 
     id: 'shipping', 
@@ -118,8 +100,7 @@ const TABLES = [
     icon: Truck, 
     primary: 'status',
     secondary: 'tracking_code',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
   },
   { 
     id: 'escrow_sla_events', 
@@ -127,35 +108,7 @@ const TABLES = [
     icon: Clock, 
     primary: 'event_type',
     secondary: 'transaction_id',
-    date: 'created_at',
-    filters: ['event_type']
-  },
-  { 
-    id: 'webhook_logs', 
-    label: 'Webhooks', 
-    icon: Webhook, 
-    primary: 'status',
-    secondary: 'endpoint',
-    date: 'created_at',
-    filters: ['status']
-  },
-  { 
-    id: 'subscriptions', 
-    label: 'Assinaturas', 
-    icon: Crown, 
-    primary: 'status',
-    secondary: 'plan_id',
-    date: 'created_at',
-    filters: ['status']
-  },
-  { 
-    id: 'user_balances', 
-    label: 'Saldos', 
-    icon: Wallet, 
-    primary: 'user_id',
-    secondary: 'available_amount',
-    date: 'updated_at',
-    filters: []
+    date: 'created_at'
   },
   { 
     id: 'dispute_messages', 
@@ -163,8 +116,7 @@ const TABLES = [
     icon: MessageSquare, 
     primary: 'dispute_id',
     secondary: 'sender_id',
-    date: 'created_at',
-    filters: []
+    date: 'created_at'
   },
   { 
     id: 'dispute_evidence', 
@@ -172,8 +124,7 @@ const TABLES = [
     icon: FileText, 
     primary: 'dispute_id',
     secondary: 'file_name',
-    date: 'uploaded_at',
-    filters: []
+    date: 'uploaded_at'
   },
   { 
     id: 'dispute_refund_tasks', 
@@ -181,12 +132,17 @@ const TABLES = [
     icon: CheckCircle, 
     primary: 'status',
     secondary: 'dispute_id',
-    date: 'created_at',
-    filters: ['status']
+    date: 'created_at'
+  },
+  { 
+    id: 'subscriptions', 
+    label: 'Assinaturas', 
+    icon: Crown, 
+    primary: 'status',
+    secondary: 'plan_id',
+    date: 'created_at'
   },
 ];
-
-const Clock = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 
 export default function AdminTrash() {
   const navigate = useNavigate();
@@ -217,7 +173,13 @@ export default function AdminTrash() {
       if (error) {
         if (error.message.includes('does not exist') || error.code === '42P01') {
           toast.error('TABELA NÃO EXISTE', {
-            description: `A tabela ${selectedTable} não existe no banco.`,
+            description: `A tabela "${selectedTable}" não existe no banco de dados.`,
+            style: toastErrorStyle,
+          });
+          setRecords([]);
+        } else if (error.message.includes('permission denied') || error.code === '42501') {
+          toast.error('SEM PERMISSÃO', {
+            description: `Sem permissão para acessar "${selectedTable}".`,
             style: toastErrorStyle,
           });
           setRecords([]);
@@ -244,35 +206,24 @@ export default function AdminTrash() {
     
     setDeleting((prev) => ({ ...prev, [id]: true }));
     try {
-      const { error } = await supabase
-        .from(selectedTable)
-        .delete()
-        .eq('id', id);
+      // Usar função genérica de delete em cascata
+      const { data, error: rpcError } = await supabase.rpc('admin_delete_with_cascade', { 
+        p_table: selectedTable, 
+        p_id: id 
+      });
+      
+      if (rpcError) throw rpcError;
+      if (!data?.success) throw new Error(data?.error || 'Erro ao excluir');
 
-      if (error) {
-        if (error.message.includes('does not exist') || error.code === '42P01') {
-          toast.error('TABELA NÃO EXISTE', {
-            description: 'Política de delete não existe. Execute a migration no Supabase.',
-            style: toastErrorStyle,
-          });
-        } else if (error.message.includes('permission')) {
-          toast.error('SEM PERMISSÃO', {
-            description: 'Você não tem permissão para excluir esta tabela.',
-            style: toastErrorStyle,
-          });
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success('🗑️ EXCLUÍDO', {
-          description: 'Registro removido permanentemente.',
-          style: toastSuccessStyle,
-        });
-        setRecords((prev) => prev.filter((r) => r.id !== id));
-      }
+      toast.success('🗑️ EXCLUÍDO', {
+        description: data?.message || 'Registro removido permanentemente.',
+        style: toastSuccessStyle,
+      });
+      setRecords((prev) => prev.filter((r) => r.id !== id));
     } catch (error) {
+      console.error('Erro ao excluir:', error);
       toast.error('ERRO AO EXCLUIR', {
-        description: error.message,
+        description: error.message || 'Erro desconhecido',
         style: toastErrorStyle,
       });
     } finally {

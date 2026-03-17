@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useCart } from '../contexts/CartContext.jsx';
-import NixieTubes from './NixieTubes.jsx';
-import AcrylicLedClock from './AcrylicLedClock.jsx';
 import logoRareGroove from '../assets/LogoRareGroove.png';
 
 export default function Navbar() {
@@ -42,7 +40,6 @@ export default function Navbar() {
     setNotifications(data || []);
   };
 
-  // ── Carregar dados do usuário ──────────────────────────────────────────────
   useEffect(() => {
     const loadUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -56,21 +53,16 @@ export default function Navbar() {
           .single();
         setProfile(profileData);
         setIsAdmin(Boolean(profileData?.is_admin));
-
-        // Carregar notificações
         loadNotifications(authUser.id);
       } else {
-        // Limpar dados quando não há usuário autenticado
         setProfile(null);
         setIsAdmin(false);
         setNotifications([]);
       }
     };
 
-    // Carregar usuário inicial
     loadUser();
 
-    // Escutar mudanças no estado de autenticação (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadUser();
@@ -85,7 +77,6 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Marcar notificação como lida ───────────────────────────────────────────
   const markAsRead = async (notificationId) => {
     await supabase
       .from('notifications')
@@ -97,7 +88,6 @@ export default function Navbar() {
     );
   };
 
-  // ── Fechar dropdown ao clicar fora ───────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -112,16 +102,12 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ── Logout ───────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success('Sessão encerrada', {
-      description: 'A porta do cofre foi trancada com sucesso.',
-    });
+    toast.success('Sessão encerrada');
     navigate('/');
   };
 
-  // ── Buscar itens ─────────────────────────────────────────────────────────
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -131,157 +117,125 @@ export default function Navbar() {
     }
   };
 
-  // ── Links de navegação ───────────────────────────────────────────────────
   const navLinks = [
-    { label: t('nav.explore'), path: '/catalogo', icon: Home },
-    { label: t('nav.grooveflix'), path: '/grooveflix', icon: null },
-    { label: t('nav.plans'), path: '/plans', icon: null },
-    { label: t('nav.myItems'), path: '/meu-acervo', icon: null },
-    { label: t('nav.swaps'), path: '/swaps', icon: null },
-    { label: t('nav.community'), path: '/mensagens', icon: null },
+    { label: 'Explorar', path: '/catalogo' },
+    { label: 'Grooveflix', path: '/grooveflix' },
+    { label: 'Planos', path: '/plans' },
+    { label: 'Meu Acervo', path: '/meu-acervo' },
   ];
 
   const isActive = (path) => location.pathname === path;
 
-  // ── Se não está autenticado, não mostrar ──────────────────────────────────
   if (!user) return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
-      {/* Barra Principal - Glassmorphism */}
-      <div
-        className="hifi-panel border-b border-[#D4AF37]/20"
-      >
-        <div className="hifi-display-left">
-          <div className="pointer-events-auto">
-            <NixieTubes digits={6} />
-          </div>
-        </div>
-
-        <div className="hifi-display-right">
-          <div className="pointer-events-auto">
-            <AcrylicLedClock />
-          </div>
-        </div>
-
-        <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-6 md:pl-[170px] md:pr-[190px] h-16 flex items-center justify-between">
+      {/* Glassmorphism Navbar */}
+      <div className="bg-black/70 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
           
-          <div className="flex items-center gap-6">
-            <Link
-              to="/portal"
-              className="flex-shrink-0 flex items-center gap-2 group hover:opacity-80 transition-opacity"
-            >
-              <img 
-                src={logoRareGroove}
-                alt="Rare Groove" 
-                className="hidden md:block h-10 w-auto object-contain"
-              />
-              <img 
-                src={logoRareGroove}
-                alt="Rare Groove" 
-                className="md:hidden h-10 w-10 object-contain"
-              />
-            </Link>
-          </div>
+          {/* LEFT: Logo */}
+          <Link
+            to="/portal"
+            className="flex-shrink-0 flex items-center gap-3 group"
+          >
+            <img 
+              src={logoRareGroove}
+              alt="Rare Groove" 
+              className="h-9 w-auto object-contain"
+            />
+          </Link>
 
-          {/* ── CENTRO: Links de Navegação (Desktop) ───────────────────────── */}
-          <div className="hidden md:flex items-center gap-12">
+          {/* CENTER: Navigation Links */}
+          <div className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`relative text-[11px] font-black uppercase tracking-[0.24em] transition-colors py-2 ${
+                className={`relative text-xs font-medium uppercase tracking-[0.15em] py-1 transition-all duration-300 group ${
                   isActive(link.path)
-                    ? 'text-[#D4AF37]'
-                    : 'text-gray-300 hover:text-[#D4AF37]'
+                    ? 'text-white'
+                    : 'text-white/50 group-hover:text-white'
                 }`}
               >
                 {link.label}
+                <span className={`absolute -bottom-1 left-0 h-[2px] bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-300 ${
+                  isActive(link.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
                 {isActive(link.path) && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#D4AF37] to-transparent rounded-full" />
+                  <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-gradient-to-r from-amber-400 to-amber-600 animate-pulse" />
                 )}
               </Link>
             ))}
           </div>
 
-          {/* ── LADO DIREITO: Ações ─────────────────────────────────────────── */}
-          <div className="flex items-center gap-4 md:gap-6">
-            
-            {/* Busca (Desktop) */}
+          {/* RIGHT: Actions */}
+          <div className="flex items-center gap-3">
+            {/* Search */}
             <div className="hidden lg:block">
               {searchOpen ? (
-                <form onSubmit={handleSearch} className="flex">
+                <form onSubmit={handleSearch} className="flex items-center">
                   <input
                     type="text"
-                    placeholder={t('nav.search.placeholder')}
+                    placeholder="Buscar..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     autoFocus
-                    className="bg-[#1a1a1a] text-white placeholder-gray-500 px-4 py-2 rounded-l-lg border border-[#D4AF37]/30 text-sm w-48 focus:outline-none focus:border-[#D4AF37]"
+                    className="w-40 bg-white/5 border border-white/10 rounded-l-lg px-4 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50 transition-all"
                   />
                   <button
                     type="submit"
-                    className="bg-[#D4AF37] text-black px-4 py-2 rounded-r-lg font-medium text-sm hover:bg-[#F4E4BC] transition-colors"
+                    className="bg-amber-500/20 border border-l-0 border-white/10 px-3 py-1.5 rounded-r-lg text-amber-400 hover:bg-amber-500/30 transition-colors"
                   >
-                    {t('nav.search.submit')}
+                    <Search size={14} />
                   </button>
                 </form>
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className="p-2 hover:bg-[#D4AF37]/10 rounded-lg transition-colors text-gray-300 hover:text-[#D4AF37]"
-                  title={t('nav.search.submit')}
+                  className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-all"
                 >
-                  <Search size={20} />
+                  <Search size={18} />
                 </button>
               )}
             </div>
 
-            {/* Carrinho */}
+            {/* Cart */}
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="md:hidden relative p-2 hover:bg-[#D4AF37]/10 rounded-lg transition-colors text-gray-300 hover:text-[#D4AF37]"
-              title="Carrinho"
+              className="relative p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-all"
             >
-              <ShoppingCart size={20} />
+              <ShoppingCart size={18} />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 w-5 h-5 rounded-full bg-[#ef4444] text-white text-xs font-bold flex items-center justify-center">
+                <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
             </button>
 
-            {/* Notificações */}
+            {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 hover:bg-[#D4AF37]/10 rounded-lg transition-colors text-gray-300 hover:text-[#D4AF37]"
-                title="Notificações"
+                className="relative p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-all"
               >
-                <Bell size={20} />
+                <Bell size={18} />
                 {totalUnreadCount > 0 && (
-                  <span className="absolute top-0 right-0 w-5 h-5 rounded-full bg-[#D4AF37] text-black text-xs font-bold flex items-center justify-center animate-pulse">
+                  <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
                     {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
                   </span>
                 )}
               </button>
 
-              {/* Dropdown de Notificações */}
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-lg shadow-2xl overflow-hidden animate-in fade-in z-50">
-                  
-                  {/* Header */}
-                  <div className="px-4 py-3 border-b border-[#D4AF37]/20 bg-black/60">
-                    <p className="text-white font-semibold text-sm">
-                      Notificações
-                    </p>
+                <div className="absolute right-0 mt-2 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/10">
+                    <p className="text-white text-sm font-medium">Notificações</p>
                   </div>
-
-                  {/* Lista de notificações */}
                   <div className="max-h-64 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                      <div className="px-4 py-6 text-center text-white/30 text-sm">
                         Nenhuma notificação
                       </div>
                     ) : (
@@ -291,160 +245,106 @@ export default function Navbar() {
                           onClick={() => {
                             markAsRead(notif.id);
                             setNotificationsOpen(false);
-                            if (notif.related_id && String(notif.title || '').toUpperCase().includes('DISPUTA')) {
-                              navigate(`/disputas/${notif.related_id}`);
-                            } else if (notif.item_id) {
-                              navigate(`/item/${notif.item_id}`);
-                            }
+                            if (notif.item_id) navigate(`/item/${notif.item_id}`);
                           }}
-                          className={`px-4 py-2.5 border-b border-[#D4AF37]/10 cursor-pointer transition-colors ${
-                            notif.is_read ? 'bg-black/20' : 'bg-[#D4AF37]/5 hover:bg-[#D4AF37]/10'
+                          className={`px-4 py-3 border-b border-white/5 cursor-pointer transition-colors ${
+                            notif.is_read ? 'bg-transparent' : 'bg-amber-500/5 hover:bg-amber-500/10'
                           }`}
                         >
-                          <p className={`text-xs font-semibold ${notif.is_read ? 'text-gray-500' : 'text-white'}`}>
+                          <p className={`text-sm font-medium ${notif.is_read ? 'text-white/50' : 'text-white'}`}>
                             {notif.title}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                          <p className="text-xs text-white/30 mt-0.5 line-clamp-1">
                             {notif.message}
                           </p>
                         </div>
                       ))
                     )}
                   </div>
-
-                  {/* Link para mensagens se houver */}
-                  {unreadMessagesCount > 0 && (
-                    <div
-                      onClick={() => {
-                        navigate('/mensagens');
-                        setNotificationsOpen(false);
-                      }}
-                      className="px-4 py-2.5 bg-black/40 border-t border-[#D4AF37]/20 cursor-pointer hover:bg-[#D4AF37]/10 transition-colors text-sm text-[#D4AF37] font-semibold"
-                    >
-                      {unreadMessagesCount} mensagem(ns) nova(s) →
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
-            {/* Admin Link (Desktop) - Só aparece para administradores */}
+            {/* Admin */}
             {isAdmin && (
               <Link
                 to="/admin"
-                className="hidden md:block px-4 py-2 rounded-lg bg-black/60 border border-blue-400/30 text-blue-400 font-semibold text-sm hover:bg-blue-400/10 hover:border-blue-400/50 transition-all duration-300"
+                className="hidden md:block px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs font-medium uppercase tracking-wider hover:bg-white/10 hover:text-white hover:border-white/20 transition-all"
               >
                 Admin
               </Link>
             )}
 
-            {/* Avatar com Dropdown */}
+            {/* Profile Avatar */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="p-1 hover:bg-[#D4AF37]/10 rounded-lg transition-colors"
+                className="p-0.5 rounded-full hover:bg-white/5 transition-all"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8860B] flex items-center justify-center text-black font-bold text-sm overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 border border-white/20 flex items-center justify-center text-black font-semibold text-sm overflow-hidden shadow-lg">
                   {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     profile?.full_name?.[0] || 'U'
                   )}
                 </div>
               </button>
 
-              {/* Dropdown Menu */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-lg shadow-2xl overflow-hidden animate-in fade-in">
-                  
-                  {/* Header do Dropdown */}
-                  <div className="px-4 py-3 border-b border-[#D4AF37]/20">
-                    <p className="text-white font-semibold text-sm">
+                <div className="absolute right-0 mt-2 w-60 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/10">
+                    <p className="text-white text-sm font-medium">
                       {profile?.full_name || 'Usuário'}
                     </p>
-                    <p className="text-gray-400 text-xs">
+                    <p className="text-white/40 text-xs truncate">
                       {user?.email}
                     </p>
                   </div>
 
-                  {/* Menu Items */}
                   <div className="py-2">
                     <Link
                       to="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <User size={16} />
-                      <span className="text-sm">{t('nav.dropdown.profile')}</span>
+                      <span className="text-sm">Perfil</span>
                     </Link>
-
                     <Link
                       to="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Wallet size={16} />
-                      <span className="text-sm">{t('nav.dropdown.balance')}</span>
+                      <span className="text-sm">Saldo</span>
                     </Link>
-
                     <Link
                       to="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Settings size={16} />
-                      <span className="text-sm">{t('nav.dropdown.settings')}</span>
+                      <span className="text-sm">Configurações</span>
                     </Link>
-
-                    <div className="px-4 py-2.5 border-t border-[#D4AF37]/10">
-                      <p className="text-xs text-gray-400 mb-2">{t('nav.dropdown.language')}</p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setLocale('pt-BR')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                            locale === 'pt-BR'
-                              ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40'
-                              : 'bg-white/5 text-white/70 border border-white/10 hover:text-white'
-                          }`}
-                        >
-                          Português
-                        </button>
-                        <button
-                          onClick={() => setLocale('en-US')}
-                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                            locale === 'en-US'
-                              ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40'
-                              : 'bg-white/5 text-white/70 border border-white/10 hover:text-white'
-                          }`}
-                        >
-                          English
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Logout */}
-                  <div className="border-t border-[#D4AF37]/20 py-2">
+                  <div className="border-t border-white/10 py-2">
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <LogOut size={16} />
-                      <span className="text-sm">{t('nav.dropdown.logout')}</span>
+                      <span className="text-sm">Sair</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Menu Hamburger (Mobile) */}
+            {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-[#D4AF37]"
+              className="md:hidden p-2 text-white/50 hover:text-white"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -452,57 +352,34 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* ── Menu Mobile ────────────────────────────────────────────────────────── */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden backdrop-blur-xl bg-[rgba(13,13,13,0.95)] border-b border-[#D4AF37]/20">
+        <div className="md:hidden bg-[#050505]/95 backdrop-blur-xl border-b border-white/10">
           <div className="px-4 py-4 space-y-3">
-            
-            {/* Admin Link (Mobile) - Só aparece para administradores */}
             {isAdmin && (
               <Link
                 to="/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full px-4 py-2.5 rounded-lg bg-black/60 border border-blue-400/30 text-blue-400 font-semibold text-sm hover:bg-blue-400/10 hover:border-blue-400/50 transition-all text-center"
+                className="block w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white/60 text-center text-sm font-medium uppercase tracking-wider"
               >
                 Admin
               </Link>
             )}
-
-            {/* Links de Navegação */}
-            <div className="space-y-2 border-t border-[#D4AF37]/20 pt-3">
+            <div className="space-y-1 border-t border-white/10 pt-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-4 py-2.5 rounded-lg transition-colors ${
+                  className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive(link.path)
-                      ? 'bg-[#D4AF37]/20 text-[#D4AF37] font-semibold'
-                      : 'text-gray-300 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37]'
+                      ? 'bg-amber-500/10 text-amber-400'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {link.label}
                 </Link>
               ))}
-            </div>
-
-            {/* Busca Mobile */}
-            <div className="border-t border-[#D4AF37]/20 pt-3">
-              <form onSubmit={handleSearch} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Buscar CDs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-[#1a1a1a] text-white placeholder-gray-500 px-4 py-2 rounded-lg border border-[#D4AF37]/30 text-sm focus:outline-none focus:border-[#D4AF37]"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#D4AF37] text-black px-4 py-2 rounded-lg font-medium text-sm hover:bg-[#F4E4BC] transition-colors"
-                >
-                  <Search size={16} />
-                </button>
-              </form>
             </div>
           </div>
         </div>
