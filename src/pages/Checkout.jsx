@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, CreditCard, CheckCircle, Disc, Shield, Loader2, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, CreditCard, CheckCircle, Disc, Shield, Loader2, AlertTriangle, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Pill } from '../components/UIComponents';
@@ -177,53 +177,43 @@ export default function Checkout() {
         
         setSettings(finalSettings);
 
-        // Configurar gateways disponíveis
+        // FORÇA TODOS OS 4 MÉTODOS DE PAGAMENTO - CATÁLOGO DE CDs
         const available = [];
-        const isSandbox = finalSettings.gateway_mode !== 'production';
         
-        // Stripe - chave do .env.local: VITE_STRIPE_PUBLISHABLE_KEY
-        if (finalSettings.gateway_provider === 'stripe' || !finalSettings.gateway_provider) {
-          const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-          if (stripeKey) {
-            available.push({ 
-              id: 'stripe', 
-              name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito', 
-              icon: CreditCard 
-            });
-          }
-        }
+        // Stripe - Cartão de Crédito
+        available.push({ 
+          id: 'stripe', 
+          name: 'Cartão de Crédito', 
+          icon: CreditCard 
+        });
 
-        // Mercado Pago - chave do .env.local: VITE_MP_PUBLIC_KEY
-        if (finalSettings.gateway_provider === 'mercado_pago') {
-          const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
-          if (mpKey) {
-            available.push({ 
-              id: 'mercado_pago', 
-              name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago', 
-              icon: Disc 
-            });
-          }
-        }
+        // Mercado Pago
+        available.push({ 
+          id: 'mercado_pago', 
+          name: 'Mercado Pago', 
+          icon: Disc 
+        });
         
-        // PayPal - chave do .env.local: VITE_PAYPAL_CLIENT_ID
-        if (finalSettings.gateway_provider === 'paypal') {
-          const paypalKey = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-          if (paypalKey) {
-            available.push({ 
-              id: 'paypal', 
-              name: isSandbox ? 'PayPal (Teste)' : 'PayPal', 
-              icon: Shield 
-            });
-          }
-        }
+        // PayPal
+        available.push({ 
+          id: 'paypal', 
+          name: 'PayPal', 
+          icon: Shield 
+        });
+
+        // PIX do Portal
+        available.push({ 
+          id: 'pix_portal', 
+          name: 'PIX do Portal', 
+          icon: QrCode 
+        });
+        
+        console.log('[Checkout] Gateways disponíveis:', available.map(a => a.id));
         
         setAvailableGateways(available);
 
-        // Selecionar o primeiro disponível por padrão
-        if (available.length > 0) {
-          const gatewayId = available[0].id;
-          setSelectedGateway(gatewayId);
-        }
+        // Padrão: Mercado Pago
+        setSelectedGateway('mercado_pago');
 
         setLoading(false);
       } catch (error) {
@@ -306,19 +296,8 @@ export default function Checkout() {
   const processingFee = currency === 'USD' ? baseProcessingFee / rate : baseProcessingFee;
   const totalBuyer = currency === 'USD' ? baseTotal / rate : baseTotal;
 
-  // 🚫 FILTRAR GATEWAYS
-  const displayedGateways = availableGateways.filter(g => {
-    if (currency === 'USD' && g.id === 'mercado_pago') return false;
-    return true;
-  });
-
-  // Atualizar seleção se o gateway atual sumir
-  useEffect(() => {
-    if (selectedGateway === 'mercado_pago' && currency === 'USD') {
-      const firstAvailable = displayedGateways[0];
-      if (firstAvailable) setSelectedGateway(firstAvailable.id);
-    }
-  }, [currency, displayedGateways, selectedGateway]);
+  // Todos os gateways disponíveis para o catálogo
+  const displayedGateways = availableGateways;
 
   if (loading) {
     return (
@@ -435,14 +414,15 @@ export default function Checkout() {
                         {gateway.id === 'stripe' && <CreditCard size={32} />}
                         {gateway.id === 'mercado_pago' && <Disc size={32} />}
                         {gateway.id === 'paypal' && <Shield size={32} />}
+                        {gateway.id === 'pix_portal' && <QrCode size={32} />}
                       </div>
 
                       <div className="space-y-1">
                         <p className={`font-black uppercase tracking-widest text-[10px] ${selectedGateway === gateway.id ? 'text-gold-premium' : 'text-silver-premium/40'}`}>
-                          {gateway.id === 'stripe' ? t('checkout.payment.creditCard') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPago') : t('checkout.payment.paypal')}
+                          {gateway.id === 'stripe' ? t('checkout.payment.creditCard') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPago') : gateway.id === 'pix_portal' ? 'PIX do Portal' : t('checkout.payment.paypal')}
                         </p>
                         <p className="text-white font-bold text-xs tracking-tight">
-                          {gateway.id === 'stripe' ? t('checkout.payment.creditCardDesc') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPagoDesc') : t('checkout.payment.paypalDesc')}
+                          {gateway.id === 'stripe' ? t('checkout.payment.creditCardDesc') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPagoDesc') : gateway.id === 'pix_portal' ? 'Pagamento direto para o portal' : t('checkout.payment.paypalDesc')}
                         </p>
                       </div>
                     </button>
