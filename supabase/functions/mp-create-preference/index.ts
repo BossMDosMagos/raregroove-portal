@@ -166,8 +166,10 @@ if (!response.ok) {
 return new Response(
   JSON.stringify({
     id: data.id,
+    preference_id: data.id,
     init_point: data.init_point,
     sandbox_init_point: data.sandbox_init_point,
+    point_of_interaction: data.point_of_interaction,
   }),
   { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
 );
