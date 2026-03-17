@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CreditCard, Crown, Gem, Loader2, Sparkles } from 'lucide-react';
+import { CreditCard, Crown, Gem, Loader2, Sparkles, Disc, Shield, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import PaymentGateway from '../components/PaymentGateway';
@@ -111,7 +111,7 @@ export default function CheckoutDynamic() {
 
         // Stripe
         const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-        if ((!finalSettings.gateway_provider || finalSettings.gateway_provider === 'stripe') && stripeKey) {
+        if (stripeKey) {
           available.push({
             id: 'stripe',
             name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
@@ -119,28 +119,46 @@ export default function CheckoutDynamic() {
           });
         }
 
-        // Mercado Pago
+        // Mercado Pago - sempre mostrar se tiver chave
         const mpKey = import.meta.env.VITE_MP_PUBLIC_KEY;
-        if (finalSettings.gateway_provider === 'mercado_pago' && mpKey) {
+        if (mpKey) {
           available.push({
             id: 'mercado_pago',
             name: isSandbox ? 'Mercado Pago (Teste)' : 'Mercado Pago',
-            icon: CreditCard
+            icon: Disc
           });
         }
 
         // PayPal
         const paypalKey = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-        if (finalSettings.gateway_provider === 'paypal' && paypalKey) {
+        if (paypalKey) {
           available.push({
             id: 'paypal',
             name: isSandbox ? 'PayPal (Teste)' : 'PayPal',
-            icon: CreditCard
+            icon: Shield
           });
         }
 
+        // PIX do Portal - se tiver configuração
+        const pixKey = finalSettings.pix_enabled || finalSettings.pix_key;
+        if (pixKey) {
+          available.push({
+            id: 'pix_portal',
+            name: 'PIX do Portal',
+            icon: QrCode
+          });
+        }
+
+        // Se não houver nenhum, adicionar Stripe como fallback
+        if (available.length === 0 && stripeKey) {
+          available.push({ id: 'stripe', name: 'Stripe', icon: CreditCard });
+        }
+
         setAvailableGateways(available);
-        if (available.length > 0) setSelectedGateway(available[0].id);
+        
+        // Padrão: Mercado Pago se disponível, senão primeiro da lista
+        const defaultGateway = available.find(g => g.id === 'mercado_pago')?.id || available[0]?.id;
+        setSelectedGateway(defaultGateway);
       } catch (e) {
         toast.error('Erro ao iniciar checkout', { description: e.message });
         navigate('/plans');

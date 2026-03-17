@@ -11,7 +11,10 @@ const defaultSettings = {
   swap_guarantee_portal_pct: '100.00',
   gateway_provider: 'stripe',
   gateway_mode: 'sandbox',
-  base_portal_url: 'https://raregroove.com'
+  base_portal_url: 'https://raregroove.com',
+  pix_enabled: false,
+  pix_key: '',
+  pix_beneficiary: ''
 };
 
 export default function FeeManagement() {
@@ -43,7 +46,10 @@ export default function FeeManagement() {
             swap_guarantee_portal_pct: String(data.swap_guarantee_portal_pct ?? defaultSettings.swap_guarantee_portal_pct),
             gateway_provider: data.gateway_provider ?? defaultSettings.gateway_provider,
             gateway_mode: data.gateway_mode ?? defaultSettings.gateway_mode,
-            base_portal_url: data.base_portal_url ?? defaultSettings.base_portal_url
+            base_portal_url: data.base_portal_url ?? defaultSettings.base_portal_url,
+            pix_enabled: data.pix_enabled ?? defaultSettings.pix_enabled,
+            pix_key: data.pix_key ?? defaultSettings.pix_key,
+            pix_beneficiary: data.pix_beneficiary ?? defaultSettings.pix_beneficiary
           });
         }
       } catch (error) {
@@ -100,6 +106,9 @@ export default function FeeManagement() {
         gateway_provider: settings.gateway_provider,
         gateway_mode: settings.gateway_mode,
         base_portal_url: settings.base_portal_url || null,
+        pix_enabled: settings.pix_enabled || false,
+        pix_key: settings.pix_key || null,
+        pix_beneficiary: settings.pix_beneficiary || null,
         updated_by: user?.id || null,
         updated_at: new Date().toISOString()
       };
@@ -244,6 +253,47 @@ export default function FeeManagement() {
                 onChange={(e) => setSettings({ ...settings, base_portal_url: e.target.value })}
                 className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37]"
               />
+            </div>
+
+            {/* Configurações PIX do Portal */}
+            <div className="space-y-4 border-t border-white/10 pt-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="pix_enabled"
+                  checked={settings.pix_enabled || false}
+                  onChange={(e) => setSettings({ ...settings, pix_enabled: e.target.checked })}
+                  className="w-4 h-4 rounded border-white/20 bg-black/60 text-[#D4AF37] focus:ring-[#D4AF37]"
+                />
+                <label htmlFor="pix_enabled" className="text-xs font-bold text-white uppercase tracking-widest">
+                  Ativar PIX do Portal
+                </label>
+              </div>
+              
+              {settings.pix_enabled && (
+                <div className="space-y-3 pl-6">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Chave PIX</label>
+                    <input
+                      type="text"
+                      value={settings.pix_key || ''}
+                      onChange={(e) => setSettings({ ...settings, pix_key: e.target.value })}
+                      placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
+                      className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Beneficiário</label>
+                    <input
+                      type="text"
+                      value={settings.pix_beneficiary || ''}
+                      onChange={(e) => setSettings({ ...settings, pix_beneficiary: e.target.value })}
+                      placeholder="Nome do beneficiário"
+                      className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 border-t border-white/10 pt-4">

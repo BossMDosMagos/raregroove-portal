@@ -768,7 +768,12 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="md:col-span-2">
-                        <GoldInput label={t('profile.personalData.pix')} value={editData.pix_key} onChange={handlePixKeyChange} onBlur={handlePixKeyBlur} placeholder="Email, CPF, Telefone ou Chave Aleatória" />
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                          <p className="text-amber-300 text-xs font-bold uppercase tracking-wider">PIX do Portal</p>
+                          <p className="text-white/60 text-sm mt-1">
+                            O PIX para recebimento de vendas é gerenciado pelo portal. Configure em Configurações Financeiras.
+                          </p>
+                        </div>
                       </div>
                       <div className="md:col-span-2 pt-6">
                         <button onClick={handleSaveProfile} className="w-full bg-gold-premium text-charcoal-deep py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] transition-all active:scale-[0.98]">
@@ -788,7 +793,6 @@ export default function Profile() {
                         <InfoRow label="Endereço" value={`${editData.address}, ${editData.number}`} />
                         <InfoRow label="Cidade/UF" value={`${editData.city} - ${editData.state}`} />
                         <InfoRow label="CEP" value={editData.cep} />
-                        <InfoRow label={t('profile.personalData.pix')} value={editData.pix_key ? formatPixKey(editData.pix_key) : '—'} />
                       </div>
                     </div>
                   )}
