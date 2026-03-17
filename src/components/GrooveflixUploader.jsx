@@ -92,25 +92,29 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
       throw new Error(data.error || data.message || `Erro ${response.status}`);
     }
 
-    console.log('Attempting B2 upload with:', {
-      uploadUrl: data.uploadUrl?.substring(0, 50) + '...',
-      uploadAuthToken: data.uploadAuthToken?.substring(0, 20) + '...',
-      filePath: data.filePath,
-      contentType: data.contentType
-    });
+    console.log('=== B2 UPLOAD DEBUG ===');
+    console.log('uploadUrl:', data.uploadUrl);
+    console.log('uploadAuthToken:', data.uploadAuthToken);
+    console.log('filePath:', data.filePath);
+    console.log('contentType:', data.contentType);
+    console.log('file.size:', file.size);
+    console.log('file.type:', file.type);
+
+    // Headers obrigatórios para o B2
+    const uploadHeaders = new Headers();
+    uploadHeaders.append('Authorization', data.uploadAuthToken);
+    uploadHeaders.append('X-Bz-File-Name', data.filePath);
+    uploadHeaders.append('Content-Type', data.contentType || 'b2/x-auto');
+    uploadHeaders.append('Content-Length', file.size.toString());
+    uploadHeaders.append('X-Bz-Content-Sha1', 'do_not_verify');
+
+    console.log('Headers to send:', Object.fromEntries(uploadHeaders));
 
     // Upload direto para B2 usando POST
-    // IMPORTANTE: O header Authorization deve usar o uploadAuthToken retornado pela Edge Function
     const uploadResponse = await fetch(data.uploadUrl, {
       method: 'POST',
       body: file,
-      headers: {
-        'Authorization': data.uploadAuthToken,
-        'X-Bz-File-Name': encodeURIComponent(data.filePath),
-        'Content-Type': data.contentType,
-        'Content-Length': file.size.toString(),
-        'X-Bz-Content-Sha1': 'do_not_verify'
-      }
+      headers: uploadHeaders
     });
 
     if (!uploadResponse.ok) {
