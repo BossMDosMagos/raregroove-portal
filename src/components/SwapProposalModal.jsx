@@ -29,6 +29,7 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
         .select('*')
         .eq('seller_id', currentUserId)
         .eq('is_sold', false)
+        .neq('status', 'vendido')
         .neq('id', item.id) // Não pode trocar com o mesmo item
         .order('created_at', { ascending: false });
 

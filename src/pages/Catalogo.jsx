@@ -27,6 +27,8 @@ export default function Catalogo() {
     const { data, error } = await supabase
       .from('items')
       .select('*')
+      .eq('is_sold', false)
+      .neq('status', 'vendido')
       .order('created_at', { ascending: false });
     
     if (!error) {
