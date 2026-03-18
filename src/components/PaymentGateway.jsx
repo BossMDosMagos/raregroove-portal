@@ -382,6 +382,15 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
             amount: parseFloat(amount),
             preferenceId: preferenceId,
           },
+          customization: {
+            paymentMethods: {
+              ticket: 'all',
+              bankTransfer: 'all',
+              creditCard: 'all',
+              debitCard: 'all',
+              mercadoPago: 'all',
+            },
+          },
           callbacks: {
             onReady: () => {
               console.log('✅ Payment Brick pronto!');
