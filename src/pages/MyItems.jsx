@@ -45,6 +45,12 @@ export default function MyItems() {
     fetchMyItems();
   }, []);
 
+  useEffect(() => {
+    const handleFocus = () => fetchMyItems();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   const handleDelete = async (id) => {
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;
