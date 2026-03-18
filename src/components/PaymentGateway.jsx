@@ -381,14 +381,14 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           initialization: {
             amount: parseFloat(amount),
             preferenceId: preferenceId,
+            payer: {
+              email: metadata?.buyerEmail || 'comprador@email.com',
+            },
           },
           customization: {
             paymentMethods: {
-              ticket: 'all',
-              bankTransfer: 'all',
-              creditCard: 'all',
-              debitCard: 'all',
-              mercadoPago: 'all',
+              creditCard: { cardholders: { identificationType: 'CPF' } },
+              debitCard: { cardholders: { identificationType: 'CPF' } },
             },
           },
           callbacks: {
