@@ -12,7 +12,7 @@ export default function Checkout() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const { cartItems, itemsDetails, clearLocalCart } = useCart();
+  const { clearLocalCart } = useCart();
 
   // 💰 SELETOR DE MOEDA
   const [currency, setCurrency] = useState(locale === 'en-US' ? 'USD' : 'BRL');
@@ -22,8 +22,8 @@ export default function Checkout() {
   }, [locale]);
   
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
-  const [sellers, setSellers] = useState({});
+  const [item, setItem] = useState(null);
+  const [seller, setSeller] = useState(null);
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
   
@@ -37,14 +37,8 @@ export default function Checkout() {
   useEffect(() => {
     const init = async () => {
       try {
-        // Se não tem itemId mas tem itens no carrinho, redirecionar para o primeiro
-        if (!itemId && cartItems.length > 0) {
-          navigate(`/checkout/${cartItems[0].itemId}`);
-          return;
-        }
-
-        if (!itemId && cartItems.length === 0) {
-          toast.error('Nenhum item no carrinho');
+        if (!itemId) {
+          toast.error('Item não especificado');
           navigate('/catalogo');
           return;
         }
@@ -83,26 +77,12 @@ export default function Checkout() {
           const hasActiveReserve = Boolean(reservedUntilMs && reservedUntilMs > Date.now());
           const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
 
-          if (!reservedUntilMs) {
-            const cartItem = cartItems.find(ci => ci.itemId === itemId);
-            if (!cartItem || !cartItem.reservedUntilMs || cartItem.reservedUntilMs <= Date.now()) {
-              toast.error('ITEM INDISPONÍVEL', {
-                description: 'Este item está reservado/em negociação.',
-              });
-              navigate('/catalogo');
-              return;
-            }
-          }
-
           if (hasActiveReserve && !isReservedByMe) {
-            const cartItem = cartItems.find(ci => ci.itemId === itemId);
-            if (!cartItem || !cartItem.reservedUntilMs || cartItem.reservedUntilMs <= Date.now()) {
-              toast.error('ITEM RESERVADO', {
-                description: 'Outro colecionador está com reserva ativa.',
-              });
-              navigate('/catalogo');
-              return;
-            }
+            toast.error('ITEM RESERVADO', {
+              description: 'Outro colecionador está com reserva ativa.',
+            });
+            navigate('/catalogo');
+            return;
           }
         }
 
@@ -215,7 +195,7 @@ export default function Checkout() {
       }
     };
     init();
-  }, [itemId, navigate, cartItems]);
+  }, [itemId, navigate]);
 
   const handlePaymentSuccess = async (paymentData) => {
     try {
