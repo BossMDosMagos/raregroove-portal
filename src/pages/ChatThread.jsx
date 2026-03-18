@@ -122,12 +122,20 @@ export default function ChatThread() {
 
         setOtherUserRating(ratingData);
 
-        // Verificar se é Elite
-        const { data: eliteData } = await supabase
-          .rpc('is_elite_seller', { user_uuid: otherUserId })
-          .single();
-
-        setOtherUserIsElite(eliteData?.is_elite || false);
+        // Verificar se é Elite (com tratamento de erro)
+        if (otherUserId) {
+          try {
+            const { data: eliteData } = await supabase
+              .rpc('is_elite_seller', { user_uuid: otherUserId })
+              .single();
+            setOtherUserIsElite(eliteData?.is_elite || false);
+          } catch (e) {
+            console.warn('Erro ao verificar elite seller:', e);
+            setOtherUserIsElite(false);
+          }
+        } else {
+          setOtherUserIsElite(false);
+        }
 
         // DEBUG: Primeiro verificar quantas mensagens não lidas existem
         const { data: unreadMessages, error: checkError } = await supabase

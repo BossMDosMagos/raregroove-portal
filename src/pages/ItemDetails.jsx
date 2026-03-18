@@ -121,12 +121,20 @@ export default function ItemDetails() {
 
         setSellerRating(ratingData);
 
-        // Verificar se é Elite
-        const { data: eliteData } = await supabase
-          .rpc('is_elite_seller', { user_uuid: itemData.seller_id })
-          .single();
-
-        setIsElite(eliteData?.is_elite || false);
+        // Verificar se é Elite (com tratamento de erro)
+        if (itemData.seller_id) {
+          try {
+            const { data: eliteData } = await supabase
+              .rpc('is_elite_seller', { user_uuid: itemData.seller_id })
+              .single();
+            setIsElite(eliteData?.is_elite || false);
+          } catch (e) {
+            console.warn('Erro ao verificar elite seller:', e);
+            setIsElite(false);
+          }
+        } else {
+          setIsElite(false);
+        }
       }
 
       setLoading(false);
