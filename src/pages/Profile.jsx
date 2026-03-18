@@ -246,19 +246,24 @@ export default function Profile() {
 
       setRatingStats(statsData);
 
-      // Check if user is Elite (com tratamento de erro)
-      if (user?.id) {
+      // Check if user is Elite (travas de segurança)
+      const userId = user?.id;
+      if (!userId) {
+        setIsElite(false);
+      } else {
         try {
-          const { data: eliteData } = await supabase
-            .rpc('is_elite_seller', { user_uuid: user.id })
-            .single();
-          setIsElite(eliteData?.is_elite || false);
+          const { data: eliteData, error } = await supabase
+            .rpc('is_elite_seller', { user_uuid: userId });
+          if (error) {
+            console.warn('Erro silencioso na checagem de elite:', error.message);
+            setIsElite(false);
+          } else {
+            setIsElite(eliteData?.is_elite || false);
+          }
         } catch (e) {
           console.warn('Erro ao verificar elite seller:', e);
           setIsElite(false);
         }
-      } else {
-        setIsElite(false);
       }
 
       setIsLoading(false);
