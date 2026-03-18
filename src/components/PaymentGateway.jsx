@@ -5,7 +5,8 @@ import { Disc, CreditCard, CheckCircle, Lock, QrCode } from 'lucide-react';
 import { getGatewayConfig, createStripePaymentIntent } from '../utils/paymentGateway';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { generatePixBrcode, getQRCodeURL } from '../utils/pixBrcode';
+import { generatePixBrcode } from '../utils/pixBrcode';
+import { QRCodeSVG } from 'qrcode.react';
 
 /**
  * COMPONENTE DE PAGAMENTO REAL - STRIPE
@@ -459,7 +460,6 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
   const [processing, setProcessing] = useState(false);
   const [pixConfig, setPixConfig] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [brcode, setBrcode] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -491,7 +491,6 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
       });
 
       setBrcode(generatedBrcode);
-      setQrCodeUrl(getQRCodeURL(generatedBrcode));
     } catch (error) {
       console.error('❌ [PIX Portal] Erro ao carregar config:', error);
       onError(error);
@@ -557,13 +556,14 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
           </p>
         </div>
 
-        {qrCodeUrl && (
+        {brcode && (
           <div className="flex justify-center">
             <div className="bg-white p-4 rounded-xl">
-              <img 
-                src={qrCodeUrl} 
-                alt="QR Code PIX" 
-                className="w-48 h-48"
+              <QRCodeSVG 
+                value={brcode}
+                size={180}
+                level="M"
+                includeMargin={false}
               />
             </div>
           </div>
