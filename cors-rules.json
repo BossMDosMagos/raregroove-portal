@@ -1,0 +1,23 @@
+[
+  {
+    "corsRuleName": "allowPortalUpload",
+    "allowedOrigins": [
+      "https://portalraregroove.com",
+      "http://localhost:5173",
+      "http://localhost:5174"
+    ],
+    "allowedHeaders": [
+      "*"
+    ],
+    "allowedOperations": [
+      "b2_upload_file",
+      "b2_upload_part",
+      "b2_download_file_by_id"
+    ],
+    "exposeHeaders": [
+      "x-bz-info-name",
+      "ETag"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

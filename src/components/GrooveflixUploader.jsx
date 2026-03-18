@@ -184,10 +184,15 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
 
   const uploadToB2 = async (file, fileCategory) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey
+      },
       body: JSON.stringify({
         filename: file.name,
         category: fileCategory,
