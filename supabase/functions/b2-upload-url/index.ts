@@ -1,6 +1,5 @@
 // Supabase Edge Function - Upload para Backblaze B2
-// Upload direto para B2 com verificação de permissões (admin bypass)
-// JWT verificado via service role para evitar problemas com sessões expiradas
+// Upload direto para B2 - Admin bypass total via service role
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -14,44 +13,76 @@ const corsHeaders = {
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
-const B2_REGION = Deno.env.get('B2_REGION') || 'us-east-005';
 
 function getServiceClient() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  
   return createClient(supabaseUrl, serviceRoleKey);
 }
 
-async function checkUploadPermission(userId: string): Promise<{ allowed: boolean; isAdmin: boolean; reason?: string }> {
-  const supabaseAdmin = getServiceClient();
+async function getUserFromToken(token: string): Promise<string | null> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    
+    // Usar serviço de autenticação diretamente
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': serviceRoleKey,
+      }
+    });
+    
+    if (!response.ok) {
+      console.log('[B2-Upload] Falha ao validar token:', response.status);
+      return null;
+    }
+    
+    const userData = await response.json();
+    return userData?.id || null;
+  } catch (err) {
+    console.error('[B2-Upload] Erro ao validar token:', err);
+    return null;
+  }
+}
+
+async function checkIsAdmin(userId: string): Promise<boolean> {
+  try {
+    const supabaseAdmin = getServiceClient();
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    
+    if (error || !data) {
+      console.error('[B2-Upload] Erro ao buscar perfil:', error);
+      return false;
+    }
+    
+    return data.is_admin === true;
+  } catch (err) {
+    console.error('[B2-Upload] Erro checkIsAdmin:', err);
+    return false;
+  }
+}
+
+async function authorizeUpload(token: string): Promise<{ allowed: boolean; userId?: string; reason?: string }> {
+  const userId = await getUserFromToken(token);
   
-  const { data: profile, error } = await supabaseAdmin
-    .from('profiles')
-    .select('is_admin, subscription_status, user_level')
-    .eq('id', userId)
-    .single();
-  
-  console.log('[B2-Upload] Profile query result:', { userId, profile, error });
-  
-  if (error || !profile) {
-    console.error('[B2-Upload] Erro ao buscar perfil:', error);
-    return { allowed: false, isAdmin: false, reason: 'Perfil não encontrado' };
+  if (!userId) {
+    return { allowed: false, reason: 'Token inválido ou expirado' };
   }
   
-  if (profile.is_admin === true) {
-    console.log('[B2-Upload] ADMIN BYPASS - upload permitido');
-    return { allowed: true, isAdmin: true };
+  const isAdmin = await checkIsAdmin(userId);
+  
+  if (isAdmin) {
+    console.log('[B2-Upload] ADMIN AUTORIZADO:', userId);
+    return { allowed: true, userId };
   }
   
-  const status = profile.subscription_status?.toLowerCase();
-  const userLevel = Number(profile.user_level || 0);
-  
-  if (status === 'active' && userLevel >= 1) {
-    return { allowed: true, isAdmin: false };
-  }
-  
-  return { allowed: false, isAdmin: false, reason: 'Assinatura ativa requerida para upload' };
+  return { allowed: false, reason: 'Apenas admins podem fazer upload' };
 }
 
 serve(async (req) => {
@@ -62,7 +93,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verificar autenticação - usar service client para validar token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'missing_auth' }), { 
@@ -70,91 +100,30 @@ serve(async (req) => {
       });
     }
 
-    // Usar service client para verificar o token
-    const supabaseService = getServiceClient();
     const token = authHeader.replace('Bearer ', '');
     
-    // Criar cliente com o token do usuário para validar
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    // Autorizar upload
+    const auth = await authorizeUpload(token);
     
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false }
-    });
-    
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    
-    if (authError || !user) {
-      console.error('[B2-Upload] Auth error:', authError);
-      // Para admins, continuar mesmo se o token parecer inválido (pode ser refresh issue)
-      // Vamos verificar pelo email do header
-      return new Response(JSON.stringify({ 
-        error: 'invalid_auth', 
-        details: authError?.message || 'Token validation failed'
-      }), { 
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    const userId = user.id;
-    console.log('[B2-Upload] Usuário autenticado:', userId);
-
-    // Verificar permissões de upload
-    const permission = await checkUploadPermission(userId);
-    console.log('[B2-Upload] Permissão:', { userId, ...permission });
-    
-    if (!permission.allowed) {
-      return new Response(JSON.stringify({ error: permission.reason || 'upload_forbidden' }), { 
+    if (!auth.allowed) {
+      return new Response(JSON.stringify({ error: auth.reason }), { 
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
+    const userId = auth.userId!;
+    console.log('[B2-Upload] Upload autorizado para:', userId);
+
     // Verificar B2 configurado
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
-      console.error('[B2-Upload] B2 não configurado:', { 
-        hasKeyId: !!B2_KEY_ID, 
-        hasAppKey: !!B2_APPLICATION_KEY, 
-        hasBucket: !!B2_BUCKET_NAME 
-      });
+      console.error('[B2-Upload] B2 não configurado');
       return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Autenticar com B2 usando Basic Auth
-    // Converter de Base64 se necessário, caso contrário texto puro
-    let keyId = B2_KEY_ID.trim();
-    let appKey = B2_APPLICATION_KEY.trim();
-    
-    // Verificar se as chaves parecem ser Base64 e decodificar
-    try {
-      const keyIdDecoded = atob(keyId);
-      if (keyIdDecoded && keyIdDecoded.length > 10) {
-        keyId = keyIdDecoded;
-        console.log('[B2-Upload] KeyId decodificado de Base64');
-      }
-    } catch {
-      // Não é Base64, usar texto puro
-    }
-    
-    try {
-      const appKeyDecoded = atob(appKey);
-      if (appKeyDecoded && appKeyDecoded.length > 10) {
-        appKey = appKeyDecoded;
-        console.log('[B2-Upload] AppKey decodificado de Base64');
-      }
-    } catch {
-      // Não é Base64, usar texto puro
-    }
-    
-    console.log('[B2-Upload] Credenciais B2:', { 
-      keyIdLength: keyId.length, 
-      keyIdPrefix: keyId.substring(0, 5),
-      isAdmin: permission.isAdmin 
-    });
-    
-    const authString = `${keyId}:${appKey}`;
+    // Autenticar com B2
+    const authString = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
     const encoded = btoa(authString);
     
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
@@ -168,12 +137,7 @@ serve(async (req) => {
     if (!authRes.ok) {
       const err = await authRes.text();
       console.error('[B2-Upload] B2 auth falhou:', authRes.status, err);
-      return new Response(JSON.stringify({ 
-        error: 'B2 auth failed', 
-        status: authRes.status, 
-        details: err,
-        debug: { keyIdLength: keyId.length, isBase64: B2_KEY_ID !== keyId }
-      }), { 
+      return new Response(JSON.stringify({ error: 'B2 auth failed', details: err }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -197,17 +161,13 @@ serve(async (req) => {
     });
     
     const bucketData = await bucketRes.json();
-    console.log('Buckets found:', bucketData.buckets?.map((b: any) => b.bucketName));
-    
     const bucket = bucketData.buckets?.find((b: any) => b.bucketName === B2_BUCKET_NAME);
+    
     if (!bucket) {
-      console.log('Bucket not found:', B2_BUCKET_NAME);
       return new Response(JSON.stringify({ error: `Bucket ${B2_BUCKET_NAME} não encontrado` }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
-    
-    console.log('Bucket found:', bucket.bucketName, bucket.bucketId);
 
     // Obter URL de upload
     const uploadUrlRes = await fetch(`https://api.backblazeb2.com/b2api/v2/b2_get_upload_url?bucketId=${bucket.bucketId}`, {
@@ -217,8 +177,7 @@ serve(async (req) => {
     const uploadUrlData = await uploadUrlRes.json();
     
     if (!uploadUrlData.uploadUrl) {
-      console.log('Failed to get upload URL:', uploadUrlData);
-      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload', details: uploadUrlData }), { 
+      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
@@ -226,10 +185,7 @@ serve(async (req) => {
     // Gerar path do arquivo
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = `grooveflix/test/${category}/${timestamp}_${safeFilename}`;
-
-    console.log('Success! uploadUrl:', uploadUrlData.uploadUrl.substring(0, 50) + '...');
-    console.log('filePath:', filePath);
+    const filePath = `grooveflix/${category}/${timestamp}_${safeFilename}`;
 
     return new Response(
       JSON.stringify({
@@ -242,7 +198,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('[B2-Upload] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Erro interno' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
