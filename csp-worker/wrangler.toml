@@ -2,7 +2,8 @@ name = "csp-headers"
 main = "index.ts"
 compatibility_date = "2024-03-01"
 account_id = "6e52900b964c300ce471624d4ee8fc4e"
+workers_dev = false
 
-routes = [
-  { pattern = "portalraregroove.com/*", zone_name = "portalraregroove.com" }
-]
+[[routes]]
+pattern = "portalraregroove.com/*"
+zone_name = "portalraregroove.com"

@@ -188,57 +188,71 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
-    console.log('[UPLOAD] Iniciando upload...');
+    console.log('[UPLOAD] Iniciando upload server-side...');
     
-    // Usar anon key - a função vai verificar admin via service role
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    
+    // Enviar arquivo via FormData para upload server-side (evita CORS)
+    const formData = new FormData();
+    formData.append('filename', file.name);
+    formData.append('category', fileCategory);
+    formData.append('userId', userId);
+    formData.append('file', file);
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`,
         'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({
-        filename: file.name,
-        category: fileCategory,
-        contentType: file.type || 'application/octet-stream',
-        userId: (await supabase.auth.getUser()).data.user?.id
-      })
+      body: formData
     });
 
     const data = await response.json();
     
-    if (!response.ok || !data.uploadUrl) {
+    if (!response.ok) {
       throw new Error(data.error || data.message || `Erro ${response.status}`);
     }
 
-    const { uploadUrl, uploadAuthToken, filePath, contentType } = data;
+    if (data.success) {
+      return {
+        fileId: data.fileId,
+        fileName: data.fileName,
+        filePath: data.filePath,
+        downloadUrl: data.downloadUrl,
+        size: file.size
+      };
+    }
     
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'POST',
-      body: file,
-      headers: {
-        'Authorization': uploadAuthToken,
-        'X-Bz-File-Name': encodeURIComponent(filePath),
-        'Content-Type': file.type || 'b2/x-auto',
-        'X-Bz-Content-Sha1': 'do_not_verify'
-      }
-    });
+    // Fallback: se retornou URL, fazer upload direto (para arquivos pequenos)
+    if (data.uploadUrl) {
+      console.log('[UPLOAD] Fallback para upload direto...');
+      const uploadResponse = await fetch(data.uploadUrl, {
+        method: 'POST',
+        body: file,
+        headers: {
+          'Authorization': data.uploadAuthToken,
+          'X-Bz-File-Name': encodeURIComponent(data.filePath),
+          'Content-Type': file.type || 'b2/x-auto',
+          'X-Bz-Content-Sha1': 'do_not_verify'
+        }
+      });
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`Upload falhou: ${uploadResponse.status} - ${errorText}`);
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload falhou: ${uploadResponse.status} - ${errorText}`);
+      }
+
+      const result = await uploadResponse.json();
+      return {
+        fileId: result.fileId,
+        fileName: result.fileName,
+        filePath: data.filePath,
+        size: file.size
+      };
     }
 
-    const result = await uploadResponse.json();
-
-    return {
-      fileId: result.fileId,
-      fileName: result.fileName,
-      filePath: filePath,
-      contentType: file.type,
-      size: file.size
-    };
+    throw new Error('Resposta inválida do servidor');
   };
 
   const handleUpload = async () => {

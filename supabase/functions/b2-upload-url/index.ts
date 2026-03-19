@@ -1,5 +1,5 @@
-// Supabase Edge Function - Upload para Backblaze B2
-// Admin bypass total via service role
+// Supabase Edge Function - Upload completo para Backblaze B2
+// Faz upload server-side para evitar CORS
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,7 +12,7 @@ const corsHeaders = {
 
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
-const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
+const BUCKET_ID = '56cfb33d8ba45a4391cf0517';
 
 function getServiceClient() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -20,26 +20,17 @@ function getServiceClient() {
   return createClient(supabaseUrl, serviceRoleKey);
 }
 
-async function checkIsAdmin(userId: string): Promise<{ isAdmin: boolean; reason?: string }> {
+async function checkIsAdmin(userId: string): Promise<{ isAdmin: boolean }> {
   try {
     const supabaseAdmin = getServiceClient();
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('profiles')
-      .select('is_admin, subscription_status')
+      .select('is_admin')
       .eq('id', userId)
       .single();
-    
-    if (error || !data) {
-      return { isAdmin: false, reason: 'Perfil não encontrado' };
-    }
-    
-    if (data.is_admin === true) {
-      return { isAdmin: true };
-    }
-    
-    return { isAdmin: false, reason: 'Apenas admins podem fazer upload' };
+    return { isAdmin: data?.is_admin === true };
   } catch {
-    return { isAdmin: false, reason: 'Erro interno ao verificar permissões' };
+    return { isAdmin: false };
   }
 }
 
@@ -49,87 +40,125 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const { filename, category, contentType, userId } = body;
+    // Support both JSON metadata and multipart form data
+    let filename: string, category: string, userId: string, fileData: ArrayBuffer;
+    const contentType = req.headers.get('content-type') || '';
 
-    if (!filename || !category) {
-      return new Response(JSON.stringify({ error: 'filename e category obrigatórios' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      filename = formData.get('filename') as string;
+      category = formData.get('category') as string;
+      userId = formData.get('userId') as string;
+      const file = formData.get('file') as File;
+      if (file) {
+        fileData = await file.arrayBuffer();
+      } else {
+        throw new Error('Arquivo não enviado');
+      }
+    } else {
+      const body = await req.json();
+      filename = body.filename;
+      category = body.category;
+      userId = body.userId;
+      fileData = null;
     }
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'userId obrigatório' }), { 
+    if (!filename || !category || !userId) {
+      return new Response(JSON.stringify({ error: 'filename, category e userId obrigatórios' }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     const adminCheck = await checkIsAdmin(userId);
-    
     if (!adminCheck.isAdmin) {
-      return new Response(JSON.stringify({ error: adminCheck.reason }), { 
+      return new Response(JSON.stringify({ error: 'Apenas admins podem fazer upload' }), { 
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
+    if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
       return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     // B2 Authorization
-    const authString = B2_KEY_ID + ':' + B2_APPLICATION_KEY;
-    const encoded = btoa(authString);
-    
+    const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
-      headers: { 
-        'Authorization': 'Basic ' + encoded,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Basic ' + encoded, 'Content-Type': 'application/json' },
       body: '{}'
     });
 
     if (!authRes.ok) {
-      const err = await authRes.text();
-      return new Response(JSON.stringify({ error: 'B2 auth failed', details: err }), { 
+      return new Response(JSON.stringify({ error: 'B2 auth failed' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     const authData = await authRes.json();
-    const apiUrl = authData.apiUrl; // Use the URL from auth response
 
-    // Get upload URL directly using bucket name
-    const uploadUrlRes = await fetch(apiUrl + '/b2api/v2/b2_get_upload_url', {
+    // Get upload URL
+    const uploadUrlRes = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
       method: 'POST',
-      headers: { 
-        'Authorization': authData.authorizationToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ bucketId: '56cfb33d8ba45a4391cf0517' }) // Use known bucket ID
+      headers: { 'Authorization': authData.authorizationToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId: BUCKET_ID })
     });
-    
-    const uploadUrlData = await uploadUrlRes.json();
-    
-    if (!uploadUrlData.uploadUrl) {
-      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload', debug: uploadUrlData }), { 
+
+    if (!uploadUrlRes.ok) {
+      return new Response(JSON.stringify({ error: 'Falha ao obter URL de upload' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
+
+    const uploadUrlData = await uploadUrlRes.json();
 
     // Generate file path
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = 'grooveflix/' + category + '/' + timestamp + '_' + safeFilename;
 
+    // If file data not in request, return upload URL for client-side upload
+    if (!fileData) {
+      return new Response(
+        JSON.stringify({
+          uploadUrl: uploadUrlData.uploadUrl,
+          uploadAuthToken: uploadUrlData.authorizationToken,
+          filePath: filePath,
+          note: 'Upload file directly to uploadUrl with POST'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Server-side upload
+    const uploadRes = await fetch(uploadUrlData.uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': uploadUrlData.authorizationToken,
+        'X-Bz-File-Name': filePath,
+        'Content-Type': 'b2/x-auto',
+        'X-Bz-Content-Sha1': 'do_not_verify'
+      },
+      body: fileData
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.text();
+      return new Response(JSON.stringify({ error: 'Upload failed', details: err }), { 
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const result = await uploadRes.json();
+
     return new Response(
       JSON.stringify({
-        uploadUrl: uploadUrlData.uploadUrl,
-        uploadAuthToken: uploadUrlData.authorizationToken,
+        success: true,
+        fileId: result.fileId,
+        fileName: result.fileName,
         filePath: filePath,
-        contentType: contentType || 'application/octet-stream'
+        downloadUrl: `https://f005.backblazeb2.com/file/Cofre-RareGroove-01/${filePath}`
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
