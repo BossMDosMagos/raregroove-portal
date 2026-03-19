@@ -242,11 +242,17 @@ maxAgeSeconds: 3600
 - Upload funcionando via frontend Grooveflix
 - Cloudflare Pages: https://0f308fbb.raregroove-portal.pages.dev (deploy mais recente)
 
-### Cloudflare API Token
+### Cloudflare API Tokens
 ```
-akUXWxenvDY7bqysOdyI-6Pc_H8b-yF15gtqHNj1
+Token Pages/CI: akUXWxenvDY7bqysOdyI-6Pc_H8b-yF15gtqHNj1
+Token Full (Zone Rules): cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 ```
-Guardado para deploys futuros via API.
+Zone ID: 86266467c3c73263bb50f7dd66635a08
+
+### CSP via Transform Rules
+- Ruleset ID: 63105c4b61ae4a6eb5acf49c992f8e2c
+- CSP correto: *.backblaze.com, *.backblazeb2.com (SEM pod-*)
+- connect-src inclui: https://*.backblaze.com https://*.backblazeb2.com https://*
 
 ### Projeto Cloudflare Pages
 - Nome: raregroove-portal
