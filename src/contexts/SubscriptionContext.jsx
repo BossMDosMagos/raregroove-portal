@@ -26,18 +26,18 @@ export function SubscriptionProvider({ children }) {
           .select('id, country_code, user_level, subscription_status, subscription_plan, subscription_date, subscription_trial_ends_at, subscription_trial_started_at, subscription_data_used_gb, is_admin')
           .eq('id', user.id)
           .single()
-          .catch((err) => {
-            console.warn('[SubscriptionContext] Erro ao buscar perfil:', err);
-            return { data: null };
+          .then(({ data, error }) => {
+            if (error) console.warn('[SubscriptionContext] Erro ao buscar perfil:', error);
+            return { data };
           }),
         supabase
           .from('subscription_plans')
           .select('*')
           .eq('is_active', true)
           .order('user_level', { ascending: true })
-          .catch((err) => {
-            console.warn('[SubscriptionContext] Erro ao buscar planos:', err);
-            return { data: [] };
+          .then(({ data, error }) => {
+            if (error) console.warn('[SubscriptionContext] Erro ao buscar planos:', error);
+            return { data };
           }),
         supabase
           .from('subscription_settings')
@@ -45,9 +45,9 @@ export function SubscriptionProvider({ children }) {
           .order('created_at', { ascending: true })
           .limit(1)
           .maybeSingle()
-          .catch((err) => {
-            console.warn('[SubscriptionContext] Erro ao buscar settings:', err);
-            return { data: null };
+          .then(({ data, error }) => {
+            if (error) console.warn('[SubscriptionContext] Erro ao buscar settings:', error);
+            return { data };
           }),
       ]);
 
