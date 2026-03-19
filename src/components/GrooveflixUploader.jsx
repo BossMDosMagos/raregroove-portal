@@ -187,9 +187,16 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
   const uploadToB2 = async (file, fileCategory) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     
-    await supabase.auth.refreshSession();
+    console.log('[UPLOAD] Iniciando upload...');
+    
+    // Forçar refresh da sessão
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    console.log('[UPLOAD] Refresh result:', { refreshError, hasSession: !!refreshData?.session });
+    
     const { data: { session } } = await supabase.auth.getSession();
     const userToken = session?.access_token;
+    
+    console.log('[UPLOAD] Token:', userToken ? `${userToken.substring(0, 20)}...` : 'NULL');
     
     if (!userToken) {
       throw new Error('Sessão expirada. Faça login novamente.');
