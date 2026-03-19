@@ -1,6 +1,8 @@
-// Direct Upload to B2 - SEM verificação de JWT (apenas para teste)
+// Supabase Edge Function - Upload para Backblaze B2
+// Upload direto para B2 com verificação de permissões (admin bypass)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,29 +15,124 @@ const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || '';
 const B2_REGION = Deno.env.get('B2_REGION') || 'us-east-005';
 
+function getSupabaseClient(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false }
+  });
+}
+
+async function checkUploadPermission(supabase: any, userId: string): Promise<{ allowed: boolean; isAdmin: boolean; reason?: string }> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .single();
+  
+  if (error || !profile) {
+    console.error('[B2-Upload] Erro ao buscar perfil:', error);
+    return { allowed: false, isAdmin: false, reason: 'Erro ao verificar permissões' };
+  }
+  
+  if (profile.is_admin) {
+    return { allowed: true, isAdmin: true };
+  }
+  
+  const status = profile.subscription_status?.toLowerCase();
+  const userLevel = Number(profile.user_level || 0);
+  
+  if (status === 'active' && userLevel >= 1) {
+    return { allowed: true, isAdmin: false };
+  }
+  
+  return { allowed: false, isAdmin: false, reason: 'Assinatura ativa requerida para upload' };
+}
+
 serve(async (req) => {
-  console.log('=== b2-upload-url called ===');
+  console.log('[B2-Upload] === Nova requisição ===');
   
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // SEM verificação de JWT - apenas fala com B2
+    // Verificar autenticação
+    const supabase = getSupabaseClient(req);
+    if (!supabase) {
+      return new Response(JSON.stringify({ error: 'missing_auth' }), { 
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
-    // Verificar B2
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'invalid_auth' }), { 
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Verificar permissões de upload
+    const permission = await checkUploadPermission(supabase, user.id);
+    console.log('[B2-Upload] Permissão:', { userId: user.id, ...permission });
+    
+    if (!permission.allowed) {
+      return new Response(JSON.stringify({ error: permission.reason || 'upload_forbidden' }), { 
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Verificar B2 configurado
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
-      console.log('B2 not configured');
+      console.error('[B2-Upload] B2 não configurado:', { 
+        hasKeyId: !!B2_KEY_ID, 
+        hasAppKey: !!B2_APPLICATION_KEY, 
+        hasBucket: !!B2_BUCKET_NAME 
+      });
       return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     // Autenticar com B2 usando Basic Auth
-    const authString = `${B2_KEY_ID}:${B2_APPLICATION_KEY}`;
-    const encoded = btoa(authString);
+    // Converter de Base64 se necessário, caso contrário texto puro
+    let keyId = B2_KEY_ID.trim();
+    let appKey = B2_APPLICATION_KEY.trim();
     
-    console.log('Auth string (first 20):', authString.substring(0, 20) + '...');
+    // Verificar se as chaves parecem ser Base64 e decodificar
+    try {
+      const keyIdDecoded = atob(keyId);
+      if (keyIdDecoded && keyIdDecoded.length > 10) {
+        keyId = keyIdDecoded;
+        console.log('[B2-Upload] KeyId decodificado de Base64');
+      }
+    } catch {
+      // Não é Base64, usar texto puro
+    }
+    
+    try {
+      const appKeyDecoded = atob(appKey);
+      if (appKeyDecoded && appKeyDecoded.length > 10) {
+        appKey = appKeyDecoded;
+        console.log('[B2-Upload] AppKey decodificado de Base64');
+      }
+    } catch {
+      // Não é Base64, usar texto puro
+    }
+    
+    console.log('[B2-Upload] Credenciais B2:', { 
+      keyIdLength: keyId.length, 
+      keyIdPrefix: keyId.substring(0, 5),
+      isAdmin: permission.isAdmin 
+    });
+    
+    const authString = `${keyId}:${appKey}`;
+    const encoded = btoa(authString);
     
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
@@ -47,14 +144,19 @@ serve(async (req) => {
 
     if (!authRes.ok) {
       const err = await authRes.text();
-      console.log('B2 auth failed:', authRes.status, err);
-      return new Response(JSON.stringify({ error: 'B2 auth failed', status: authRes.status, details: err }), { 
+      console.error('[B2-Upload] B2 auth falhou:', authRes.status, err);
+      return new Response(JSON.stringify({ 
+        error: 'B2 auth failed', 
+        status: authRes.status, 
+        details: err,
+        debug: { keyIdLength: keyId.length, isBase64: B2_KEY_ID !== keyId }
+      }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
     const authData = await authRes.json();
-    console.log('B2 auth OK, accountId:', authData.accountId);
+    console.log('[B2-Upload] B2 auth OK, accountId:', authData.accountId);
 
     // Obter body
     const body = await req.json().catch(() => ({}));

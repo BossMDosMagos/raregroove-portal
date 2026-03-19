@@ -23,20 +23,32 @@ export function SubscriptionProvider({ children }) {
       const [{ data: prof }, { data: plansData }, { data: settingsData }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, country_code, user_level, subscription_status, subscription_plan, subscription_date, subscription_trial_ends_at, subscription_trial_started_at, subscription_data_used_gb')
+          .select('id, country_code, user_level, subscription_status, subscription_plan, subscription_date, subscription_trial_ends_at, subscription_trial_started_at, subscription_data_used_gb, is_admin')
           .eq('id', user.id)
-          .single(),
+          .single()
+          .catch((err) => {
+            console.warn('[SubscriptionContext] Erro ao buscar perfil:', err);
+            return { data: null };
+          }),
         supabase
           .from('subscription_plans')
           .select('*')
           .eq('is_active', true)
-          .order('user_level', { ascending: true }),
+          .order('user_level', { ascending: true })
+          .catch((err) => {
+            console.warn('[SubscriptionContext] Erro ao buscar planos:', err);
+            return { data: [] };
+          }),
         supabase
           .from('subscription_settings')
           .select('*')
           .order('created_at', { ascending: true })
           .limit(1)
-          .maybeSingle(),
+          .maybeSingle()
+          .catch((err) => {
+            console.warn('[SubscriptionContext] Erro ao buscar settings:', err);
+            return { data: null };
+          }),
       ]);
 
       setProfile(prof || null);
@@ -79,6 +91,7 @@ export function SubscriptionProvider({ children }) {
     refresh,
     isActive: String(profile?.subscription_status || '').toLowerCase() === 'active',
     isTrialing: String(profile?.subscription_status || '').toLowerCase() === 'trialing',
+    isAdmin: Boolean(profile?.is_admin),
   }), [loading, plans, profile, refresh, settings]);
 
   return (

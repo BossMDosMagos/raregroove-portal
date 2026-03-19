@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /profile/
+Disallow: /messages/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /cart
+Disallow: /wishlist
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /profile/
+Disallow: /messages/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /profile/
+Disallow: /messages/
+
+Sitemap: https://raregroove.com/sitemap.xml
+
+Crawl-delay: 1

@@ -1,0 +1,78 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Tipo de backup'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - database
+          - storage
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  backup:
+    name: Backup ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event.inputs.backup_type
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run database backup
+        run: node scripts/backup.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          BACKUP_RETENTION_DAYS: 30
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Upload backup to Cloudflare R2
+        if: github.ref == 'refs/heads/main'
+        run: |
+          for file in backups/*; do
+            curl -X PUT "https://${{ secrets.R2_BUCKET }}.${{ secrets.R2_ENDPOINT }}/raregroove-backups/$(basename $file)" \
+              -H "Authorization: Bearer ${{ secrets.R2_SECRET_KEY }}" \
+              --data-binary "@$file"
+          done
+
+      - name: Upload backup artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backup-artifacts-${{ github.run_number }}
+          path: backups/
+          retention-days: 7
+
+      - name: Cleanup old R2 backups
+        if: github.ref == 'refs/heads/main'
+        run: |
+          aws s3 rm s3://${{ secrets.R2_BUCKET }}/raregroove-backups/ \
+            --recursive \
+            --exclude "*" \
+            --include "*.sql" \
+            --older-than "30 days"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_S3_ENDPOINT: ${{ secrets.R2_ENDPOINT }}

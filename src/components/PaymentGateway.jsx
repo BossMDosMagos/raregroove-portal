@@ -217,6 +217,7 @@ function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
 
 /**
  * COMPONENTE DE PAGAMENTO REAL - MERCADO PAGO (Payment Brick)
+ * Com tratamento de erros robusto e mecanismo de recovery
  */
 function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
   const [processing, setProcessing] = useState(false);
@@ -227,13 +228,15 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   const [error, setError] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [debugInfo, setDebugInfo] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   const containerId = 'paymentBrick_container';
+  const maxRetries = 3;
 
   useEffect(() => {
     console.log('[MP] selectedGateway mudou:', selectedGateway);
     if (selectedGateway === 'mercado_pago') {
       if (currency !== 'BRL') {
-        onError(new Error('Mercado Pago suporta apenas BRL'));
+        onError?.(new Error('Mercado Pago suporta apenas BRL'));
         return;
       }
       init();
@@ -243,6 +246,8 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   const init = async () => {
     setInitializing(true);
     setDebugInfo('Iniciando...');
+    setError(null);
+    
     try {
       console.log('[MP] Carregando config...');
       setDebugInfo('Carregando configuração...');
@@ -268,8 +273,8 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
             setMpLoaded(true);
             resolve();
           };
-          script.onerror = () => {
-            console.error('[MP] Erro ao carregar script');
+          script.onerror = (err) => {
+            console.error('[MP] Erro ao carregar script:', err);
             reject(new Error('Erro ao carregar SDK'));
           };
           document.body.appendChild(script);
@@ -306,7 +311,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
 
       if (fnError) {
         console.error('[MP] Erro ao criar preferência:', fnError);
-        throw new Error(fnError.message);
+        throw new Error(fnError.message || 'Erro ao criar preferência');
       }
 
       console.log('[MP] Preferência criada:', data);
@@ -323,7 +328,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       console.error('[MP] Erro na inicialização:', err);
       setError(err.message);
       setDebugInfo(`Erro: ${err.message}`);
-      onError(err);
+      onError?.(err);
     } finally {
       setInitializing(false);
     }
@@ -339,6 +344,22 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       });
     }
   }, [config, mpLoaded, preferenceId, brickReady]);
+
+  const resetAndRetry = () => {
+    setError(null);
+    setBrickReady(false);
+    setMpLoaded(false);
+    setPreferenceId(null);
+    window.MercadoPago = null;
+    
+    const container = document.getElementById(containerId);
+    if (container) container.innerHTML = '';
+    
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      init();
+    }
+  };
 
   const renderPaymentBrick = () => {
     console.log('[MP] renderPaymentBrick chamado');
@@ -395,11 +416,13 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
             onReady: () => {
               console.log('✅ Payment Brick pronto!');
               setBrickReady(true);
+              setRetryCount(0);
             },
             onError: (error) => {
               console.error('❌ Erro completo no Payment Brick:', JSON.stringify(error, null, 2));
-              setError(`Erro: ${error?.message || JSON.stringify(error)}`);
-              onError(error);
+              const errorMsg = error?.message || JSON.stringify(error);
+              setError(`Erro: ${errorMsg}`);
+              onError?.(error);
             },
             onSubmit: async (formData) => {
               console.log('📤 [MP] Pagamento submetido:', formData);
@@ -433,12 +456,19 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center space-y-4">
           <p className="text-red-300">{error}</p>
           <p className="text-white/30 text-xs font-mono">{debugInfo}</p>
-          <button 
-            onClick={() => { setError(null); setBrickReady(false); init(); }}
-            className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
-          >
-            Tentar novamente
-          </button>
+          {retryCount < maxRetries && (
+            <button 
+              onClick={resetAndRetry}
+              className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
+            >
+              Tentar novamente ({retryCount + 1}/{maxRetries})
+            </button>
+          )}
+          {retryCount >= maxRetries && (
+            <p className="text-white/40 text-xs">
+              Tente novamente mais tarde ou utilize outro método de pagamento.
+            </p>
+          )}
         </div>
         <div 
           id={containerId} 

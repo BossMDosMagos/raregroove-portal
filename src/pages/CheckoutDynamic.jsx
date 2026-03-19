@@ -96,55 +96,61 @@ export default function CheckoutDynamic() {
           navigate('/plans');
           return;
         }
-        await refresh();
-
-        const { data: settingsData } = await supabase
-          .from('platform_settings')
-          .select('*')
-          .single();
-
-        const finalSettings = settingsData || {
-          gateway_provider: 'stripe',
-          gateway_mode: 'sandbox'
-        };
-
-        const available = [];
-        const isSandbox = finalSettings.gateway_mode !== 'production';
-
-        // SEMPRE adicionar os 4 métodos de pagamento - FORÇA TOTAL
-        // Stripe - Cartão
-        available.push({
-          id: 'stripe',
-          name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
-          icon: CreditCard
-        });
-
-        // Mercado Pago
-        available.push({
-          id: 'mercado_pago',
-          name: 'Mercado Pago',
-          icon: Disc
-        });
-
-        // PayPal
-        available.push({
-          id: 'paypal',
-          name: 'PayPal',
-          icon: Shield
-        });
-
-        // PIX Portal
-        available.push({
-          id: 'pix_portal',
-          name: 'PIX do Portal',
-          icon: QrCode
-        });
-
-        console.log('[CheckoutDynamic] Gateway disponíveis:', available.map(a => a.id));
         
-        setAvailableGateways(available);
-        setSelectedGateway('mercado_pago');
+        try {
+          await refresh();
+        } catch (refreshError) {
+          console.warn('[CheckoutDynamic] Erro ao refresh subscription:', refreshError);
+        }
+
+        try {
+          const { data: settingsData } = await supabase
+            .from('platform_settings')
+            .select('*')
+            .single();
+
+          const finalSettings = settingsData || {
+            gateway_provider: 'stripe',
+            gateway_mode: 'sandbox'
+          };
+
+          const available = [];
+          const isSandbox = finalSettings.gateway_mode !== 'production';
+
+          available.push({
+            id: 'stripe',
+            name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
+            icon: CreditCard
+          });
+
+          available.push({
+            id: 'mercado_pago',
+            name: 'Mercado Pago',
+            icon: Disc
+          });
+
+          available.push({
+            id: 'paypal',
+            name: 'PayPal',
+            icon: Shield
+          });
+
+          available.push({
+            id: 'pix_portal',
+            name: 'PIX do Portal',
+            icon: QrCode
+          });
+
+          console.log('[CheckoutDynamic] Gateway disponíveis:', available.map(a => a.id));
+          
+          setAvailableGateways(available);
+          setSelectedGateway('mercado_pago');
+        } catch (settingsError) {
+          console.error('[CheckoutDynamic] Erro ao carregar settings:', settingsError);
+          toast.error('Erro ao carregar configurações de pagamento');
+        }
       } catch (e) {
+        console.error('[CheckoutDynamic] Erro ao iniciar checkout:', e);
         toast.error('Erro ao iniciar checkout', { description: e.message });
         navigate('/plans');
       } finally {

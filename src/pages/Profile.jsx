@@ -246,24 +246,27 @@ export default function Profile() {
 
       setRatingStats(statsData);
 
-      // Check if user is Elite (travas de segurança)
+      // Verificar se é Elite Seller (com guarda de segurança)
       const userId = user?.id;
-      if (!userId) {
-        setIsElite(false);
-      } else {
+      if (userId) {
         try {
           const { data: eliteData, error } = await supabase
             .rpc('is_elite_seller', { user_uuid: userId });
+          
           if (error) {
-            console.warn('Erro silencioso na checagem de elite:', error.message);
-            setIsElite(false);
+            console.warn('[Profile] RPC is_elite_seller retornou erro:', error.code, error.message);
+            if (error.code !== 'PGRST202' && error.code !== '42883') {
+              setIsElite(false);
+            }
           } else {
-            setIsElite(eliteData?.is_elite || false);
+            setIsElite(Boolean(eliteData?.is_elite));
           }
         } catch (e) {
-          console.warn('Erro ao verificar elite seller:', e);
+          console.warn('[Profile] Erro ao verificar elite seller:', e);
           setIsElite(false);
         }
+      } else {
+        setIsElite(false);
       }
 
       setIsLoading(false);

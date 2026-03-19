@@ -122,23 +122,26 @@ export default function ChatThread() {
 
         setOtherUserRating(ratingData);
 
-        // Verificar se é Elite (travas de segurança)
-        if (!otherUserId) {
-          setOtherUserIsElite(false);
-        } else {
+        // Verificar se é Elite Seller (com guarda de segurança)
+        if (otherUserId) {
           try {
             const { data: eliteData, error } = await supabase
               .rpc('is_elite_seller', { user_uuid: otherUserId });
+            
             if (error) {
-              console.warn('Erro silencioso na checagem de elite:', error.message);
-              setOtherUserIsElite(false);
+              console.warn('[ChatThread] RPC is_elite_seller retornou erro:', error.code, error.message);
+              if (error.code !== 'PGRST202' && error.code !== '42883') {
+                setOtherUserIsElite(false);
+              }
             } else {
-              setOtherUserIsElite(eliteData?.is_elite || false);
+              setOtherUserIsElite(Boolean(eliteData?.is_elite));
             }
           } catch (e) {
-            console.warn('Erro ao verificar elite seller:', e);
+            console.warn('[ChatThread] Erro ao verificar elite seller:', e);
             setOtherUserIsElite(false);
           }
+        } else {
+          setOtherUserIsElite(false);
         }
 
         // DEBUG: Primeiro verificar quantas mensagens não lidas existem

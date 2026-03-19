@@ -121,24 +121,27 @@ export default function ItemDetails() {
 
         setSellerRating(ratingData);
 
-        // Verificar se é Elite (travas de segurança)
+        // Verificar se é Elite Seller (com guarda de segurança)
         const sellerId = itemData.seller_id;
-        if (!sellerId) {
-          setIsElite(true);
-        } else {
+        if (sellerId) {
           try {
             const { data: eliteData, error } = await supabase
               .rpc('is_elite_seller', { user_uuid: sellerId });
+            
             if (error) {
-              console.warn('Erro silencioso na checagem de elite:', error.message);
-              setIsElite(false);
+              console.warn('[ItemDetails] RPC is_elite_seller retornou erro:', error.code, error.message);
+              if (error.code !== 'PGRST202' && error.code !== '42883') {
+                setIsElite(false);
+              }
             } else {
-              setIsElite(eliteData?.is_elite || false);
+              setIsElite(Boolean(eliteData?.is_elite));
             }
           } catch (e) {
-            console.warn('Erro ao verificar elite seller:', e);
+            console.warn('[ItemDetails] Erro ao verificar elite seller:', e);
             setIsElite(false);
           }
+        } else {
+          setIsElite(false);
         }
       }
 

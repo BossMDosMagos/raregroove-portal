@@ -1,12 +1,27 @@
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite' // <-- Adicione esta linha
+import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // <-- Adicione esta linha
+    tailwindcss(),
   ],
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          stripe: ['@stripe/stripe-js', '@stripe/react-stripe-js'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    host: true,
+  },
 })

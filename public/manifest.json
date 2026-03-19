@@ -1,0 +1,98 @@
+{
+  "name": "RareGroove - Marketplace de CDs Raros",
+  "short_name": "RareGroove",
+  "description": "Encontre CDs e vinil raros, edições limitadas e collector's items",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#D4AF37",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/img/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/img/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["shopping", "music", "entertainment"],
+  "screenshots": [
+    {
+      "src": "/img/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/img/screenshot-narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catálogo",
+      "short_name": "Catálogo",
+      "url": "/catalog",
+      "icons": [{ "src": "/img/shortcut-catalog.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Meu Carrinho",
+      "short_name": "Carrinho",
+      "url": "/cart",
+      "icons": [{ "src": "/img/shortcut-cart.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Minhas Vendas",
+      "short_name": "Vendas",
+      "url": "/my-sales",
+      "icons": [{ "src": "/img/shortcut-sales.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

@@ -8,9 +8,13 @@ export default function GrooveflixGatekeeper({ children }) {
   const location = useLocation();
   const { loading: subLoading, profile, settings, refresh } = useSubscription();
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
   const allowed = useMemo(() => {
     const lvl = Number(profile?.user_level || 0);
     const status = String(profile?.subscription_status || '').toLowerCase();
+    
+    if (profile?.is_admin) return true;
     if (lvl <= 0) return false;
     if (status === 'active') return true;
     if (status !== 'trialing') return false;
@@ -30,6 +34,14 @@ export default function GrooveflixGatekeeper({ children }) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.id) return;
+        
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+        
+        setIsAdmin(Boolean(profileData?.is_admin));
         await refresh();
       } finally {
         setLoading(false);
