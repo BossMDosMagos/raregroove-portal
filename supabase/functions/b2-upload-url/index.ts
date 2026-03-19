@@ -28,19 +28,31 @@ function getSupabaseClient(req: Request) {
   });
 }
 
-async function checkUploadPermission(supabase: any, userId: string): Promise<{ allowed: boolean; isAdmin: boolean; reason?: string }> {
-  const { data: profile, error } = await supabase
+function getServiceClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
+async function checkUploadPermission(userId: string): Promise<{ allowed: boolean; isAdmin: boolean; reason?: string }> {
+  const supabaseAdmin = getServiceClient();
+  
+  const { data: profile, error } = await supabaseAdmin
     .from('profiles')
-    .select('is_admin')
+    .select('is_admin, subscription_status, user_level')
     .eq('id', userId)
     .single();
   
+  console.log('[B2-Upload] Profile query result:', { userId, profile, error });
+  
   if (error || !profile) {
     console.error('[B2-Upload] Erro ao buscar perfil:', error);
-    return { allowed: false, isAdmin: false, reason: 'Erro ao verificar permissões' };
+    return { allowed: false, isAdmin: false, reason: 'Perfil não encontrado' };
   }
   
-  if (profile.is_admin) {
+  if (profile.is_admin === true) {
+    console.log('[B2-Upload] ADMIN BYPASS - upload permitido');
     return { allowed: true, isAdmin: true };
   }
   
@@ -78,7 +90,7 @@ serve(async (req) => {
     }
 
     // Verificar permissões de upload
-    const permission = await checkUploadPermission(supabase, user.id);
+    const permission = await checkUploadPermission(user.id);
     console.log('[B2-Upload] Permissão:', { userId: user.id, ...permission });
     
     if (!permission.allowed) {
