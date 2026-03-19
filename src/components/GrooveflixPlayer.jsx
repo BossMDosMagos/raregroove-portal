@@ -46,8 +46,9 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
 
   const presign = async ({ filePath, mode, filename }) => {
+    const user = (await supabase.auth.getUser()).data.user;
     const { data, error } = await supabase.functions.invoke('b2-presign', {
-      body: { file_path: filePath, mode, filename: filename || undefined }
+      body: { file_path: filePath, mode, filename: filename || undefined, userId: user?.id }
     });
     if (error || !data?.url) {
       const err = new Error(String(data?.error || error?.message || 'Erro ao gerar link'));
