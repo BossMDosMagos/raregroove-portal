@@ -1,0 +1,28 @@
+export default {
+  async fetch(request, env, ctx) {
+    const response = await fetch(request);
+    
+    const newHeaders = new Headers(response.headers);
+    
+    // CSP PERMISSIVO PARA TESTE - Backblaze
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.paypal.com https://sdk.mercadopago.com https://static.cloudflareinsights.com https://http2.mlstatic.com https://*.mlstatic.com https://*.mercadolivre.com https://*.mercadolibre.com https://*.sentry.io",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://api.qrserver.com https://*.supabase.co https://*.backblazeb2.com https://*.backblaze.com https://f005.backblazeb2.com https://*.stripe.com https://*.paypal.com https://*.mlstatic.com https://*.mercadolibre.com https://*.mercadolivre.com https://*.discogs.com https://i.discogs.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://api.mercadopago.com https://*.mercadolibre.com https://*.mlstatic.com https://*.backblazeb2.com https://*.backblaze.com https://pod-*.backblazeb2.com https://pod-*.backblaze.com https://f005.backblazeb2.com https://economia.awesomeapi.com.br https://*.sentry.io https://api.discogs.com https://*",
+      "frame-src 'self' https://js.stripe.com https://www.paypal.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mercadolibre.com",
+      "media-src 'self' blob: https://*.backblazeb2.com https://*.backblaze.com https://f005.backblazeb2.com https://*.supabase.co",
+      "worker-src 'self' blob:",
+      "font-src 'self' https://fonts.gstatic.com"
+    ].join('; ');
+    
+    newHeaders.set('Content-Security-Policy', csp);
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders
+    });
+  }
+};
