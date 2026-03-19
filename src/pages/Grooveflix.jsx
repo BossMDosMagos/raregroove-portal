@@ -19,6 +19,16 @@ function safeParseJson(value) {
 export default function Grooveflix() {
   const { t } = useI18n();
   const { profile, settings, isTrialing, isActive, refresh } = useSubscription();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data } = await supabase.rpc('check_grooveflix_access');
+      setIsAdmin(data?.is_admin === true);
+    };
+    checkAdmin();
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -231,7 +241,7 @@ export default function Grooveflix() {
               </span>
             </div>
 
-            {profile?.is_admin && (
+            {isAdmin && (
               <button
                 onClick={() => {
                   console.log('[GROOVEFLIX] Admin detected, opening uploader');
@@ -312,7 +322,7 @@ export default function Grooveflix() {
         isOpen={showUploader}
         onClose={() => setShowUploader(false)}
         onSuccess={refreshItems}
-        isAdmin={profile?.is_admin}
+        isAdmin={isAdmin}
         userId={profile?.id}
       />
     </div>
