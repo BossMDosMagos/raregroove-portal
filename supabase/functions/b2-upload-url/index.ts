@@ -1,5 +1,5 @@
 // Supabase Edge Function - Upload para Backblaze B2
-// Upload direto para B2 - Admin bypass total via service role
+// Admin bypass total via service role - sem dependência de JWT do usuário
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -20,69 +20,30 @@ function getServiceClient() {
   return createClient(supabaseUrl, serviceRoleKey);
 }
 
-async function getUserFromToken(token: string): Promise<string | null> {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
-    
-    // Usar serviço de autenticação diretamente
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': serviceRoleKey,
-      }
-    });
-    
-    if (!response.ok) {
-      console.log('[B2-Upload] Falha ao validar token:', response.status);
-      return null;
-    }
-    
-    const userData = await response.json();
-    return userData?.id || null;
-  } catch (err) {
-    console.error('[B2-Upload] Erro ao validar token:', err);
-    return null;
-  }
-}
-
-async function checkIsAdmin(userId: string): Promise<boolean> {
+async function checkIsAdmin(userId: string): Promise<{ isAdmin: boolean; reason?: string }> {
   try {
     const supabaseAdmin = getServiceClient();
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, subscription_status')
       .eq('id', userId)
       .single();
     
     if (error || !data) {
       console.error('[B2-Upload] Erro ao buscar perfil:', error);
-      return false;
+      return { isAdmin: false, reason: 'Perfil não encontrado' };
     }
     
-    return data.is_admin === true;
+    if (data.is_admin === true) {
+      console.log('[B2-Upload] ADMIN VERIFICADO:', userId);
+      return { isAdmin: true };
+    }
+    
+    return { isAdmin: false, reason: 'Apenas admins podem fazer upload' };
   } catch (err) {
     console.error('[B2-Upload] Erro checkIsAdmin:', err);
-    return false;
+    return { isAdmin: false, reason: 'Erro interno ao verificar permissões' };
   }
-}
-
-async function authorizeUpload(token: string): Promise<{ allowed: boolean; userId?: string; reason?: string }> {
-  const userId = await getUserFromToken(token);
-  
-  if (!userId) {
-    return { allowed: false, reason: 'Token inválido ou expirado' };
-  }
-  
-  const isAdmin = await checkIsAdmin(userId);
-  
-  if (isAdmin) {
-    console.log('[B2-Upload] ADMIN AUTORIZADO:', userId);
-    return { allowed: true, userId };
-  }
-  
-  return { allowed: false, reason: 'Apenas admins podem fazer upload' };
 }
 
 serve(async (req) => {
@@ -93,26 +54,33 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'missing_auth' }), { 
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    // Parse body
+    const body = await req.json().catch(() => ({}));
+    const { filename, category, contentType, userId } = body;
+
+    if (!filename || !category) {
+      return new Response(JSON.stringify({ error: 'filename e category obrigatórios' }), { 
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'userId obrigatório' }), { 
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Verificar se é admin via service role (bypass total de RLS)
+    const adminCheck = await checkIsAdmin(userId);
     
-    // Autorizar upload
-    const auth = await authorizeUpload(token);
-    
-    if (!auth.allowed) {
-      return new Response(JSON.stringify({ error: auth.reason }), { 
+    if (!adminCheck.isAdmin) {
+      console.log('[B2-Upload] Acesso negado para:', userId, adminCheck.reason);
+      return new Response(JSON.stringify({ error: adminCheck.reason }), { 
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    const userId = auth.userId!;
-    console.log('[B2-Upload] Upload autorizado para:', userId);
+    console.log('[B2-Upload] Upload autorizado para admin:', userId);
 
     // Verificar B2 configurado
     if (!B2_KEY_ID || !B2_APPLICATION_KEY || !B2_BUCKET_NAME) {
@@ -145,16 +113,6 @@ serve(async (req) => {
     const authData = await authRes.json();
     console.log('[B2-Upload] B2 auth OK, accountId:', authData.accountId);
 
-    // Obter body
-    const body = await req.json().catch(() => ({}));
-    const { filename, category, contentType } = body;
-
-    if (!filename || !category) {
-      return new Response(JSON.stringify({ error: 'filename e category obrigatórios' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
     // Buscar bucket ID
     const bucketRes = await fetch(`https://api.backblazeb2.com/b2api/v2/b2_list_buckets?accountId=${authData.accountId}`, {
       headers: { 'Authorization': authData.authorizationToken }
@@ -186,6 +144,8 @@ serve(async (req) => {
     const timestamp = Date.now();
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = `grooveflix/${category}/${timestamp}_${safeFilename}`;
+
+    console.log('[B2-Upload] Sucesso! filePath:', filePath);
 
     return new Response(
       JSON.stringify({

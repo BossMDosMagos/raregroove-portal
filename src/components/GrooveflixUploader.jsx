@@ -186,33 +186,23 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
   const uploadToB2 = async (file, fileCategory) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
     console.log('[UPLOAD] Iniciando upload...');
     
-    // Forçar refresh da sessão
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    console.log('[UPLOAD] Refresh result:', { refreshError, hasSession: !!refreshData?.session });
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    const userToken = session?.access_token;
-    
-    console.log('[UPLOAD] Token:', userToken ? `${userToken.substring(0, 20)}...` : 'NULL');
-    
-    if (!userToken) {
-      throw new Error('Sessão expirada. Faça login novamente.');
-    }
-    
+    // Usar anon key - a função vai verificar admin via service role
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userToken}`,
-        'apikey': userToken
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey
       },
       body: JSON.stringify({
         filename: file.name,
         category: fileCategory,
-        contentType: file.type || 'application/octet-stream'
+        contentType: file.type || 'application/octet-stream',
+        userId: (await supabase.auth.getUser()).data.user?.id
       })
     });
 
