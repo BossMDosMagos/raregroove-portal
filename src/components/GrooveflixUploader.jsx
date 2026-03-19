@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, X, FileAudio, File, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive } from 'lucide-react';
+import { Upload, X, FileAudio, File, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { DiscogsImporter } from './DiscogsImporter.jsx';
 
 const CATEGORIES = [
   { id: 'single', label: 'Single', icon: Music, description: 'Uma faixa individual' },
@@ -135,8 +136,9 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
   );
 }
 
-export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess }) {
+export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, isAdmin, userId }) {
   const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [category, setCategory] = useState(item?.metadata?.grooveflix?.category || 'album');
@@ -423,6 +425,43 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
         </div>
 
         <div className="relative p-6 space-y-6 overflow-y-auto flex-1">
+          {isAdmin && (
+            <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+              <button
+                onClick={() => setActiveTab('upload')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'upload'
+                    ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                Upload
+              </button>
+              <button
+                onClick={() => setActiveTab('discogs')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'discogs'
+                    ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Search className="w-4 h-4" />
+                Discogs
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'discogs' && isAdmin ? (
+            <DiscogsImporter
+              userId={userId}
+              onImportComplete={() => {
+                onSuccess?.();
+                onClose();
+              }}
+            />
+          ) : (
+          <>
           <div className="grid grid-cols-4 gap-3">
             {CATEGORIES.map((cat) => (
               <button
@@ -594,6 +633,8 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess })
               <span>Upload Rápido</span>
             </div>
           </div>
+        </>
+        )}
         </div>
 
         <div className="relative p-6 border-t border-white/10 flex gap-4">

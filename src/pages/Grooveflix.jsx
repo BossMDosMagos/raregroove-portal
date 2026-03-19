@@ -231,14 +231,14 @@ export default function Grooveflix() {
               </span>
             </div>
 
-            {profile && (
+            {(profile?.is_admin || isActive) && (
               <button
                 onClick={() => setShowUploader(true)}
                 className="group relative flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 border border-fuchsia-400/30 text-white text-[11px] font-black uppercase tracking-widest overflow-hidden transition-all hover:shadow-lg hover:shadow-fuchsia-500/20"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <Plus className="w-4 h-4 relative z-10" />
-                <span className="relative z-10">Adicionar CD</span>
+                <span className="relative z-10">{profile?.is_admin ? 'Adicionar CD' : 'Upload'}</span>
               </button>
             )}
           </div>
@@ -309,6 +309,8 @@ export default function Grooveflix() {
         isOpen={showUploader}
         onClose={() => setShowUploader(false)}
         onSuccess={refreshItems}
+        isAdmin={profile?.is_admin}
+        userId={profile?.id}
       />
     </div>
   );
