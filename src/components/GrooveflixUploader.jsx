@@ -187,11 +187,12 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
   const uploadToB2 = async (file, fileCategory) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     
+    await supabase.auth.refreshSession();
     const { data: { session } } = await supabase.auth.getSession();
     const userToken = session?.access_token;
     
     if (!userToken) {
-      throw new Error('Usuário não autenticado');
+      throw new Error('Sessão expirada. Faça login novamente.');
     }
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
