@@ -240,6 +240,18 @@ maxAgeSeconds: 3600
 - Edge Function: https://hlfirfukbrisfpebaaur.supabase.co/functions/v1/b2-upload-url
 - Bucket: Cofre-RareGroove-01
 - Upload funcionando via frontend Grooveflix
+- Cloudflare Pages: https://0f308fbb.raregroove-portal.pages.dev (deploy mais recente)
+
+### Cloudflare API Token
+```
+akUXWxenvDY7bqysOdyI-6Pc_H8b-yF15gtqHNj1
+```
+Guardado para deploys futuros via API.
+
+### Projeto Cloudflare Pages
+- Nome: raregroove-portal
+- Account ID: 6e52900b964c300ce471624d4ee8fc4e
+- Domínios: portalraregroove.com, raregroove.com, staging.raregroove.com
 
 ---
 
