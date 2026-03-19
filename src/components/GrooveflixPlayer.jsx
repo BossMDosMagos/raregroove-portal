@@ -46,12 +46,23 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
 
   const presign = async ({ filePath, mode, filename }) => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     const user = (await supabase.auth.getUser()).data.user;
-    const { data, error } = await supabase.functions.invoke('b2-presign', {
-      body: { file_path: filePath, mode, filename: filename || undefined, userId: user?.id }
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || supabaseAnonKey}`,
+        'apikey': supabaseAnonKey
+      },
+      body: JSON.stringify({ file_path: filePath, mode, filename: filename || undefined, userId: user?.id })
     });
-    if (error || !data?.url) {
-      const err = new Error(String(data?.error || error?.message || 'Erro ao gerar link'));
+    
+    const data = await response.json();
+    if (!response.ok || !data?.url) {
+      const err = new Error(String(data?.error || 'Erro ao gerar link'));
       err.code = data?.error || null;
       throw err;
     }
