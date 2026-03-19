@@ -1,38 +1,39 @@
 import { useEffect, useState } from 'react';
 
 export function useServiceWorker() {
-  const [isSupported, setIsSupported] = useState(false);
+  const swSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator;
+  const [isSupported, setIsSupported] = useState(swSupported);
   const [registration, setRegistration] = useState(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      setIsSupported(true);
-      
-      navigator.serviceWorker.ready.then((reg) => {
-        setRegistration(reg);
+    if (!isSupported) return;
+
+    navigator.serviceWorker.ready.then((reg) => {
+      setRegistration(reg);
+    });
+
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('[SW] Registered:', reg.scope);
+      setRegistration(reg);
+
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              setUpdateAvailable(true);
+            }
+          });
+        }
       });
+    }).catch((error) => {
+      console.error('[SW] Registration failed:', error);
+    });
+  }, [isSupported]);
 
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        console.log('[SW] Registered:', reg.scope);
-        setRegistration(reg);
-
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setUpdateAvailable(true);
-              }
-            });
-          }
-        });
-      }).catch((error) => {
-        console.error('[SW] Registration failed:', error);
-      });
-    }
-
+  useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
