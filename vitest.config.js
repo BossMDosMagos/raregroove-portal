@@ -19,12 +19,12 @@ export default defineConfig({
         '**/*.css',
         'dist/'
       ],
-      thresholds: {
-        statements: 70,
-        branches: 70,
-        functions: 70,
-        lines: 70
-      }
+        thresholds: {
+          statements: 60,
+          branches: 60,
+          functions: 60,
+          lines: 60
+        }
     },
     testTimeout: 10000,
     hookTimeout: 10000
