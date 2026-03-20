@@ -209,9 +209,9 @@ export default function Grooveflix() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
       
-      // Buscar sessão atual
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id || profile?.id;
+      // Buscar userId diretamente
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
       
       console.log('[DELETE] userId:', userId);
 
