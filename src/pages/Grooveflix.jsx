@@ -212,10 +212,12 @@ export default function Grooveflix() {
       
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || supabaseAnonKey;
+      const userId = session?.user?.id || profile?.id;
       
       console.log('[DELETE] Token length:', token?.length, 'Is session:', !!session?.access_token);
-      console.log('[DELETE] userId:', profile?.id);
-      console.log('[DELETE] Anon key present:', !!supabaseAnonKey);
+      console.log('[DELETE] userId:', userId);
+      console.log('[DELETE] profile?.id:', profile?.id);
+      console.log('[DELETE] session?.user?.id:', session?.user?.id);
 
       const response = await fetch(`${supabaseUrl}/functions/v1/grooveflix-delete`, {
         method: 'POST',
@@ -226,7 +228,7 @@ export default function Grooveflix() {
         },
         body: JSON.stringify({ 
           itemId, 
-          userId: profile?.id 
+          userId 
         })
       });
 
