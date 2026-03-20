@@ -23,8 +23,14 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-          const session = supabase.auth.getSession();
-          const token = session?.data?.session?.access_token || supabaseAnonKey;
+          
+          let token = supabaseAnonKey;
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) token = session.access_token;
+          } catch (e) {
+            console.warn('[COVER] Auth session error:', e);
+          }
           
           const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
             method: 'POST',
@@ -33,7 +39,7 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
               'Authorization': `Bearer ${token}`,
               'apikey': supabaseAnonKey
             },
-            body: JSON.stringify({ file_path: it.coverPath, mode: 'download' })
+            body: JSON.stringify({ file_path: it.coverPath, mode: 'download', type: 'cover' })
           });
           
           const data = await response.json();

@@ -53,6 +53,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const filePath = String(body?.file_path || body?.path || '').trim().replace(/^\/+/, '');
     const userId = String(body?.userId || '');
+    const fileType = String(body?.type || 'audio');
     
     if (!filePath) {
       return new Response(JSON.stringify({ error: 'missing_file_path' }), { 
@@ -60,17 +61,19 @@ serve(async (req) => {
       });
     }
     
-    if (!userId) {
+    if (!userId && fileType !== 'cover') {
       return new Response(JSON.stringify({ error: 'missing_userId' }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
     
-    const access = await checkAccess(userId);
-    if (!access.allowed) {
-      return new Response(JSON.stringify({ error: 'Assinatura ativa requerida' }), { 
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+    if (fileType !== 'cover') {
+      const access = await checkAccess(userId);
+      if (!access.allowed) {
+        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida' }), { 
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
     }
 
     if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
