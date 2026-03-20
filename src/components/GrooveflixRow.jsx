@@ -22,19 +22,27 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
       for (const it of itemsNeedingUrl) {
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
           
-          // Para capas públicas, não precisa de autenticação
+          // Buscar sessão atual
+          const { data: sessionData } = await supabase.auth.getSession();
+          const session = sessionData?.session;
+          const token = session?.access_token || supabaseAnonKey;
+          
+          console.log('[COVER] Session exists:', !!session, 'Token length:', token?.length);
+          
           const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'apikey': supabaseAnonKey
             },
             body: JSON.stringify({ file_path: it.coverPath, type: 'cover' })
           });
           
           console.log('[COVER] Response status:', response.status);
           const data = await response.json();
-          console.log('[COVER] Response:', data);
           
           if (data?.url) {
             setCoverUrls(prev => ({ ...prev, [it.id]: data.url }));
