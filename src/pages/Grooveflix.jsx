@@ -120,13 +120,14 @@ export default function Grooveflix() {
 
         const isoPath = gf?.iso_path || '';
         const bookletPath = gf?.booklet_path || gf?.encarte_path || '';
+        const coverUrl = gf?.cover_url || item.image_url || '';
         if (!audioPath && !isoPath && !bookletPath) return null;
 
         return {
           id: item.id,
           title: item.title || 'Untitled',
           artist: item.artist || '',
-          coverUrl: item.image_url || '',
+          coverUrl: coverUrl,
           category: category || 'single',
           audioPath: audioPath || null,
           isoPath: isoPath || null,
