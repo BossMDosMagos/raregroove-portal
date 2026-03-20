@@ -18,11 +18,17 @@ export const discogsService = {
       if (options.country) params.append('country', options.country);
       if (options.format) params.append('format', options.format);
 
+      const token = import.meta.env.VITE_DISCOGS_TOKEN;
+      if (!token) {
+        console.warn('[DISCOGS] Missing API token. Skipping request.');
+        return { data: [], error: 'Missing API token' };
+      }
+
       const response = await fetch(`${DISCOGS_API_BASE}/database/search?${params}`, {
         headers: {
           'User-Agent': DISCOGS_USER_AGENT,
           'Accept': 'application/json',
-          'Authorization': `Discogs token=${import.meta.env.VITE_DISCOGS_TOKEN}`,
+          'Authorization': `Discogs token=${token}`,
         },
       });
 

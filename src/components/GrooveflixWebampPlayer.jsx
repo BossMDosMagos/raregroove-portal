@@ -25,30 +25,30 @@ export default function GrooveflixWebampPlayer({
     if (!filePath) return null;
     
     try {
+      console.log('[PRESIGN] Requesting URL for:', filePath, 'userId:', userId);
+      
       const { data, error } = await supabase.functions.invoke('b2-presign', {
         body: {
           file_path: filePath,
-          userId: userId,
+          user_id: userId || null,
           type: 'audio'
         }
       });
 
       if (error) {
-        console.error('[PRESIGN] Error:', error);
-        throw new Error(error.message || 'Erro ao obter URL');
+        console.error('[PRESIGN] Error from function:', error);
+        throw error;
       }
 
       if (!data?.url) {
+        console.warn('[PRESIGN] No URL in response:', data);
         throw new Error('URL não retornada');
       }
 
+      console.log('[PRESIGN] Success - URL obtained');
       return data.url;
     } catch (e) {
-      console.error('[PRESIGN] Error:', e.message);
-      toast.error('Erro ao carregar faixa', {
-        description: e.message,
-        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
-      });
+      console.error('[PRESIGN] Error catch:', e);
       return null;
     }
   };
