@@ -89,8 +89,10 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[GROOVEFLIX-DELETE] Request received');
     const body = await req.json();
     const { itemId, userId } = body;
+    console.log('[GROOVEFLIX-DELETE] itemId:', itemId, 'userId:', userId);
 
     if (!itemId) {
       return new Response(JSON.stringify({ error: 'itemId é obrigatório' }), {
@@ -99,20 +101,26 @@ serve(async (req) => {
     }
 
     const supabaseAdmin = getServiceClient();
+    console.log('[GROOVEFLIX-DELETE] Admin client created');
 
     // Verificar se é admin
     if (userId) {
-      const { data: profile } = await supabaseAdmin
+      console.log('[GROOVEFLIX-DELETE] Checking admin status for userId:', userId);
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('is_admin')
         .eq('id', userId)
         .single();
+      console.log('[GROOVEFLIX-DELETE] Profile:', profile, 'Error:', profileError);
       
       if (profile?.is_admin !== true) {
         return new Response(JSON.stringify({ error: 'Apenas admins podem excluir' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      console.log('[GROOVEFLIX-DELETE] User is admin');
+    } else {
+      console.log('[GROOVEFLIX-DELETE] No userId provided, skipping admin check');
     }
 
     // Buscar o item para obter os paths
