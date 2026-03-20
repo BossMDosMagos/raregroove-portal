@@ -24,13 +24,12 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
           
-          let token = supabaseAnonKey;
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.access_token) token = session.access_token;
-          } catch (e) {
-            console.warn('[COVER] Auth session error:', e);
-          }
+          // Buscar sessão atual
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token || supabaseAnonKey;
+          
+          console.log('[COVER] Token length:', token?.length);
+          console.log('[COVER] Anon key present:', !!supabaseAnonKey);
           
           const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
             method: 'POST',
@@ -42,12 +41,15 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
             body: JSON.stringify({ file_path: it.coverPath, mode: 'download', type: 'cover' })
           });
           
+          console.log('[COVER] Response status:', response.status);
           const data = await response.json();
+          console.log('[COVER] Response:', data);
+          
           if (data?.url) {
             setCoverUrls(prev => ({ ...prev, [it.id]: data.url }));
           }
         } catch (e) {
-          console.error('Error loading cover URL:', it.id, e);
+          console.error('[COVER] Error loading cover URL:', it.id, e);
         } finally {
           setLoadingCovers(prev => {
             const next = new Set(prev);

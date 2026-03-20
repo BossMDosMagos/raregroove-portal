@@ -45,12 +45,17 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const activeIndex = useMemo(() => tracks.findIndex((t) => t.id === activeId), [tracks, activeId]);
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
 
-  const presign = async ({ filePath, mode, filename }) => {
+  const presign = async ({ filePath, mode, filename, fileType = 'audio' }) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    const user = (await supabase.auth.getUser()).data.user;
-    const session = (await supabase.auth.getSession()).data.session;
-    const token = session?.access_token || supabaseAnonKey;
+    
+    // Buscar sessão atual
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token || supabaseAnonKey;
+    const userId = sessionData?.session?.user?.id;
+    
+    console.log('[PRESIGN] Token length:', token?.length);
+    console.log('[PRESIGN] UserId:', userId);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
       method: 'POST',
@@ -59,7 +64,13 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
         'Authorization': `Bearer ${token}`,
         'apikey': supabaseAnonKey
       },
-      body: JSON.stringify({ file_path: filePath, mode, filename: filename || undefined, userId: user?.id })
+      body: JSON.stringify({ 
+        file_path: filePath, 
+        mode, 
+        filename: filename || undefined, 
+        userId: userId,
+        type: fileType
+      })
     });
     
     const data = await response.json();

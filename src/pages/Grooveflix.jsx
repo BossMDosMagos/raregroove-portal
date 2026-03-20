@@ -210,14 +210,14 @@ export default function Grooveflix() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
       
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || supabaseAnonKey;
-      const userId = session?.user?.id || profile?.id;
+      // Buscar sessão atual
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || supabaseAnonKey;
+      const userId = sessionData?.session?.user?.id || profile?.id;
       
-      console.log('[DELETE] Token length:', token?.length, 'Is session:', !!session?.access_token);
+      console.log('[DELETE] Token length:', token?.length);
       console.log('[DELETE] userId:', userId);
-      console.log('[DELETE] profile?.id:', profile?.id);
-      console.log('[DELETE] session?.user?.id:', session?.user?.id);
+      console.log('[DELETE] Token prefix:', token?.substring(0, 20));
 
       const response = await fetch(`${supabaseUrl}/functions/v1/grooveflix-delete`, {
         method: 'POST',
@@ -234,7 +234,7 @@ export default function Grooveflix() {
 
       console.log('[DELETE] Response status:', response.status);
       const data = await response.json();
-      console.log('[DELETE] Response data:', data);
+      console.log('[DELETE] Response:', data);
       
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao excluir');
