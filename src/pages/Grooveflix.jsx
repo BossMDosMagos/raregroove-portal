@@ -212,6 +212,10 @@ export default function Grooveflix() {
       
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || supabaseAnonKey;
+      
+      console.log('[DELETE] Token length:', token?.length, 'Is session:', !!session?.access_token);
+      console.log('[DELETE] userId:', profile?.id);
+      console.log('[DELETE] Anon key present:', !!supabaseAnonKey);
 
       const response = await fetch(`${supabaseUrl}/functions/v1/grooveflix-delete`, {
         method: 'POST',
@@ -226,7 +230,9 @@ export default function Grooveflix() {
         })
       });
 
+      console.log('[DELETE] Response status:', response.status);
       const data = await response.json();
+      console.log('[DELETE] Response data:', data);
       
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao excluir');
