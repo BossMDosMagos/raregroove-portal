@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { 
   Download, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, 
-  ListMusic, Maximize, Minimize, Radio, Headphones, Disc3, 
+  ListMusic, Maximize, Minimize, Headphones, Disc3, 
   Shuffle, Repeat, Repeat1, Heart, Share2, MoreHorizontal,
   ChevronUp, ChevronDown, X, Upload, Clock, Wifi, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import WebampPlayer from './WebampPlayer';
 
 function formatTime(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds || 0)));
@@ -29,7 +28,6 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const audioRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [showWebamp, setShowWebamp] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isPlaying, setIsPlaying] = useState(false);
   const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
@@ -449,13 +447,6 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
                     <input type="range" min={0} max={1} step={0.01} value={isMuted ? 0 : volume} onChange={(e) => { setVolume(Number(e.target.value)); setIsMuted(false); }} className="w-24 accent-fuchsia-500" />
                   </div>
                   
-                  <button
-                    onClick={() => setShowWebamp(!showWebamp)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition ${showWebamp ? 'border-fuchsia-500 bg-fuchsia-500/20 text-fuchsia-300' : 'border-white/20 text-white/70 hover:text-white hover:border-white/40'}`}
-                  >
-                    <Radio className="w-3 h-3" /> Webamp
-                  </button>
-                  
                   {(active?.isoPath || active?.bookletPath) && (
                     <div className="flex items-center gap-2">
                       {active?.bookletPath && (
@@ -502,16 +493,6 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
             ))}
           </div>
         </div>
-      )}
-
-      {showWebamp && (
-        <WebampPlayer 
-          track={active} 
-          isPlaying={isPlaying}
-          onPlay={toggle}
-          onPause={toggle}
-          volume={isMuted ? 0 : volume}
-        />
       )}
     </>
   );
