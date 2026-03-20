@@ -181,6 +181,11 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       return;
     }
 
+    if (type === 'cover') {
+      const localUrl = URL.createObjectURL(file);
+      setMetadata(prev => ({ ...prev, coverUrl: localUrl }));
+    }
+
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
@@ -209,6 +214,8 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     });
 
     const data = await response.json();
+    console.log('[B2-UPLOAD] Response status:', response.status);
+    console.log('[B2-UPLOAD] Response data:', data);
     
     if (!response.ok) {
       throw new Error(data.error || data.message || `Erro ${response.status}`);
@@ -299,14 +306,16 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         setUploadProgress(p => ({ ...p, cover: 'uploading' }));
         try {
           const coverResult = await uploadToB2(files.cover, 'cover');
+          console.log('[COVER] Upload B2 result:', coverResult);
           grooveflixData.cover_path = coverResult.filePath;
           setUploadProgress(p => ({ ...p, cover: 'done' }));
         } catch (e) {
-          console.error('Cover upload error:', e);
+          console.error('[COVER] Upload error:', e);
+          toast.error('Erro no upload da capa', { description: e.message });
           setUploadProgress(p => ({ ...p, cover: 'error' }));
+          // Don't save blob URL if upload failed - keep it as null
+          // grooveflixData.cover_url = metadata.coverUrl || null;
         }
-      } else {
-        grooveflixData.cover_url = metadata.coverUrl || null;
       }
 
       if (files.folder && files.folder.length > 0) {
@@ -320,6 +329,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
           try {
             const result = await uploadToB2(file, 'audio');
+            console.log(`[AUDIO] Upload B2 result for ${file.name}:`, result);
             audioFiles.push({
               name: file.name,
               path: result.filePath,
@@ -327,19 +337,31 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done' }));
           } catch (e) {
-            console.error(`Upload error for ${file.name}:`, e);
+            console.error(`[AUDIO] Upload error for ${file.name}:`, e);
+            toast.error(`Erro no upload de ${file.name}`, { description: e.message });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'error' }));
           }
+        }
+        
+        if (audioFiles.length === 0 && files.folder.length > 0) {
+          toast.error('Nenhum áudio foi enviado com sucesso');
         }
         grooveflixData.audio_files = audioFiles;
       }
 
       if (files.audio) {
         setUploadProgress(p => ({ ...p, audio: 'uploading' }));
-        const audioResult = await uploadToB2(files.audio, 'audio');
-        grooveflixData.audio_path = audioResult.filePath;
-        grooveflixData.audio_files = [{ name: files.audio.name, path: audioResult.filePath, size: files.audio.size }];
-        setUploadProgress(p => ({ ...p, audio: 'done' }));
+        try {
+          const audioResult = await uploadToB2(files.audio, 'audio');
+          console.log('[AUDIO] Upload B2 result:', audioResult);
+          grooveflixData.audio_path = audioResult.filePath;
+          grooveflixData.audio_files = [{ name: files.audio.name, path: audioResult.filePath, size: files.audio.size }];
+          setUploadProgress(p => ({ ...p, audio: 'done' }));
+        } catch (e) {
+          console.error('[AUDIO] Upload error:', e);
+          toast.error('Erro no upload do áudio', { description: e.message });
+          setUploadProgress(p => ({ ...p, audio: 'error' }));
+        }
       }
 
       if (files.preview) {

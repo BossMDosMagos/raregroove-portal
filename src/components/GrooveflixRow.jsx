@@ -1,27 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { FreeMode, Navigation } from 'swiper/modules';
 import { Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import 'swiper/css';
 import 'swiper/css/navigation';
+import { supabase } from '../lib/supabase';
 
 export default function GrooveflixRow({ title, items, onPick, onDelete, canDelete }) {
   const list = items || [];
   const [coverUrls, setCoverUrls] = useState({});
+  const [loadingCovers, setLoadingCovers] = useState(new Set());
+  const [failedCovers, setFailedCovers] = useState(new Set());
 
   useEffect(() => {
     const loadCoverUrls = async () => {
-      const itemsNeedingUrl = list.filter(it => it.coverPath && !it.coverUrl);
+      const itemsNeedingUrl = list.filter(it => it.coverPath && !it.coverUrl && !coverUrls[it.id]);
       if (itemsNeedingUrl.length === 0) return;
 
-      const newUrls = {};
+      setLoadingCovers(prev => new Set([...prev, ...itemsNeedingUrl.map(it => it.id)]));
+
       for (const it of itemsNeedingUrl) {
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-          const session = (await supabase.auth.getSession()).data.session;
-          const token = session?.access_token || supabaseAnonKey;
+          const session = supabase.auth.getSession();
+          const token = session?.data?.session?.access_token || supabaseAnonKey;
           
           const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
             method: 'POST',
@@ -35,15 +38,17 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
           
           const data = await response.json();
           if (data?.url) {
-            newUrls[it.id] = data.url;
+            setCoverUrls(prev => ({ ...prev, [it.id]: data.url }));
           }
         } catch (e) {
-          console.error('Error loading cover URL:', e);
+          console.error('Error loading cover URL:', it.id, e);
+        } finally {
+          setLoadingCovers(prev => {
+            const next = new Set(prev);
+            next.delete(it.id);
+            return next;
+          });
         }
-      }
-      
-      if (Object.keys(newUrls).length > 0) {
-        setCoverUrls(prev => ({ ...prev, ...newUrls }));
       }
     };
 
@@ -59,7 +64,16 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
   };
 
   const getCoverUrl = (it) => {
-    return it.coverUrl || coverUrls[it.id] || null;
+    if (it.localCoverUrl) return it.localCoverUrl;
+    if (it.coverUrl) return it.coverUrl;
+    if (coverUrls[it.id]) return coverUrls[it.id];
+    return null;
+  };
+
+  const isLoading = (it) => {
+    if (it.localCoverUrl || it.coverUrl || coverUrls[it.id]) return false;
+    if (it.coverPath) return loadingCovers.has(it.id);
+    return false;
   };
 
   return (
@@ -82,6 +96,7 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
       >
         {list.map((it) => {
           const coverUrl = getCoverUrl(it);
+          const loading = isLoading(it);
           return (
             <SwiperSlide key={it.id}>
               <div className="relative w-full text-left group">
@@ -101,10 +116,32 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
                   className="w-full"
                 >
                   <div className="relative aspect-[1/1] rounded-2xl overflow-hidden border border-white/10 bg-white/5 transition-transform duration-300 group-hover:scale-[1.06] group-hover:border-fuchsia-500/40">
-                    {coverUrl ? (
-                      <img src={coverUrl} alt={it.title || 'cover'} className="w-full h-full object-cover" />
+                    {loading ? (
+                      <div className="w-full h-full bg-gradient-to-br from-fuchsia-500/20 via-purple-500/10 to-black animate-pulse">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
+                        </div>
+                      </div>
+                    ) : coverUrl && !failedCovers.has(it.id) ? (
+                      <img 
+                        src={coverUrl} 
+                        alt={it.title || 'cover'} 
+                        className="w-full h-full object-cover"
+                        onError={() => {
+                          console.warn(`[COVER] 404 for item ${it.id}, showing placeholder`);
+                          setFailedCovers(prev => new Set([...prev, it.id]));
+                        }}
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-fuchsia-500/30 via-purple-500/10 to-black" />
+                      <div className="w-full h-full bg-gradient-to-br from-fuchsia-500/30 via-purple-500/10 to-black">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                            <span className="text-white/40 text-lg font-bold">
+                              {(it.title || '?').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">

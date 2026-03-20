@@ -205,16 +205,44 @@ export default function Grooveflix() {
 
   const handleDeleteItem = async (itemId) => {
     if (!isAdmin || !itemId) return;
+    
     try {
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .eq('id', itemId);
-      if (error) throw error;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || supabaseAnonKey;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/grooveflix-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({ 
+          itemId, 
+          userId: profile?.id 
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao excluir');
+      }
+
       setItems((prev) => prev.filter((it) => it.id !== itemId));
-      toast.success('EXCLUÍDO', { description: 'Item removido do Grooveflix.', style: { background: '#050505', border: '1px solid #22c55e', color: '#FFF' } });
+      toast.success('EXCLUÍDO', { 
+        description: `Item removido do Grooveflix (${data.deletedFiles || 0} arquivos deletados).`, 
+        style: { background: '#050505', border: '1px solid #22c55e', color: '#FFF' } 
+      });
     } catch (e) {
-      toast.error('ERRO AO EXCLUIR', { description: e.message, style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' } });
+      console.error('[GROOVEFLIX-DELETE] Error:', e);
+      toast.error('ERRO AO EXCLUIR', { 
+        description: e.message, 
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' } 
+      });
     }
   };
 
