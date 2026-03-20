@@ -74,7 +74,7 @@ serve(async (req) => {
       .from('items')
       .select('id, title, metadata')
       .not('metadata', 'is', null)
-      .contains('metadata', ['grooveflix']);
+      .filter('metadata->grooveflix', 'neq', 'null');
 
     if (fetchError) throw fetchError;
 
