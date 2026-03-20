@@ -1,5 +1,11 @@
 // Supabase Edge Function para streaming de áudio via Backblaze B2
 // Admin bypass para streaming
+// DenoDeploy ou Supabase Edge Functions
+
+/// <reference types "@supabase/functions-js/src/edge.d.ts" />
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://hlfirfukbrisfpebaaur.supabase.co';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -55,19 +61,22 @@ serve(async (req) => {
     const userId = String(body?.userId || '');
     const fileType = String(body?.type || 'audio');
     
+    console.log('[B2-PRESIGN] Request:', { filePath, userId, fileType });
+    
     if (!filePath) {
       return new Response(JSON.stringify({ error: 'missing_file_path' }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
     
-    if (!userId && fileType !== 'cover') {
+    // Para capas, permitir acesso sem autenticação
+    if (fileType === 'cover') {
+      console.log('[B2-PRESIGN] Cover request - allowing without auth');
+    } else if (!userId) {
       return new Response(JSON.stringify({ error: 'missing_userId' }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
-    }
-    
-    if (fileType !== 'cover') {
+    } else {
       const access = await checkAccess(userId);
       if (!access.allowed) {
         return new Response(JSON.stringify({ error: 'Assinatura ativa requerida' }), { 
@@ -77,6 +86,7 @@ serve(async (req) => {
     }
 
     if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
+      console.error('[B2-PRESIGN] B2 credentials not configured');
       return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
