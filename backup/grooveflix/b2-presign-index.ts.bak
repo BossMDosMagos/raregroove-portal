@@ -13,11 +13,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '0056f3db4a31f570000000002';
-const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || 'K005n2NHKFxbs/Y8Yinyklp3we5FPmE';
+const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '';
+const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || '';
 const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || 'Cofre-RareGroove-01';
-const B2_BUCKET_ID = Deno.env.get('B2_BUCKET_ID') || '56cfb33d8ba45a4391cf0517';
-const B2_DOWNLOAD_URL = Deno.env.get('B2_DOWNLOAD_URL') || 'https://s3.us-east-005.backblazeb2.com';
+const BUCKET_ID = '56cfb33d8ba45a4391cf0517';
 
 function getServiceClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -115,7 +114,7 @@ serve(async (req) => {
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        bucketId: B2_BUCKET_ID,
+        bucketId: BUCKET_ID,
         fileNamePrefix: prefix,
         validDurationInSeconds: 7200
       })
@@ -125,7 +124,7 @@ serve(async (req) => {
       // Fallback: retornar URL pública
       return new Response(
         JSON.stringify({ 
-          url: `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`,
+          url: `https://f005.backblazeb2.com/file/${B2_BUCKET_NAME}/${filePath}`,
           isPublic: true
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

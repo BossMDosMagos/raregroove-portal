@@ -32,7 +32,8 @@ export default function Catalogo() {
       .order('created_at', { ascending: false });
     
     if (!error) {
-      setItems(data || []);
+      const filtered = (data || []).filter(item => !item.metadata?.grooveflix);
+      setItems(filtered);
     }
     setLoadingItems(false);
   };
