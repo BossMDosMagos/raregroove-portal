@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { FreeMode, Navigation } from 'swiper/modules';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import 'swiper/css';
 import 'swiper/css/navigation';
 
 export default function GrooveflixRow({ title, items, onPick, onDelete, canDelete }) {
   const list = items || [];
-  const [menuId, setMenuId] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
 
   if (list.length === 0) return null;
 
-  const handleDeleteClick = (e, item) => {
-    e.stopPropagation();
+  const handleDelete = (item) => {
     if (window.confirm(`Excluir "${item.title}" do Grooveflix?`)) {
       onDelete?.(item.id);
-      setMenuId(null);
+      setConfirmId(null);
     }
   };
 
@@ -41,27 +40,14 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
           <SwiperSlide key={it.id}>
             <div className="relative w-full text-left group">
               {canDelete && (
-                <div className="absolute top-2 right-2 z-10">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setMenuId(menuId === it.id ? null : it.id); }}
-                    className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:border-white/40 transition opacity-0 group-hover:opacity-100"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                  {menuId === it.id && (
-                    <div className="absolute top-full right-0 mt-1 bg-charcoal-deep border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteClick(e, it)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition w-full"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="text-xs font-medium">Excluir</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(it)}
+                  className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-red-500/80 backdrop-blur-sm border border-red-400/30 flex items-center justify-center text-white hover:bg-red-500 transition opacity-0 group-hover:opacity-100 shadow-lg"
+                  title="Excluir"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               )}
               <button
                 type="button"
@@ -92,4 +78,3 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
     </section>
   );
 }
-
