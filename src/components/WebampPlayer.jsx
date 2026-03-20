@@ -1,31 +1,38 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function WebampPlayer({ track, isPlaying, onPlay, onPause, volume }) {
+export default function WebampPlayer({ track, isPlaying, volume }) {
   const containerRef = useRef(null);
   const webampRef = useRef(null);
 
   useEffect(() => {
-    if (!containerRef.current || webampRef.current) return;
+    if (!containerRef.current) return;
 
-    const initWebamp = async () => {
-      const Webamp = (await import('webamp/butterchurn')).default;
-      
-      webampRef.current = new Webamp({
-        initialTracks: [],
-        enableEqualizer: true,
-        enablePlaylist: true,
-      });
+    let mounted = true;
 
-      webampRef.current.onClose(() => {
-        // Optionally handle close
-      });
+    const init = async () => {
+      try {
+        const WebampModule = await import('webamp/butterchurn');
+        const Webamp = WebampModule.default;
 
-      webampRef.current.renderWhenReady(containerRef.current);
+        if (!mounted) return;
+
+        const webamp = new Webamp({
+          initialTracks: [],
+          enableEqualizer: true,
+          enablePlaylist: true,
+        });
+
+        webampRef.current = webamp;
+        webamp.renderWhenReady(containerRef.current);
+      } catch (err) {
+        console.error('Webamp init error:', err);
+      }
     };
 
-    initWebamp();
+    init();
 
     return () => {
+      mounted = false;
       if (webampRef.current) {
         webampRef.current.dispose();
         webampRef.current = null;
@@ -34,22 +41,20 @@ export default function WebampPlayer({ track, isPlaying, onPlay, onPause, volume
   }, []);
 
   useEffect(() => {
-    if (!webampRef.current) return;
+    if (!webampRef.current || !track?.audioPath) return;
 
-    if (track?.audioPath) {
-      webampRef.current.setTracksToPlay([{
-        url: track.audioPath,
-        metaData: {
-          title: track.title || 'Unknown',
-          artist: track.artist || 'Unknown Artist',
-        },
-      }]);
-    }
+    webampRef.current.setTracksToPlay([{
+      url: track.audioPath,
+      metaData: {
+        title: track.title || 'Unknown Track',
+        artist: track.artist || 'Unknown Artist',
+      },
+    }]);
   }, [track?.audioPath]);
 
   useEffect(() => {
     if (!webampRef.current) return;
-    
+
     if (isPlaying) {
       webampRef.current.play();
     } else {
@@ -59,8 +64,8 @@ export default function WebampPlayer({ track, isPlaying, onPlay, onPause, volume
 
   useEffect(() => {
     if (!webampRef.current) return;
-    
-    const vol = Math.round((volume || 0.85) * 100);
+
+    const vol = Math.round((volume ?? 0.85) * 100);
     webampRef.current.setVolume(vol);
   }, [volume]);
 
