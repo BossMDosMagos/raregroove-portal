@@ -22,23 +22,14 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
       for (const it of itemsNeedingUrl) {
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
-          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
           
-          // Buscar sessão atual
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token || supabaseAnonKey;
-          
-          console.log('[COVER] Token length:', token?.length);
-          console.log('[COVER] Anon key present:', !!supabaseAnonKey);
-          
+          // Para capas públicas, não precisa de autenticação
           const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'apikey': supabaseAnonKey
+              'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ file_path: it.coverPath, mode: 'download', type: 'cover' })
+            body: JSON.stringify({ file_path: it.coverPath, type: 'cover' })
           });
           
           console.log('[COVER] Response status:', response.status);

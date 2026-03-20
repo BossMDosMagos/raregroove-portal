@@ -1,14 +1,11 @@
 // Supabase Edge Function para streaming de áudio via Backblaze B2
 // Admin bypass para streaming
-// DenoDeploy ou Supabase Edge Functions
-
-/// <reference types "@supabase/functions-js/src/edge.d.ts" />
-
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://hlfirfukbrisfpebaaur.supabase.co';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,12 +19,11 @@ const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || 'Cofre-RareGroove-01';
 const BUCKET_ID = '56cfb33d8ba45a4391cf0517';
 
 function getServiceClient() {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  return createClient(supabaseUrl, serviceRoleKey);
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 }
 
 async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin: boolean }> {
+  if (!userId) return { allowed: false, isAdmin: false };
   try {
     const supabaseAdmin = getServiceClient();
     const { data } = await supabaseAdmin

@@ -47,22 +47,17 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
 
   const presign = async ({ filePath, mode, filename, fileType = 'audio' }) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
-    // Buscar sessão atual
+    // Buscar sessão para obter userId
     const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token || supabaseAnonKey;
     const userId = sessionData?.session?.user?.id;
     
-    console.log('[PRESIGN] Token length:', token?.length);
     console.log('[PRESIGN] UserId:', userId);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'apikey': supabaseAnonKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
         file_path: filePath, 
