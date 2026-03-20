@@ -205,3 +205,459 @@ body {
 	background: var(--led-red);
 	box-shadow: 0 0 18px rgba(255,0,0,0.7);
 }
+
+/* ========================================
+   RAREGROOVE CASSETTE PLAYER
+   Original Codrops Player - Transplanted
+   ======================================== */
+
+.rare-cassette .vc-container {
+  text-align: center;
+  height: 500px;
+  margin-bottom: 50px;
+  position: relative;
+}
+
+.rare-cassette .vc-tape-wrapper {
+  -webkit-perspective: 800px;
+  -moz-perspective: 800px;
+  -o-perspective: 800px;
+  -ms-perspective: 800px;
+  perspective: 800px;
+}
+
+.rare-cassette .vc-tape {
+  width: 586px;
+  height: 379px;
+  margin: 30px auto 0;
+  position: relative;
+  -webkit-transition: all .4s ease-in-out;
+  -moz-transition: all .4s ease-in-out;
+  -o-transition: all .4s ease-in-out;
+  -ms-transition: all .4s ease-in-out;
+  transition: all .4s ease-in-out;
+}
+
+.rare-cassette .vc-loader {
+  position: absolute;
+  width: 31px;
+  height: 31px;
+  bottom: 50px;
+  left: 50%;
+  margin: -15px 0 0 -15px;
+  background: transparent url(/assets/images/cassette/ajax-loader.gif) no-repeat center center;
+  display: none;
+}
+
+.rare-cassette .vc-tape-back {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent url(/assets/images/cassette/cs_back.png) no-repeat center center;
+}
+
+.rare-cassette .vc-tape-wheel {
+  width: 125px;
+  height: 125px;
+  position: absolute;
+  top: 110px;
+  background: transparent;
+  border-radius: 50%;
+}
+
+.rare-cassette .vc-tape-wheel-left {
+  left: 109px;
+  box-shadow: 0 0 0 70px #000;
+}
+
+.rare-cassette .vc-tape-wheel-right {
+  right: 113px;
+}
+
+@keyframes rotateLeft {
+  0% { transform: rotate(0deg) translateZ(-1px); }
+  100% { transform: rotate(-360deg) translateZ(-1px); }
+}
+@keyframes rotateRight {
+  0% { transform: rotate(0deg) translateZ(-1px); }
+  100% { transform: rotate(360deg) translateZ(-1px); }
+}
+
+.rare-cassette .vc-tape-wheel div {
+  width: 100%;
+  height: 100%;
+  background: transparent url(/assets/images/cassette/cs_wheel.png) no-repeat center center;
+}
+
+.rare-cassette .vc-tape-front {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: transparent url(/assets/images/cassette/cs_front.png) no-repeat center center;
+  top: 0px;
+  left: 0px;
+}
+
+.rare-cassette .vc-tape-side-b {
+  display: none;
+  -webkit-transform: rotate3d(0, 1, 0, 180deg);
+  -moz-transform: rotate3d(0, 1, 0, 180deg);
+  -o-transform: rotate3d(0, 1, 0, 180deg);
+  -ms-transform: rotate3d(0, 1, 0, 180deg);
+  transform: rotate3d(0, 1, 0, 180deg);
+}
+
+.rare-cassette .vc-tape-front span {
+  color: rgba(0, 0, 0, 0.6);
+  position: absolute;
+  top: 83px;
+  left: 67px;
+  font-family: Arial;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.rare-cassette ul.vc-controls {
+  list-style: none;
+  padding: 0;
+  width: 440px;
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  margin: 0 0 0 -170px;
+  background: linear-gradient(to bottom, rgba(170,170,170,0.35) 0%, rgba(255,255,255,0.44) 50%, rgba(255,255,255,0.53) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#59aaaaaa', endColorstr='#87ffffff',GradientType=0 );
+  border: 1px solid rgba(0,0,0,0.1);
+  border-bottom-color: rgba(255,255,255,0.6);
+  padding: 8px;
+  height: 54px;
+  box-shadow: 
+    inset 0 1px 0px rgba(0,0,0,0.05),
+    0 1px 0 rgba(255,255,255,0.8),
+    0 -1px 0 rgba(255,255,255,0.4),
+    inset 0 2px 19px rgba(0,0,0,0.05),
+    0 2px 1px rgba(0,0,0,0.06);
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  border-radius: 12px;
+}
+
+.rare-cassette ul.vc-controls li {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  float: left;
+  width: 80px;
+  height: 50px;
+  padding: 0 12px;
+  margin: 0;
+  cursor: pointer;
+  background: #ddd url(/assets/images/cassette/metal.jpg) no-repeat center top;
+  box-shadow: 
+    inset 0 0 0 1px rgba(0,0,0, 0.2), 
+    inset 0 0 1px 2px rgba(255,255,255,0.9),
+    inset 0 -6px 5px rgba(0,0,0,0.1),
+    0 6px 7px rgba(0,0,0,0.3),
+    0 4px 1px rgba(0,0,0,0.5);
+  user-select: none;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #555;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+}
+
+/* Ícones CSS Puros - 12px máximo */
+.rare-cassette ul.vc-controls li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* PLAY - Triângulo 12px */
+.rare-cassette li.vc-control-play span {
+  width: 0;
+  height: 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-left: 6px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* PAUSE - Duas barras 12px */
+.rare-cassette li.vc-control-pause span {
+  display: inline-flex;
+  gap: 2px;
+}
+.rare-cassette li.vc-control-pause span:before,
+.rare-cassette li.vc-control-pause span:after {
+  content: '';
+  width: 2px;
+  height: 9px;
+  background: #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* REWIND - Duas setas esquerda 12px */
+.rare-cassette li.vc-control-rewind span {
+  display: inline-flex;
+  gap: 1px;
+}
+.rare-cassette li.vc-control-rewind span:before,
+.rare-cassette li.vc-control-rewind span:after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 5px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* FORWARD - Duas setas direita 12px */
+.rare-cassette li.vc-control-fforward span {
+  display: inline-flex;
+  gap: 1px;
+}
+.rare-cassette li.vc-control-fforward span:before,
+.rare-cassette li.vc-control-fforward span:after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* STOP - Quadrado pequeno com cantos arredondados */
+.rare-cassette li.vc-control-stop span {
+  width: 5px;
+  height: 5px;
+  background: #444;
+  border-radius: 1px;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+.rare-cassette ul.vc-controls li:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.rare-cassette ul.vc-controls li:last-child {
+  border-radius: 0px 8px 8px 0px;
+}
+
+.rare-cassette ul.vc-controls li.vc-control-play {
+  width: 120px;
+}
+
+/* Ícones CSS Puros - 12px máximo */
+.rare-cassette ul.vc-controls li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* PLAY - Triângulo 12px */
+.rare-cassette li.vc-control-play span {
+  width: 0;
+  height: 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-left: 6px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* PAUSE - Duas barras 12px */
+.rare-cassette li.vc-control-pause span {
+  display: inline-flex;
+  gap: 2px;
+}
+.rare-cassette li.vc-control-pause span:before,
+.rare-cassette li.vc-control-pause span:after {
+  content: '';
+  width: 2px;
+  height: 10px;
+  background: #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* REWIND - Duas setas esquerda 12px */
+.rare-cassette li.vc-control-rewind span {
+  display: inline-flex;
+  gap: 1px;
+}
+.rare-cassette li.vc-control-rewind span:before,
+.rare-cassette li.vc-control-rewind span:after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 5px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* FORWARD - Duas setas direita 12px */
+.rare-cassette li.vc-control-fforward span {
+  display: inline-flex;
+  gap: 1px;
+}
+.rare-cassette li.vc-control-fforward span:before,
+.rare-cassette li.vc-control-fforward span:after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid #444;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* STOP - Quadrado 15% menor */
+.rare-cassette li.vc-control-stop span {
+  width: 4px;
+  height: 4px;
+  background: #444;
+  border-radius: 1px;
+  filter: drop-shadow(1px 1px 0 rgba(255,255,255,0.5)) drop-shadow(-1px -1px 0 rgba(0,0,0,0.1));
+}
+
+/* SWITCH - Apenas texto, sem ícone */
+.rare-cassette li.vc-control-switch span {
+  display: none;
+  width: 0;
+}
+
+.rare-cassette ul.vc-controls li:hover {
+  box-shadow: 
+    inset 0 0 0 1px rgba(0,0,0, 0.2), 
+    inset 0 0 1px 2px rgba(255,255,255,0.9),
+    inset 0 -10px 15px rgba(0,0,0,0.1),
+    0 6px 7px rgba(0,0,0,0.3),
+    0 4px 1px rgba(0,0,0,0.5);
+}
+
+.rare-cassette ul.vc-controls li.vc-control-active {
+  height: 50px;
+  margin-top: 2px;
+  background-image: url(/assets/images/cassette/metal_dark.jpg);
+  box-shadow: 
+    inset 0 0 0 1px rgba(0,0,0, 0.18), 
+    inset 0 0 1px 2px rgba(255,255,255,0.5),
+    inset 0 -6px 5px rgba(0,0,0,0.1),
+    0 6px 7px rgba(0,0,0,0.3),
+    0 2px 1px rgba(0,0,0,0.5);
+}
+
+.rare-cassette ul.vc-controls li.vc-control-pressed,
+.rare-cassette ul.vc-controls li.vc-control-active.vc-control-pressed {
+  height: 50px;
+  background-image: url(/assets/images/cassette/metal_dark.jpg);
+  margin-top: 4px;
+  box-shadow: 
+    inset 0 0 0 1px rgba(0,0,0, 0.2), 
+    inset 0 0 5px 1px rgba(255,255,255,0.5),
+    inset 0 -10px 15px rgba(0,0,0,0.2),
+    0 7px 5px rgba(255,255,255,0.5);
+}
+
+.rare-cassette .vc-volume-wrap {
+  width: 100px;
+  height: 100px;
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  margin-left: -318px;
+  background: linear-gradient(to bottom, rgba(170,170,170,0.35) 0%, rgba(255,255,255,0.44) 50%, rgba(255,255,255,0.53) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#59aaaaaa', endColorstr='#87ffffff',GradientType=0 );
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 50%;
+  padding: 8px;
+  box-shadow: 
+    inset 0 1px 0px rgba(0,0,0,0.05),
+    0 1px 0 rgba(255,255,255,0.6),
+    0 -1px 0 rgba(255,255,255,0.4),
+    inset 0 2px 19px rgba(0,0,0,0.05),
+    0 2px 1px rgba(0,0,0,0.06);
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+}
+
+.rare-cassette .vc-volume-wrap:after {
+  content: 'Volume';
+  margin-top: 15px;
+  display: block;
+}
+
+.rare-cassette ul.vc-controls li,
+.rare-cassette .vc-volume-wrap:after {
+  font-family: 'Aldrich', sans-serif;
+  font-size: 10px;
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+}
+
+/* KnobKnob - Volume Control */
+.rare-cassette .vc-volume-control {
+  width: 100%;
+  height: 100%;
+}
+
+.rare-cassette .vc-volume-knob {
+  width: 100%;
+  height: 100%;
+}
+
+.rare-cassette .vc-volume-knob .knob {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.rare-cassette .vc-volume-knob .knob .base {
+  width: 100%;
+  height: 100%;
+  background: url(/assets/images/cassette/knob.jpg) no-repeat center center;
+  border-radius: 50%;
+  box-shadow: 0 5px 0 #555, 0px 5px 5px black;
+  position: absolute;
+  z-index: 1;
+}
+
+.rare-cassette .vc-volume-knob .knob .top {
+  width: 100%;
+  height: 100%;
+  background: url(/assets/images/cassette/knob.jpg) no-repeat center center;
+  border-radius: 50%;
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  box-shadow: inset 0 0 3px 2px rgba(255,255,255,0.6);
+}
+
+.rare-cassette .vc-volume-knob .knob .top:after {
+  content: '';
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #666;
+  top: 15%;
+  left: 20%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 1px #5a5a5a, 1px -1px 1px rgba(255,255,255,0.5);
+}

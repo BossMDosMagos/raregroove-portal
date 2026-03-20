@@ -201,6 +201,21 @@ export default function Grooveflix() {
     localStorage.setItem('rg_grooveflix_continue_v1', JSON.stringify(next));
   };
 
+  const handleDeleteItem = async (itemId) => {
+    if (!isAdmin || !itemId) return;
+    try {
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', itemId);
+      if (error) throw error;
+      setItems((prev) => prev.filter((it) => it.id !== itemId));
+      toast.success('EXCLUÍDO', { description: 'Item removido do Grooveflix.', style: { background: '#050505', border: '1px solid #22c55e', color: '#FFF' } });
+    } catch (e) {
+      toast.error('ERRO AO EXCLUIR', { description: e.message, style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' } });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white pb-28">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -289,22 +304,30 @@ export default function Grooveflix() {
               title={t('grooveflix.rows.continue') || 'Continuar Ouvindo'}
               items={continueListening}
               onPick={onPick}
+              canDelete={isAdmin}
+              onDelete={handleDeleteItem}
             />
           )}
           <GrooveflixRow
             title={t('grooveflix.rows.recent') || 'Recém Imortalizados'}
             items={recentlyImmortalized}
             onPick={onPick}
+            canDelete={isAdmin}
+            onDelete={handleDeleteItem}
           />
           <GrooveflixRow
             title={t('grooveflix.rows.jp') || 'Prensagens Japonesas'}
             items={japanesePressings}
             onPick={onPick}
+            canDelete={isAdmin}
+            onDelete={handleDeleteItem}
           />
           <GrooveflixRow
             title={t('grooveflix.rows.br') || 'Grooves Brasileiros Esquecidos'}
             items={forgottenBrazil}
             onPick={onPick}
+            canDelete={isAdmin}
+            onDelete={handleDeleteItem}
           />
         </div>
       </div>

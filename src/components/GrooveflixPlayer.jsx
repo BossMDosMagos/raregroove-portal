@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import WebampPlayer from './WebampPlayer';
 
 function formatTime(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds || 0)));
@@ -28,6 +29,7 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const audioRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [showWebamp, setShowWebamp] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isPlaying, setIsPlaying] = useState(false);
   const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
@@ -49,12 +51,14 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     const user = (await supabase.auth.getUser()).data.user;
+    const session = (await supabase.auth.getSession()).data.session;
+    const token = session?.access_token || supabaseAnonKey;
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-presign`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || supabaseAnonKey}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': supabaseAnonKey
       },
       body: JSON.stringify({ file_path: filePath, mode, filename: filename || undefined, userId: user?.id })
@@ -62,7 +66,8 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
     
     const data = await response.json();
     if (!response.ok || !data?.url) {
-      const err = new Error(String(data?.error || 'Erro ao gerar link'));
+      console.error('[B2-Presign] Erro:', response.status, data);
+      const err = new Error(String(data?.error || `Erro ${response.status}`));
       err.code = data?.error || null;
       throw err;
     }
@@ -107,7 +112,7 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
     setIsPlaying(false);
     if (!active?.audioPath) return;
     void resolveAudioUrl({ autoPlay: false });
-  }, [activeId]);
+  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = async () => {
     const el = audioRef.current;
@@ -116,9 +121,14 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
       toast.error('INDISPONÍVEL', { description: 'Este CD ainda não possui streaming.', style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' } });
       return;
     }
-    if (!resolvedAudioUrl && !resolving) {
-      await resolveAudioUrl({ autoPlay: true });
-      return;
+    if (resolving) return; // Evitar multi-chamadas
+    if (!resolvedAudioUrl) {
+      try {
+        await resolveAudioUrl({ autoPlay: true });
+      } catch (e) {
+        // Erro já mostrado no resolveAudioUrl
+        return;
+      }
     }
     if (el.paused) {
       try { await el.play(); } catch {
@@ -439,6 +449,13 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
                     <input type="range" min={0} max={1} step={0.01} value={isMuted ? 0 : volume} onChange={(e) => { setVolume(Number(e.target.value)); setIsMuted(false); }} className="w-24 accent-fuchsia-500" />
                   </div>
                   
+                  <button
+                    onClick={() => setShowWebamp(!showWebamp)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition ${showWebamp ? 'border-fuchsia-500 bg-fuchsia-500/20 text-fuchsia-300' : 'border-white/20 text-white/70 hover:text-white hover:border-white/40'}`}
+                  >
+                    <Radio className="w-3 h-3" /> Webamp
+                  </button>
+                  
                   {(active?.isoPath || active?.bookletPath) && (
                     <div className="flex items-center gap-2">
                       {active?.bookletPath && (
@@ -485,6 +502,16 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
             ))}
           </div>
         </div>
+      )}
+
+      {showWebamp && (
+        <WebampPlayer 
+          track={active} 
+          isPlaying={isPlaying}
+          onPlay={toggle}
+          onPause={toggle}
+          volume={isMuted ? 0 : volume}
+        />
       )}
     </>
   );
