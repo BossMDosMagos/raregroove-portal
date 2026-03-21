@@ -86,7 +86,12 @@ export default function Grooveflix() {
         .limit(120);
 
       if (error) throw error;
+      
+      console.log('[GROOVEFLIX] Raw items from DB:', data?.length || 0);
       const tracks = normalizeTracks(data || []);
+      console.log('[GROOVEFLIX] Normalized tracks:', tracks.length);
+      console.log('[GROOVEFLIX] Sample track:', tracks[0]);
+      
       setItems(tracks);
       if (!selectedTrackId && tracks.length > 0) setSelectedTrackId(tracks[0].id);
 
