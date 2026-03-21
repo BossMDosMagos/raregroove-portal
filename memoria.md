@@ -581,4 +581,95 @@ git push
 
 ---
 
-*Última atualização: 2026-03-21 13:53 UTC-3*
+## Correções Rodada 6 (2026-03-22 15:09) - Arquitetura Profissional
+
+### 1. Organização Dinâmica do Bucket (B2)
+
+**Novo path:** `user_{user_id}/{category}/{item_id}/{filename}`
+
+**Mudanças:**
+- `b2-upload-url` agora requer `itemId` no formulário
+- Item é criado no DB primeiro para obter o ID
+- Arquivos são organizados por usuário/categoria/item
+
+### 2. Carregamento de Álbuns no Webamp
+
+**Mudanças:**
+- `normalizeTracks()` agora inclui `audioFiles` array
+- `AudioPlayerContext.expandAlbumTracks()` expande álbum em faixas individuais
+- `playAlbum()` carrega todas as faixas do álbum no player
+- `webamp.setTracksToPlay()` carrega playlist completa
+
+### 3. Persistência de Skins
+
+**Mudanças:**
+- `localStorage.setItem('grooveflix_skin_url', skinUrl)` salva skin
+- `GlobalAudioPlayer` aplica skin salva ao inicializar
+- `setSkinFromUrl()` aplica skin customizada
+- Default: `https://cdn.jsdelivr.net/npm/webamp@2.2.0/skins/base-2.91.wsz`
+
+### 4. Segurança - Validação de Dono
+
+**Mudanças em `b2-presign`:**
+```typescript
+// Extrai user_id do path
+const pathOwnerId = extractUserIdFromPath(filePath); // user_xxx
+
+// Valida: é o dono OU é admin OU tem user_level >= 999
+if (pathOwnerId && pathOwnerId !== userId && !access.isAdmin && access.userLevel < 999) {
+  return { error: 'Acesso negado - você não é o dono' }
+}
+```
+
+### Arquivos Alterados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `b2-upload-url/index.ts` | Novo path com itemId |
+| `b2-presign/index.ts` | Validação de dono |
+| `GrooveflixUploader.jsx` | Cria item primeiro |
+| `Grooveflix.jsx` | audioFiles em normalizeTracks |
+| `AudioPlayerContext.jsx` | expandAlbumTracks, playAlbum, saveSkin |
+| `GlobalAudioPlayer.jsx` | Skin persistence, setTracksToPlay |
+
+### Commit
+```bash
+git commit -m "feat: grooveflix professional architecture - user folders, album tracks, skin persistence"
+git push
+```
+
+---
+
+## Estado Atual (2026-03-22 15:09)
+
+### ✅ Feito
+- [x] Path `user_{user_id}/{category}/{item_id}/{filename}` no B2
+- [x] Item criado primeiro para obter ID
+- [x] Álbuns expandidos em faixas individuais
+- [x] `webamp.setTracksToPlay()` para playlists completas
+- [x] Skin salva em localStorage
+- [x] Skin aplicada automaticamente no init
+- [x] Validação de dono no b2-presign
+- [x] Player global persistente entre páginas
+
+### 🎵 Fluxo de Álbum
+```
+Clique em álbum → playAlbum(item)
+  → expandAlbumTracks(item.audio_files)
+  → setQueue([track1, track2, ...])
+  → prepareWebampTracks() com presigned URLs
+  → webamp.setTracksToPlay(tracks)
+  → Player mostra todas as faixas
+```
+
+### 🎨 Fluxo de Skin
+```
+localStorage['grooveflix_skin_url']
+  → selectedSkin no AudioPlayerContext
+  → GlobalAudioPlayer detecta mudança
+  → webamp.setSkinFromUrl(skinUrl)
+```
+
+---
+
+*Última atualização: 2026-03-22 15:09 UTC-3*

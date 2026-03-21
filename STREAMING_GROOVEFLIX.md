@@ -108,12 +108,30 @@ O token vai na **URL** como query parameter `?Authorization=...`, **NUNCA** no h
 
 ```
 Cofre-RareGroove-01/
-├── grooveflix/
-│   ├── audio/         # Arquivos de áudio (MP3, FLAC, WAV)
-│   ├── cover/         # Capas de álbuns (JPEG, PNG)
-│   ├── preview/       # Previews curtos (30-60s)
-│   ├── iso/            # Imagens ISO de CDs completos
-│   └── booklet/        # Encartes em PDF
+├── user_{user_id}/
+│   ├── single/
+│   │   └── {item_id}/
+│   │       └── arquivo.mp3
+│   ├── album/
+│   │   └── {item_id}/
+│   │       ├── faixa01.mp3
+│   │       ├── faixa02.mp3
+│   │       └── cover.jpg
+│   ├── coletanea/
+│   ├── iso/
+│   └── cover/
+│       └── {item_id}/
+│           └── capa.jpg
+```
+
+**Formato do path:**
+```
+user_{user_id}/{category}/{item_id}/{filename}
+```
+
+**Exemplo:**
+```
+user_abc123/album/xyz456789/Sade_-_Smooth_Operator.mp3
 ```
 
 ---
@@ -145,11 +163,23 @@ metadata: {
 1. Admin abre GrooveflixUploader.jsx
 2. Seleciona arquivos (capa, áudio, etc)
 3. Clica "Adicionar ao Grooveflix"
-4. Frontend → b2-upload-url (com arquivo)
-5. b2-upload-url → B2 Native API (server-side)
-6. Retorna file_path
-7. Frontend → Supabase DB (salva metadata)
-8. Item aparece no Grooveflix
+4. Frontend cria item no DB primeiro → obtém item_id
+5. Frontend → b2-upload-url (com item_id)
+6. b2-upload-url → B2 Native API com path user_{user_id}/{category}/{item_id}/
+7. Retorna file_path
+8. Frontend atualiza item com metadata
+9. Item aparece no Grooveflix
+```
+
+### Carregamento de Álbuns
+```
+1. Usuário clica em álbum
+2. playAlbum(item) → expandAlbumTracks(item.audio_files)
+3. Cada arquivo em audio_files vira uma track individual
+4. setQueue([track1, track2, ...])
+5. prepareWebampTracks() gera presigned URLs
+6. webamp.setTracksToPlay(tracks) carrega playlist completa
+7. Player mostra todas as faixas do álbum
 ```
 
 ### Visualizar Covers
@@ -209,6 +239,23 @@ metadata: {
 - Seek (requer header Range no CORS)
 - Visualizador de espectro
 - Skin base-2.91.wsz
+
+### Persistência de Skins
+```
+1. localStorage.setItem('grooveflix_skin_url', skinUrl)
+2. AudioPlayerContext.selectedSkin é atualizado
+3. GlobalAudioPlayer detecta mudança
+4. webamp.setSkinFromUrl(skinUrl) aplica a skin
+5. Ao recarregar, skin é carregada do localStorage automaticamente
+```
+
+### Mini-Player
+Quando minimizado, aparece barra flutuante no canto inferior direito com:
+- Ícone de música animado
+- Título e artista
+- Número de faixas (se álbum)
+- Botão para expandir
+- Botão para fechar
 
 ---
 
@@ -273,6 +320,11 @@ VITE_SUPABASE_ANON_KEY=...
 **Causa:** Credenciais inválidas ou sem permissão no bucket
 **Solução:** Verificar capabilities da key B2
 
+### 403 Acesso Negado - Não é o dono
+**Sintoma:** `b2-presign` retorna erro de acesso
+**Causa:** User tentando acessar arquivo de outro usuário
+**Solução:** b2-presign valida se path owner = user_id OR is_admin OR user_level >= 999
+
 ### Webamp não faz seek
 **Sintoma:** Player não pula para posição na música
 **Causa:** Header `range` não exposto no CORS
@@ -282,6 +334,11 @@ VITE_SUPABASE_ANON_KEY=...
 **Sintoma:** Cover mostra placeholder
 **Causa:** path incorreto no banco ou arquivo deletado do B2
 **Solução:** Verificar `metadata.grooveflix.cover_path` no banco
+
+### Álbum não mostra todas as faixas
+**Sintoma:** Apenas uma música toca no álbum
+**Causa:** `audio_files` array não foi preenchido
+**Solução:** Verificar se upload de pasta foi bem sucedido e populou `audio_files`
 
 ---
 
@@ -298,4 +355,4 @@ VITE_SUPABASE_ANON_KEY=...
 
 ---
 
-*Documentação atualizada: 2026-03-21*
+*Documentação atualizada: 2026-03-22*
