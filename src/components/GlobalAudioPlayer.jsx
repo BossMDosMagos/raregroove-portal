@@ -19,8 +19,6 @@ export function GlobalAudioPlayer() {
     listenersRef,
     closePlayer,
     selectedSkin,
-    saveSkin,
-    clearSkin,
     playAlbum,
     isPlaying,
   } = useAudioPlayer();
@@ -32,40 +30,31 @@ export function GlobalAudioPlayer() {
   const hasInitializedRef = useRef(false);
   const currentSkinRef = useRef(null);
   const prevTrackRef = useRef(null);
+  const prevWebampTracksRef = useRef([]);
 
   const hasTrack = queue.length > 0 && currentTrack;
 
   useEffect(() => {
     if (currentTrack && currentTrack !== prevTrackRef.current) {
-      console.log('[GLOBAL PLAYER] New track selected:', currentTrack.title);
+      console.log('[GLOBAL PLAYER] New track selected:', currentTrack.title, 'category:', currentTrack.category);
       prevTrackRef.current = currentTrack;
       
       if (!isWebampRendered) {
-        console.log('[GLOBAL PLAYER] Auto-expanding player for track:', currentTrack.title);
+        console.log('[GLOBAL PLAYER] Auto-expanding player');
         setIsExpanded(true);
+      } else if (webampInstanceRef.current && queue.length > 1) {
+        console.log('[GLOBAL PLAYER] Showing playlist for album');
+        webampInstanceRef.current.showPlaylistWindow?.();
       }
     }
-  }, [currentTrack, isWebampRendered]);
+  }, [currentTrack, isWebampRendered, queue.length]);
 
   useEffect(() => {
-    console.log('[GLOBAL PLAYER] Effect triggered - divRef:', !!divRef, 'hasTrack:', hasTrack, 'webampTracks:', webampTracks.length, 'userId:', !!userId);
-    
-    if (!divRef) {
-      console.log('[GLOBAL PLAYER] No divRef yet, skipping');
-      return;
-    }
-    
-    if (!hasTrack || webampTracks.length === 0) {
-      console.log('[GLOBAL PLAYER] No track or no webampTracks, skipping. hasTrack:', hasTrack, 'webampTracks:', webampTracks.length);
-      return;
-    }
+    if (!divRef) return;
+    if (!hasTrack || webampTracks.length === 0) return;
+    if (hasInitializedRef.current && isWebampRendered) return;
 
-    if (hasInitializedRef.current && isWebampRendered) {
-      console.log('[GLOBAL PLAYER] Already initialized, skipping');
-      return;
-    }
-
-    console.log('[GLOBAL PLAYER] Initializing Webamp...');
+    console.log('[GLOBAL PLAYER] Initializing Webamp with', webampTracks.length, 'tracks');
 
     if (!Webamp.browserIsSupported()) {
       toast.error('Navegador não suportado', {
@@ -76,14 +65,6 @@ export function GlobalAudioPlayer() {
     }
 
     const skinToUse = selectedSkin || DEFAULT_SKIN;
-    console.log('[GLOBAL PLAYER] Creating Webamp with', webampTracks.length, 'tracks, skin:', skinToUse);
-
-    const webampOptions = {
-      initialTracks: webampTracks,
-      zIndex: 99999,
-    };
-    
-    console.log('[GLOBAL PLAYER] Webamp options:', JSON.stringify({ trackCount: webampTracks.length, skin: skinToUse }));
 
     if (webampInstanceRef.current) {
       try {
@@ -97,7 +78,11 @@ export function GlobalAudioPlayer() {
       }
     }
 
-    const webamp = new Webamp(webampOptions);
+    const webamp = new Webamp({
+      initialTracks: webampTracks,
+      zIndex: 99999,
+    });
+
     webampInstanceRef.current = webamp;
     setWebampRef(webamp);
     hasInitializedRef.current = true;
@@ -109,10 +94,14 @@ export function GlobalAudioPlayer() {
         setIsWebampRendered(true);
 
         if (skinToUse !== DEFAULT_SKIN && webamp.setSkinFromUrl) {
-          console.log('[GLOBAL PLAYER] Applying custom skin:', skinToUse);
           webamp.setSkinFromUrl(skinToUse).catch(err => {
             console.error('[GLOBAL PLAYER] Error applying skin:', err);
           });
+        }
+
+        if (queue.length > 1) {
+          console.log('[GLOBAL PLAYER] Showing playlist for', queue.length, 'tracks');
+          webamp.showPlaylistWindow?.();
         }
 
         const unsubClose = webamp.onClose?.(() => {
@@ -146,12 +135,30 @@ export function GlobalAudioPlayer() {
   }, [divRef, hasTrack, webampTracks.length, userId, selectedSkin, queue]);
 
   useEffect(() => {
+    if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
+      if (JSON.stringify(webampTracks) !== JSON.stringify(prevWebampTracksRef.current)) {
+        console.log('[GLOBAL PLAYER] Setting tracks to play:', webampTracks.length);
+        prevWebampTracksRef.current = webampTracks;
+        try {
+          if (webampInstanceRef.current.setTracksToPlay) {
+            webampInstanceRef.current.setTracksToPlay(webampTracks);
+          }
+          if (queue.length > 1) {
+            webampInstanceRef.current.showPlaylistWindow?.();
+          }
+        } catch (e) {
+          console.error('[GLOBAL PLAYER] Error setting tracks:', e);
+        }
+      }
+    }
+  }, [webampTracks, isWebampRendered, queue.length]);
+
+  useEffect(() => {
     if (webampInstanceRef.current && selectedSkin && selectedSkin !== currentSkinRef.current) {
       console.log('[GLOBAL PLAYER] Applying new skin:', selectedSkin);
       if (webampInstanceRef.current.setSkinFromUrl) {
         webampInstanceRef.current.setSkinFromUrl(selectedSkin)
           .then(() => {
-            console.log('[GLOBAL PLAYER] Custom skin applied');
             currentSkinRef.current = selectedSkin;
           })
           .catch(err => {
@@ -160,19 +167,6 @@ export function GlobalAudioPlayer() {
       }
     }
   }, [selectedSkin]);
-
-  useEffect(() => {
-    if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
-      console.log('[GLOBAL PLAYER] Setting new tracks:', webampTracks.length);
-      try {
-        if (webampInstanceRef.current.setTracksToPlay) {
-          webampInstanceRef.current.setTracksToPlay(webampTracks);
-        }
-      } catch (e) {
-        console.error('[GLOBAL PLAYER] Error setting tracks:', e);
-      }
-    }
-  }, [webampTracks, isWebampRendered]);
 
   const handlePlayAlbum = () => {
     if (currentTrack?.category === 'album') {
@@ -186,6 +180,7 @@ export function GlobalAudioPlayer() {
     setIsExpanded(true);
     hasInitializedRef.current = false;
     setIsWebampRendered(false);
+    prevWebampTracksRef.current = [];
   };
 
   const handleClose = () => {
@@ -198,6 +193,7 @@ export function GlobalAudioPlayer() {
         webampInstanceRef.current = null;
         hasInitializedRef.current = false;
         setIsWebampRendered(false);
+        prevWebampTracksRef.current = [];
       } catch (e) {
         console.error('[GLOBAL PLAYER] Error disposing:', e);
       }
@@ -213,7 +209,7 @@ export function GlobalAudioPlayer() {
         <div className="fixed bottom-20 right-4 flex items-center gap-3 bg-black/95 border border-fuchsia-500/30 rounded-2xl px-5 py-3 shadow-2xl shadow-fuchsia-500/10 z-[99997]">
           <div className="w-5 h-5 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
           <span className="text-fuchsia-300 text-xs font-black uppercase tracking-widest">
-            Preparando...
+            Preparando {webampTracks.length} faixas...
           </span>
         </div>
       )}
@@ -255,7 +251,7 @@ export function GlobalAudioPlayer() {
               <button
                 onClick={handlePlayAlbum}
                 className="w-8 h-8 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 flex items-center justify-center text-purple-300 transition"
-                title="Tocar álbum"
+                title="Tocar álbum completo"
               >
                 <Headphones className="w-4 h-4" />
               </button>
@@ -263,12 +259,14 @@ export function GlobalAudioPlayer() {
             <button
               onClick={handleExpand}
               className="w-8 h-8 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 transition"
+              title="Expandir player"
             >
               <ChevronUp className="w-4 h-4" />
             </button>
             <button
               onClick={handleClose}
               className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition"
+              title="Fechar"
             >
               <X className="w-4 h-4" />
             </button>
