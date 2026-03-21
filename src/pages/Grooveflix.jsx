@@ -86,17 +86,25 @@ export default function Grooveflix() {
     if (!userId) return;
     setLoading(true);
     try {
+      // Busca apenas itens que têm metadata.grooveflix.category (itens de streaming)
       const { data, error } = await supabase
         .from('items')
         .select('id, title, artist, image_url, metadata, created_at')
         .eq('seller_id', userId)
+        .not('metadata', 'is', null)
         .order('created_at', { ascending: false })
         .limit(120);
+      
+      // Filtra no cliente apenas itens com grooveflix
+      const grooveflixItems = (data || []).filter(item => 
+        item.metadata?.grooveflix?.category
+      );
 
       if (error) throw error;
       
       console.log('[GROOVEFLIX] Raw items from DB:', data?.length || 0);
-      const tracks = normalizeTracks(data || []);
+      console.log('[GROOVEFLIX] Grooveflix items:', grooveflixItems.length);
+      const tracks = normalizeTracks(grooveflixItems);
       console.log('[GROOVEFLIX] Normalized tracks:', tracks.length);
       console.log('[GROOVEFLIX] Sample track:', tracks[0]);
       
