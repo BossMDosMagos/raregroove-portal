@@ -196,7 +196,10 @@ export default function AdminUsers() {
           pix_key: editData.pix_key,
           is_admin: editData.is_admin,
           status: editData.status,
-          suspension_end: editData.suspension_end
+          suspension_end: editData.suspension_end,
+          user_level: editData.user_level || 0,
+          subscription_status: editData.subscription_status || 'inactive',
+          subscription_plan: editData.subscription_plan || null,
         })
         .eq('id', editData.id);
 
@@ -422,9 +425,16 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${getSubscriptionBadge(user.subscription_status)}`}>
-                        {formatSubscriptionStatus(user.subscription_status)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${getSubscriptionBadge(user.subscription_status)}`}>
+                          {formatSubscriptionStatus(user.subscription_status)}
+                        </span>
+                        {user.user_level >= 999 && (
+                          <span className="px-2 py-1 rounded-full text-[10px] font-bold border bg-purple-500/20 border-purple-500/40 text-purple-300 animate-pulse">
+                            DEUS
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 pr-4 text-white/60">
                       {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—'}
@@ -695,6 +705,42 @@ export default function AdminUsers() {
                     />
                   )}
                 </div>
+              </div>
+
+              {/* Modo Deus */}
+              <div className="pb-2 pt-3 border-t border-white/5">
+                <p className="text-purple-400 text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                  MODO DEUS
+                </p>
+                <div className="flex items-center justify-between bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-white text-sm font-bold">Acesso Master HI-FI</p>
+                    <p className="text-white/50 text-[10px]">Acesso irrestrito a todo conteúdo</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (editData.user_level >= 999) {
+                        setEditData({ ...editData, user_level: 0, subscription_status: 'inactive', subscription_plan: null });
+                        toast.info('MODO DEUS DESATIVADO', { description: 'Assinatura removida', style: { background: '#050505', border: '1px solid #8b5cf6', color: '#FFF' } });
+                      } else {
+                        setEditData({ ...editData, user_level: 999, subscription_status: 'active', subscription_plan: 'modo_deus' });
+                        toast.success('MODO DEUS ATIVADO', { description: 'Acesso master liberado!', style: { background: '#050505', border: '1px solid #8b5cf6', color: '#FFF' } });
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                      editData.user_level >= 999
+                        ? 'bg-purple-500 text-white hover:bg-purple-600'
+                        : 'bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30'
+                    }`}
+                  >
+                    {editData.user_level >= 999 ? 'DESATIVAR' : 'ATIVAR'}
+                  </button>
+                </div>
+                {editData.user_level >= 999 && (
+                  <p className="text-purple-400/70 text-[10px] mt-2">✓ Usuário tem acesso MASTER</p>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">

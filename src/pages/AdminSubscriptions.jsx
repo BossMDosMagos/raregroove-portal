@@ -16,6 +16,19 @@ export default function AdminSubscriptions() {
     const load = async () => {
       setLoading(true);
       try {
+        // Garante que o plano MODO DEUS existe
+        await supabase
+          .from('subscription_plans')
+          .upsert({
+            plan_id: 'modo_deus',
+            name: 'MODO DEUS',
+            description: 'Acesso Master - Todo conteúdo HI-FI sem restrições',
+            price_brl: 0,
+            price_usd: 0,
+            user_level: 999,
+            is_active: true,
+          }, { onConflict: 'plan_id' });
+
         const [{ data: plansData, error: plansError }, { data: settingsData, error: settingsError }] = await Promise.all([
           supabase
             .from('subscription_plans')
