@@ -119,8 +119,8 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
                         src={coverUrl} 
                         alt={it.title || 'cover'} 
                         className="w-full h-full object-cover"
-                        onError={() => {
-                          console.warn(`[COVER] 404 for item ${it.id}, showing placeholder`);
+                        onError={(e) => {
+                          console.warn(`[COVER] 404 for item ${it.id}, URL: ${coverUrl}, error:`, e);
                           setFailedCovers(prev => new Set([...prev, it.id]));
                         }}
                       />
