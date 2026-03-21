@@ -12,9 +12,9 @@ const corsHeaders = {
 
 const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '0056f3db4a31f570000000002';
 const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || 'K005n2NHKFxbs/Y8Yinyklp3we5FPmE';
-const B2_BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME') || 'Cofre-RareGroove-01';
-const B2_BUCKET_ID = Deno.env.get('B2_BUCKET_ID') || '56cfb33d8ba45a4391cf0517';
-const B2_DOWNLOAD_URL = Deno.env.get('B2_DOWNLOAD_URL') || 'https://s3.us-east-005.backblazeb2.com';
+const BUCKET_NAME = 'Cofre-RareGroove-01';
+const BUCKET_ID = '56cfb33d8ba45a4391cf0517';
+const B2_NATIVE_URL = 'https://f005.backblazeb2.com';
 
 function getServiceClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -22,35 +22,51 @@ function getServiceClient() {
   });
 }
 
-async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin: boolean }> {
-  if (!userId) return { allowed: false, isAdmin: false };
+async function b2Auth() {
+  const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
+  const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+    method: 'POST',
+    headers: { 'Authorization': 'Basic ' + encoded, 'Content-Type': 'application/json' },
+    body: '{}'
+  });
+  if (!res.ok) throw new Error('B2 auth failed: ' + res.status);
+  return res.json();
+}
+
+async function b2GetDownloadAuth(apiUrl: string, authToken: string) {
+  const res = await fetch(`${apiUrl}/b2api/v2/b2_get_download_authorization`, {
+    method: 'POST',
+    headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bucketId: BUCKET_ID,
+      fileNamePrefix: '',
+      validDurationInSeconds: 3600
+    })
+  });
+  if (!res.ok) throw new Error('b2_get_download_authorization failed: ' + res.status);
+  return res.json();
+}
+
+async function checkAccess(userId: string): Promise<{ allowed: boolean }> {
+  if (!userId) return { allowed: false };
   try {
     const supabaseAdmin = getServiceClient();
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('profiles')
       .select('is_admin, subscription_status, user_level')
       .eq('id', userId)
       .single();
     
-    console.log('[B2-PRESIGN] Profile data:', { data, error });
-    
-    if (error || !data) return { allowed: false, isAdmin: false };
+    if (!data) return { allowed: false };
+    if (data.is_admin) return { allowed: true };
     
     const userLevel = Number(data.user_level || 0);
-    const status = String(data.subscription_status || 'inactive').toLowerCase();
+    if (userLevel >= 999) return { allowed: true };
+    if (data.subscription_status === 'active' && userLevel >= 1) return { allowed: true };
     
-    console.log('[B2-PRESIGN] User check:', { isAdmin: data.is_admin, userLevel, status });
-    
-    if (data.is_admin) return { allowed: true, isAdmin: true };
-    
-    if (userLevel >= 999) return { allowed: true, isAdmin: false };
-    
-    if (status === 'active' && userLevel >= 1) return { allowed: true, isAdmin: false };
-    
-    return { allowed: false, isAdmin: false };
-  } catch (e) {
-    console.error('[B2-PRESIGN] CheckAccess error:', e);
-    return { allowed: false, isAdmin: false };
+    return { allowed: false };
+  } catch {
+    return { allowed: false };
   }
 }
 
@@ -61,7 +77,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const filePath = String(body?.file_path || body?.path || '').trim().replace(/^\/+/, '');
+    const filePath = String(body?.file_path || '').trim().replace(/^\/+/, '');
     const userId = String(body?.userId || body?.user_id || '').trim();
     const fileType = String(body?.type || 'audio');
     
@@ -83,83 +99,29 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-
       const access = await checkAccess(userId);
-      console.log('[B2-PRESIGN] Access check result:', access);
-
       if (!access.allowed) {
-        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida', userId }), {
+        return new Response(JSON.stringify({ error: 'Acesso negado' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     }
 
-    if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
-      console.error('[B2-PRESIGN] B2 credentials not configured');
-      return new Response(JSON.stringify({ error: 'B2 nao configurado' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const authData = await b2Auth();
+    const downloadAuth = await b2GetDownloadAuth(authData.apiUrl, authData.authorizationToken);
 
-    const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
-    const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
-      method: 'POST',
-      headers: { 'Authorization': 'Basic ' + encoded, 'Content-Type': 'application/json' },
-      body: '{}'
-    });
+    const safeFilePath = filePath.split('/').map(p => encodeURIComponent(p)).join('/');
+    const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${safeFilePath}?Authorization=${downloadAuth.authorizationToken}`;
 
-    if (!authRes.ok) {
-      console.error('[B2-PRESIGN] B2 auth failed:', authRes.status);
-      return new Response(JSON.stringify({ error: 'B2 auth failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const authData = await authRes.json();
-    console.log('[B2-PRESIGN] B2 auth success, bucket:', B2_BUCKET_NAME);
-
-    const pathParts = filePath.split('/');
-    const prefix = pathParts.slice(0, Math.min(3, pathParts.length)).join('/') + '/';
-
-    const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
-      method: 'POST',
-      headers: {
-        'Authorization': authData.authorizationToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        bucketId: B2_BUCKET_ID,
-        fileNamePrefix: prefix,
-        validDurationInSeconds: 7200
-      })
-    });
-
-    const bucketName = 'Cofre-RareGroove-01';
-    let url: string;
-
-    if (!downloadAuthRes.ok) {
-      const errBody = await downloadAuthRes.json();
-      console.error('[B2-PRESIGN] Download auth failed:', errBody);
-      return new Response(JSON.stringify({ error: 'Download auth failed', details: errBody }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    const downloadAuth = await downloadAuthRes.json();
-    console.log('[B2-PRESIGN] Got download auth token:', downloadAuth.authorizationToken?.substring(0, 20) + '...');
-    
-    // Usar API nativa B2 com token de autorização
-    url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
-    console.log('[B2-PRESIGN] Generated URL:', url.substring(0, 80) + '...');
-
-    console.log('[B2-PRESIGN] Returning URL for:', filePath);
+    console.log('[B2-PRESIGN] Generated URL:', downloadUrl.substring(0, 120) + '...');
 
     return new Response(
-      JSON.stringify({ url, expiresIn: 7200 }),
+      JSON.stringify({ 
+        url: downloadUrl,
+        expiresIn: downloadAuth.validDurationInSeconds,
+        storage: 'b2_native'
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -193,7 +193,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
-    console.log('[UPLOAD] Iniciando upload server-side...');
+    console.log('[UPLOAD] Iniciando upload server-side para B2...');
     
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token || supabaseAnonKey;
@@ -232,7 +232,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       };
     }
     
-    // Fallback: se retornou URL, fazer upload direto (para arquivos pequenos)
     if (data.uploadUrl) {
       console.log('[UPLOAD] Fallback para upload direto...');
       const uploadResponse = await fetch(data.uploadUrl, {
@@ -314,8 +313,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           console.error('[COVER] Upload error:', e);
           toast.error('Erro no upload da capa', { description: e.message });
           setUploadProgress(p => ({ ...p, cover: 'error' }));
-          // Don't save blob URL if upload failed - keep it as null
-          // grooveflixData.cover_url = metadata.coverUrl || null;
         }
       }
 
