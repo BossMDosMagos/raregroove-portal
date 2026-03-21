@@ -147,7 +147,7 @@ export default function Catalogo() {
                 <span className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-gold-premium opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <Sparkles size={16} className="relative z-10 text-charcoal-deep" />
                 <span className="relative z-10 flex items-center gap-2">
-                  Adicionar <span className="hidden sm:inline">Item</span>
+                  {t('catalog.actions.add')} <span className="hidden sm:inline">Item</span>
                 </span>
               </button>
             )}
@@ -160,13 +160,13 @@ export default function Catalogo() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="group space-y-2">
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/70 ml-1">
-                  <Search size={12} /> Busca
+                  <Search size={12} /> {t('catalog.filters.searchLabel')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-0 bg-gold-premium/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <input 
                     type="text"
-                    placeholder="Buscar por título ou artista..."
+                    placeholder={t('catalog.filters.searchPlaceholder')}
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                     className="relative w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 placeholder:text-white/20"
@@ -176,7 +176,7 @@ export default function Catalogo() {
 
               <div className="group space-y-2">
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/70 ml-1">
-                  <Music size={12} /> Gênero
+                  <Music size={12} /> {t('catalog.filters.genre')}
                 </label>
                 <div className="relative">
                   <select
@@ -184,7 +184,7 @@ export default function Catalogo() {
                     onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
                     className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 appearance-none cursor-pointer"
                   >
-                    <option value="" className="bg-charcoal-deep">Todos os Gêneros</option>
+                    <option value="" className="bg-charcoal-deep">{t('catalog.filters.allGenres')}</option>
                     {uniqueGenres.map(genre => (
                       <option key={genre} value={genre} className="bg-charcoal-deep">{genre}</option>
                     ))}
@@ -197,7 +197,7 @@ export default function Catalogo() {
 
               <div className="group space-y-2">
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/70 ml-1">
-                  <Calendar size={12} /> Ano
+                  <Calendar size={12} /> {t('catalog.filters.year')}
                 </label>
                 <div className="relative">
                   <select
@@ -205,7 +205,7 @@ export default function Catalogo() {
                     onChange={(e) => setFilters({ ...filters, year: e.target.value })}
                     className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 appearance-none cursor-pointer"
                   >
-                    <option value="" className="bg-charcoal-deep">Todos os Anos</option>
+                    <option value="" className="bg-charcoal-deep">{t('catalog.filters.allYears')}</option>
                     {uniqueYears.map(year => (
                       <option key={year} value={year} className="bg-charcoal-deep">{year}</option>
                     ))}
@@ -222,7 +222,7 @@ export default function Catalogo() {
                   className="group w-full py-4 bg-gradient-to-r from-charcoal-mid/50 to-charcoal-deep/50 border border-white/5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-gold-premium hover:border-gold-premium/30 hover:bg-gold-premium/5 transition-all duration-500 flex items-center justify-center gap-2"
                 >
                   <span className="w-4 h-4 rounded-full border border-current group-hover:bg-gold-premium/20 transition-colors" />
-                  Limpar Filtros
+                  {t('catalog.actions.clearFilters')}
                 </button>
               </div>
             </div>
@@ -246,17 +246,17 @@ export default function Catalogo() {
                 </div>
               </div>
               <h2 className="text-4xl font-black text-white mb-4 tracking-tighter uppercase">
-                {filters.search ? 'Sem Resultados' : 'Vitrine Vazia'}
+                {filters.search ? t('catalog.empty.noResults') : t('catalog.empty.showcaseEmpty')}
               </h2>
               <p className="text-white/40 mb-8 max-w-md mx-auto text-sm leading-relaxed uppercase tracking-widest font-medium">
                 {filters.search 
-                  ? `Nenhuma pérola encontrada para "${filters.search}"`
-                  : 'Esta coleção ainda não tem tesouros. Seja o primeiro a adicionar!'
+                  ? `${t('catalog.empty.searchNoResults')} "${filters.search}"`
+                  : t('catalog.empty.noItems')
                 }
               </p>
               {!currentUser && (
                 <p className="text-gold-premium/60 text-xs tracking-widest uppercase">
-                  Faça login para começar sua coleção
+                  {t('catalog.empty.loginPrompt')}
                 </p>
               )}
             </div>
