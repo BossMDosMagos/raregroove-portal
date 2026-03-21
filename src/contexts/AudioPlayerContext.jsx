@@ -21,9 +21,9 @@ export function AudioPlayerProvider({ children }) {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-      console.log('[AUDIO CONTEXT] User initialized:', user?.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[AUDIO CONTEXT] Session:', session?.user?.id);
+      setUserId(session?.user?.id || null);
       
       const savedSkin = localStorage.getItem('grooveflix_skin_url');
       if (savedSkin) {
@@ -31,7 +31,15 @@ export function AudioPlayerProvider({ children }) {
         console.log('[AUDIO CONTEXT] Loaded saved skin:', savedSkin);
       }
     };
+    
     init();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[AUDIO CONTEXT] Auth state changed:', session?.user?.id);
+      setUserId(session?.user?.id || null);
+    });
+    
+    return () => subscription.unsubscribe();
   }, []);
 
   const getPresignedUrl = useCallback(async (filePath) => {
