@@ -141,14 +141,15 @@ serve(async (req) => {
       })
     });
 
+    const bucketName = 'Cofre-RareGroove-01';
     let url: string;
 
     if (!downloadAuthRes.ok) {
       console.log('[B2-PRESIGN] Download auth failed, using public URL');
-      url = `https://${B2_BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${filePath}`;
+      url = `https://s3.us-east-005.backblazeb2.com/${bucketName}/${filePath}`;
     } else {
       const downloadAuth = await downloadAuthRes.json();
-      url = `https://${B2_BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+      url = `https://s3.us-east-005.backblazeb2.com/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
     }
 
     console.log('[B2-PRESIGN] Returning URL for:', filePath);
