@@ -5,13 +5,6 @@ import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { DiscogsImporter } from './DiscogsImporter.jsx';
 
-const CATEGORIES = [
-  { id: 'single', label: 'Single', icon: Music, description: 'Uma faixa individual' },
-  { id: 'album', label: 'Álbum', icon: Disc, description: 'Pasta com todas as músicas' },
-  { id: 'coletanea', label: 'Coletânea', icon: FolderOpen, description: 'Compilação de faixas' },
-  { id: 'iso', label: 'ISO', icon: HardDrive, description: 'CD completo (imagem ISO)' },
-];
-
 const FILE_TYPES = {
   audio: { accept: 'audio/*', maxSize: 500 * 1024 * 1024, label: 'Áudio (MP3/FLAC/WAV)', required: true },
   folder: { accept: '', maxSize: 2000 * 1024 * 1024, label: 'Pasta com músicas', required: true },
@@ -140,6 +133,13 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('upload');
   const [uploading, setUploading] = useState(false);
+  
+  const CATEGORIES = [
+    { id: 'single', label: t('grooveflix.upload.category.single') || 'Single', icon: Music, description: t('grooveflix.upload.category.singleDesc') || 'Uma faixa individual' },
+    { id: 'album', label: t('grooveflix.upload.category.album') || 'Álbum', icon: Disc, description: t('grooveflix.upload.category.albumDesc') || 'Pasta com todas as músicas' },
+    { id: 'coletanea', label: t('grooveflix.upload.category.compilation') || 'Coletânea', icon: FolderOpen, description: t('grooveflix.upload.category.compilationDesc') || 'Compilação de faixas' },
+    { id: 'iso', label: 'ISO', icon: HardDrive, description: t('grooveflix.upload.category.isoDesc') || 'CD completo (imagem ISO)' },
+  ];
   const [uploadProgress, setUploadProgress] = useState({});
   const [category, setCategory] = useState(item?.metadata?.grooveflix?.category || 'album');
   const [files, setFiles] = useState({
@@ -165,18 +165,18 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     
     if (type === 'folder') {
       if (selectedFiles.length < 2) {
-        toast.error('Selecione uma pasta com pelo menos 2 músicas');
+        toast.error(t('grooveflix.upload.minFiles'));
         return;
       }
       setFiles(prev => ({ ...prev, folder: selectedFiles }));
       return;
     }
-
+    
     const file = selectedFiles[0];
     
     if (file.size > validation.maxSize) {
-      toast.error('Arquivo muito grande', {
-        description: `Máximo: ${(validation.maxSize / 1024 / 1024).toFixed(0)}MB`,
+      toast.error(t('grooveflix.upload.fileTooBig'), {
+        description: `${t('grooveflix.upload.maxSize')}: ${(validation.maxSize / 1024 / 1024).toFixed(0)}MB`,
       });
       return;
     }
@@ -344,7 +344,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           setUploadProgress(p => ({ ...p, cover: 'done' }));
         } catch (e) {
           console.error('[COVER] Upload error:', e);
-          toast.error('Erro no upload da capa', { description: e.message });
+          toast.error(t('grooveflix.upload.coverError'), { description: e.message });
           setUploadProgress(p => ({ ...p, cover: 'error' }));
         }
       }
@@ -395,7 +395,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           setUploadProgress(p => ({ ...p, audio: 'done' }));
         } catch (e) {
           console.error('[AUDIO] Upload error:', e);
-          toast.error('Erro no upload do áudio', { description: e.message });
+          toast.error(t('grooveflix.upload.audioError'), { description: e.message });
           setUploadProgress(p => ({ ...p, audio: 'error' }));
         }
       }
@@ -453,7 +453,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Erro ao fazer upload', {
+      toast.error(t('grooveflix.upload.generalError'), {
         description: error.message,
       });
     } finally {

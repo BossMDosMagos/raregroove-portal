@@ -134,14 +134,12 @@ export default function Grooveflix() {
         setSelectedTrackId(tracks[0].id);
       }
 
-    } catch (e) {
+      } catch (e) {
       console.error('[GROOVEFLIX] Load error:', e);
-      toast.error('Erro ao carregar', { description: e.message });
+      toast.error(t('grooveflix.error.load'), { description: e.message });
       setItems([]);
-    } finally {
-      setLoading(false);
     }
-  }, [userId, selectedTrackId]);
+  }, [userId, selectedTrackId, t]);
 
   useEffect(() => {
     if (userId) {
@@ -171,17 +169,17 @@ export default function Grooveflix() {
     });
     
     if (!selectedTrack?.audioPath && (!selectedTrack?.audioFiles || selectedTrack.audioFiles.length === 0)) {
-      toast.error('Sem áudio', { description: 'Esta faixa não possui arquivo de áudio.' });
+      toast.error(t('grooveflix.noAudio'), { description: t('grooveflix.error.noAudio') });
       return;
     }
     
     if (selectedTrack.category === 'album' && selectedTrack.audioFiles?.length > 0) {
-      toast.success('Carregando álbum...', {
-        description: `${selectedTrack.title} - ${selectedTrack.audioFiles.length} faixas`,
+      toast.success(t('grooveflix.loadingAlbum'), {
+        description: `${selectedTrack.title} - ${selectedTrack.audioFiles.length} ${t('grooveflix.tracks') || 'faixas'}`,
         duration: 2000,
       });
     } else {
-      toast.success('Reproduzindo...', {
+      toast.success(t('grooveflix.playing'), {
         description: `${selectedTrack.title} - ${selectedTrack.artist}`,
         duration: 2000,
       });
@@ -191,16 +189,16 @@ export default function Grooveflix() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Excluir este item?')) return;
+    if (!window.confirm(t('grooveflix.delete.confirm'))) return;
 
     const { error } = await supabase.functions.invoke('grooveflix-delete', {
       body: { itemId: id, userId },
     });
 
     if (error) {
-      toast.error('Erro ao deletar');
+      toast.error(t('grooveflix.delete.error'));
     } else {
-      toast.success('Item deletado!');
+      toast.success(t('grooveflix.delete.success'));
       loadItems();
     }
   };
@@ -222,7 +220,7 @@ export default function Grooveflix() {
               </span>
             </div>
             <h1 className="text-6xl md:text-7xl font-black tracking-tight">GROOVEFLIX<span className="text-fuchsia-400">.</span></h1>
-            <p className="mt-3 text-white/50">Streaming HI-FI via Backblaze B2</p>
+            <p className="mt-3 text-white/50">{t('grooveflix.subtitle')}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -230,14 +228,14 @@ export default function Grooveflix() {
               onClick={() => loadItems()}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition"
             >
-              <RotateCw className="w-4 h-4" /> Recarregar
+              <RotateCw className="w-4 h-4" /> {t('grooveflix.reload')}
             </button>
             {isAdmin && (
               <button
                 onClick={() => setShowUploader(true)}
                 className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition"
               >
-                <Plus className="w-4 h-4" /> Upload
+                <Plus className="w-4 h-4" /> {t('grooveflix.upload')}
               </button>
             )}
           </div>
@@ -249,7 +247,7 @@ export default function Grooveflix() {
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-2 rounded-full text-xs uppercase tracking-widest border ${categoryFilter === cat ? 'bg-fuchsia-500/25 border-fuchsia-500 text-fuchsia-100' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>
-              {cat === 'all' ? 'Todos' : cat}
+              {cat === 'all' ? t('grooveflix.filter.all') : cat}
             </button>
           ))}
         </div>
@@ -272,15 +270,15 @@ export default function Grooveflix() {
         {loading ? (
           <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="w-12 h-12 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin mx-auto mb-4" />
-            Carregando...
+            {t('grooveflix.loading')}
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
-            <p className="text-xl font-bold mb-2">Nenhum conteúdo encontrado</p>
+            <p className="text-xl font-bold mb-2">{t('grooveflix.empty.title')}</p>
             <p className="text-white/60">
-              {!userId ? 'Faça login para ver seu conteúdo.' :
-               debugInfo?.grooveflixItems === 0 ? 'Faça upload de conteúdo Grooveflix para começar.' :
-               'Tente mudar o filtro de categoria.'}
+              {!userId ? t('grooveflix.empty.login') :
+               debugInfo?.grooveflixItems === 0 ? t('grooveflix.empty.upload') :
+               t('grooveflix.empty.filter')}
             </p>
           </div>
         ) : (
@@ -307,10 +305,10 @@ export default function Grooveflix() {
                   onClick={handlePlayTrack}
                   className="flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-bold uppercase tracking-wider hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
                 >
-                  <Music className="w-5 h-5" /> Reproduzir
+                  <Music className="w-5 h-5" /> {t('grooveflix.play')}
                 </button>
               ) : (
-                <span className="text-white/40 text-sm">Sem áudio</span>
+                <span className="text-white/40 text-sm">{t('grooveflix.noAudio')}</span>
               )}
             </div>
           </div>

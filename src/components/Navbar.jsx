@@ -118,10 +118,10 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { label: 'Explorar', path: '/catalogo' },
-    { label: 'Grooveflix', path: '/grooveflix' },
-    { label: 'Planos', path: '/plans' },
-    { label: 'Meu Acervo', path: '/meu-acervo' },
+    { label: t('nav.explore'), path: '/catalogo' },
+    { label: t('nav.grooveflix'), path: '/grooveflix' },
+    { label: t('nav.plans'), path: '/plans' },
+    { label: t('nav.myItems'), path: '/meu-acervo' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -308,7 +308,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <User size={16} />
-                      <span className="text-sm">Perfil</span>
+                      <span className="text-sm">{t('nav.dropdown.profile')}</span>
                     </Link>
                     <Link
                       to="/profile"
@@ -316,7 +316,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Wallet size={16} />
-                      <span className="text-sm">Saldo</span>
+                      <span className="text-sm">{t('nav.dropdown.balance')}</span>
                     </Link>
                     <Link
                       to="/profile"
@@ -324,7 +324,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
                     >
                       <Settings size={16} />
-                      <span className="text-sm">Configurações</span>
+                      <span className="text-sm">{t('nav.dropdown.settings')}</span>
                     </Link>
 
                     <button
@@ -348,7 +348,7 @@ export default function Navbar() {
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <LogOut size={16} />
-                      <span className="text-sm">Sair</span>
+                      <span className="text-sm">{t('nav.dropdown.logout')}</span>
                     </button>
                   </div>
                 </div>
