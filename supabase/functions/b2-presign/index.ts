@@ -124,6 +124,9 @@ serve(async (req) => {
     const pathParts = filePath.split('/');
     const prefix = pathParts.slice(0, Math.min(3, pathParts.length)).join('/') + '/';
 
+    // Compensar diferença de relógio: URL válida a partir de 5 minutos no passado
+    const validFromTimestamp = Math.floor(Date.now() / 1000) - 300;
+
     const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
       method: 'POST',
       headers: {
@@ -133,7 +136,8 @@ serve(async (req) => {
       body: JSON.stringify({
         bucketId: B2_BUCKET_ID,
         fileNamePrefix: prefix,
-        validDurationInSeconds: 7200
+        validDurationInSeconds: 7200,
+        validFromTimestamp: validFromTimestamp
       })
     });
 
