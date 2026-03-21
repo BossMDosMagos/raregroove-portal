@@ -189,7 +189,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const uploadToB2 = async (file, fileCategory) => {
+  const uploadToB2 = async (file, fileCategory, itemId) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
@@ -203,6 +203,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     formData.append('filename', file.name);
     formData.append('category', fileCategory);
     formData.append('userId', currentUserId);
+    formData.append('itemId', itemId);
     formData.append('file', file);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
@@ -292,20 +293,52 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     setUploadProgress({});
 
     try {
-      const grooveflixData = {
-        category,
-        audio_path: null,
-        audio_files: [],
-        preview_path: null,
-        iso_path: null,
-        booklet_path: null,
-        cover_path: null,
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user.id;
+      
+      const itemData = {
+        title: metadata.title,
+        artist: metadata.artist,
+        year: metadata.year || null,
+        genre: metadata.genre || null,
+        status: 'disponivel',
+        seller_id: currentUserId,
+        price: 0,
+        is_sold: false,
+        metadata: {
+          ...(item?.metadata || {}),
+          grooveflix: {
+            category,
+            audio_path: null,
+            audio_files: [],
+            preview_path: null,
+            iso_path: null,
+            booklet_path: null,
+            cover_path: null,
+          },
+        },
       };
+
+      let itemId = item?.id;
+      
+      if (!itemId) {
+        const { data: insertedItem, error: insertError } = await supabase
+          .from('items')
+          .insert([itemData])
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+        itemId = insertedItem.id;
+        console.log('[UPLOAD] Item criado com ID:', itemId);
+      }
+
+      const grooveflixData = item.metadata?.grooveflix || {};
 
       if (files.cover) {
         setUploadProgress(p => ({ ...p, cover: 'uploading' }));
         try {
-          const coverResult = await uploadToB2(files.cover, 'cover');
+          const coverResult = await uploadToB2(files.cover, 'cover', itemId);
           console.log('[COVER] Upload B2 result:', coverResult);
           grooveflixData.cover_path = coverResult.filePath;
           setUploadProgress(p => ({ ...p, cover: 'done' }));
@@ -326,7 +359,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           
           setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
           try {
-            const result = await uploadToB2(file, 'audio');
+            const result = await uploadToB2(file, 'audio', itemId);
             console.log(`[AUDIO] Upload B2 result for ${file.name}:`, result);
             audioFiles.push({
               name: file.name,
@@ -346,7 +379,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         }
         grooveflixData.audio_files = audioFiles;
         
-        // CORREÇÃO: Definir audio_path para o primeiro áudio do álbum
         if (audioFiles.length > 0) {
           grooveflixData.audio_path = audioFiles[0].path;
           console.log('[AUDIO] Primeira faixa definida como audio_path:', audioFiles[0].path);
@@ -356,7 +388,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       if (files.audio) {
         setUploadProgress(p => ({ ...p, audio: 'uploading' }));
         try {
-          const audioResult = await uploadToB2(files.audio, 'audio');
+          const audioResult = await uploadToB2(files.audio, 'audio', itemId);
           console.log('[AUDIO] Upload B2 result:', audioResult);
           grooveflixData.audio_path = audioResult.filePath;
           grooveflixData.audio_files = [{ name: files.audio.name, path: audioResult.filePath, size: files.audio.size }];
@@ -370,58 +402,48 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
       if (files.preview) {
         setUploadProgress(p => ({ ...p, preview: 'uploading' }));
-        const previewResult = await uploadToB2(files.preview, 'preview');
-        grooveflixData.preview_path = previewResult.filePath;
-        setUploadProgress(p => ({ ...p, preview: 'done' }));
+        try {
+          const previewResult = await uploadToB2(files.preview, 'preview', itemId);
+          grooveflixData.preview_path = previewResult.filePath;
+          setUploadProgress(p => ({ ...p, preview: 'done' }));
+        } catch (e) {
+          console.error('[PREVIEW] Upload error:', e);
+          setUploadProgress(p => ({ ...p, preview: 'error' }));
+        }
       }
 
       if (files.iso) {
         setUploadProgress(p => ({ ...p, iso: 'uploading' }));
-        const isoResult = await uploadToB2(files.iso, 'iso');
-        grooveflixData.iso_path = isoResult.filePath;
-        setUploadProgress(p => ({ ...p, iso: 'done' }));
+        try {
+          const isoResult = await uploadToB2(files.iso, 'iso', itemId);
+          grooveflixData.iso_path = isoResult.filePath;
+          setUploadProgress(p => ({ ...p, iso: 'done' }));
+        } catch (e) {
+          console.error('[ISO] Upload error:', e);
+          setUploadProgress(p => ({ ...p, iso: 'error' }));
+        }
       }
 
       if (files.booklet) {
         setUploadProgress(p => ({ ...p, booklet: 'uploading' }));
-        const bookletResult = await uploadToB2(files.booklet, 'booklet');
-        grooveflixData.booklet_path = bookletResult.filePath;
-        setUploadProgress(p => ({ ...p, booklet: 'done' }));
+        try {
+          const bookletResult = await uploadToB2(files.booklet, 'booklet', itemId);
+          grooveflixData.booklet_path = bookletResult.filePath;
+          setUploadProgress(p => ({ ...p, booklet: 'done' }));
+        } catch (e) {
+          console.error('[BOOKLET] Upload error:', e);
+          setUploadProgress(p => ({ ...p, booklet: 'error' }));
+        }
       }
 
-      const itemData = {
-        title: metadata.title,
-        artist: metadata.artist,
-        year: metadata.year || null,
-        genre: metadata.genre || null,
-        status: 'disponivel',
-        metadata: {
-          ...(item?.metadata || {}),
-          grooveflix: grooveflixData,
-        },
-      };
+      const { error: updateError } = await supabase
+        .from('items')
+        .update({ metadata: { ...item?.metadata, grooveflix: grooveflixData } })
+        .eq('id', itemId);
 
-      if (item?.id) {
-        const { error: updateError } = await supabase
-          .from('items')
-          .update(itemData)
-          .eq('id', item.id);
-
-        if (updateError) throw updateError;
-        toast.success('CD atualizado com sucesso!');
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        itemData.seller_id = user.id;
-        itemData.price = 0;
-        itemData.is_sold = false;
-
-        const { error: insertError } = await supabase
-          .from('items')
-          .insert([itemData]);
-
-        if (insertError) throw insertError;
-        toast.success('CD adicionado ao Grooveflix!');
-      }
+      if (updateError) throw updateError;
+      
+      toast.success(item?.id ? 'CD atualizado com sucesso!' : 'CD adicionado ao Grooveflix!');
 
       onSuccess?.();
       onClose();

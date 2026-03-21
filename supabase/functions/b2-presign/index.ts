@@ -47,8 +47,8 @@ async function b2GetDownloadAuth(apiUrl: string, authToken: string) {
   return res.json();
 }
 
-async function checkAccess(userId: string): Promise<{ allowed: boolean }> {
-  if (!userId) return { allowed: false };
+async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin: boolean; userLevel: number }> {
+  if (!userId) return { allowed: false, isAdmin: false, userLevel: 0 };
   try {
     const supabaseAdmin = getServiceClient();
     const { data } = await supabaseAdmin
@@ -57,17 +57,37 @@ async function checkAccess(userId: string): Promise<{ allowed: boolean }> {
       .eq('id', userId)
       .single();
     
-    if (!data) return { allowed: false };
-    if (data.is_admin) return { allowed: true };
+    if (!data) return { allowed: false, isAdmin: false, userLevel: 0 };
     
+    const isAdmin = data.is_admin === true;
     const userLevel = Number(data.user_level || 0);
-    if (userLevel >= 999) return { allowed: true };
-    if (data.subscription_status === 'active' && userLevel >= 1) return { allowed: true };
     
-    return { allowed: false };
+    if (isAdmin) return { allowed: true, isAdmin, userLevel };
+    if (userLevel >= 999) return { allowed: true, isAdmin, userLevel };
+    if (data.subscription_status === 'active' && userLevel >= 1) return { allowed: true, isAdmin, userLevel };
+    
+    return { allowed: false, isAdmin, userLevel };
   } catch {
-    return { allowed: false };
+    return { allowed: false, isAdmin: false, userLevel: 0 };
   }
+}
+
+async function getItemOwner(supabaseAdmin: ReturnType<typeof createClient>, itemId: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('items')
+      .select('seller_id')
+      .eq('id', itemId)
+      .single();
+    return data?.seller_id || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractUserIdFromPath(filePath: string): string | null {
+  const match = filePath.match(/^user_([^/]+)\//);
+  return match ? match[1] : null;
 }
 
 serve(async (req) => {
@@ -91,21 +111,43 @@ serve(async (req) => {
     }
 
     const isCover = fileType === 'cover';
+    const supabaseAdmin = getServiceClient();
 
-    if (!isCover) {
-      if (!userId) {
-        return new Response(JSON.stringify({ error: 'missing_userId' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      const access = await checkAccess(userId);
-      if (!access.allowed) {
-        return new Response(JSON.stringify({ error: 'Acesso negado' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+    if (isCover) {
+      const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${encodeURIComponent(filePath)}`;
+      return new Response(
+        JSON.stringify({ 
+          url: downloadUrl,
+          expiresIn: 3600,
+          storage: 'b2_native',
+          public: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'missing_userId' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const access = await checkAccess(userId);
+    if (!access.allowed) {
+      return new Response(JSON.stringify({ error: 'Acesso negado' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const pathOwnerId = extractUserIdFromPath(filePath);
+    if (pathOwnerId && pathOwnerId !== userId && !access.isAdmin && access.userLevel < 999) {
+      console.log('[B2-PRESIGN] Access denied - user:', userId, 'owner:', pathOwnerId);
+      return new Response(JSON.stringify({ error: 'Acesso negado - você não é o dono deste arquivo' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const authData = await b2Auth();
@@ -114,7 +156,7 @@ serve(async (req) => {
     const safeFilePath = filePath.split('/').map(p => encodeURIComponent(p)).join('/');
     const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${safeFilePath}?Authorization=${downloadAuth.authorizationToken}`;
 
-    console.log('[B2-PRESIGN] Generated URL:', downloadUrl.substring(0, 120) + '...');
+    console.log('[B2-PRESIGN] Generated URL for user:', userId);
 
     return new Response(
       JSON.stringify({ 

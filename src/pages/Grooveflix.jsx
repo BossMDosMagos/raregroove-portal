@@ -19,6 +19,7 @@ function normalizeTracks(items = []) {
     const audioPath = grooveflix.audio_path || grooveflix.flac_path || null;
     const coverPath = grooveflix.cover_path || null;
     const coverUrl = item.image_url || null;
+    const audioFiles = grooveflix.audio_files || [];
 
     return {
       id: item.id,
@@ -28,6 +29,7 @@ function normalizeTracks(items = []) {
       coverPath,
       category,
       audioPath,
+      audioFiles,
       metadata,
       raw: item,
     };
@@ -156,18 +158,24 @@ export default function Grooveflix() {
   };
 
   const handlePlayTrack = () => {
-    if (!selectedTrack?.audioPath) {
+    if (!selectedTrack?.audioPath && (!selectedTrack?.audioFiles || selectedTrack.audioFiles.length === 0)) {
       toast.error('Sem áudio', { description: 'Esta faixa não possui arquivo de áudio.' });
       return;
     }
-    // Define a fila com todos os itens filtrados
-    setQueue(filteredItems);
-    // Toca a faixa selecionada
+    
+    if (selectedTrack.category === 'album' && selectedTrack.audioFiles?.length > 0) {
+      toast.success('Carregando álbum...', {
+        description: `${selectedTrack.title} - ${selectedTrack.audioFiles.length} faixas`,
+        duration: 2000,
+      });
+    } else {
+      toast.success('Reproduzindo...', {
+        description: `${selectedTrack.title} - ${selectedTrack.artist}`,
+        duration: 2000,
+      });
+    }
+    
     playTrack(selectedTrack);
-    toast.success('Reproduzindo...', {
-      description: `${selectedTrack.title} - ${selectedTrack.artist}`,
-      duration: 2000,
-    });
   };
 
   const handleDelete = async (id) => {

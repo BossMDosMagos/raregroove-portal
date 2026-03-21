@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, X, ChevronUp } from 'lucide-react';
+import { Music, X, ChevronUp, Headphones } from 'lucide-react';
 import { toast } from 'sonner';
 import Webamp from 'webamp';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
+
+const DEFAULT_SKIN = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/skins/base-2.91.wsz';
 
 export function GlobalAudioPlayer() {
   const {
@@ -16,6 +18,10 @@ export function GlobalAudioPlayer() {
     preparing,
     listenersRef,
     closePlayer,
+    selectedSkin,
+    saveSkin,
+    clearSkin,
+    playAlbum,
   } = useAudioPlayer();
 
   const [divRef, setDivRef] = useState(null);
@@ -23,6 +29,7 @@ export function GlobalAudioPlayer() {
   const [isWebampRendered, setIsWebampRendered] = useState(false);
   const webampInstanceRef = useRef(null);
   const hasInitializedRef = useRef(false);
+  const currentSkinRef = useRef(null);
 
   const hasTrack = queue.length > 0 && currentTrack;
   const canPlay = queue.length > 0 && webampTracks.length > 0 && userId;
@@ -39,7 +46,22 @@ export function GlobalAudioPlayer() {
       return;
     }
 
+    const skinToUse = selectedSkin || DEFAULT_SKIN;
+    console.log('[GLOBAL PLAYER] Creating Webamp, skin:', skinToUse);
 
+    const webampOptions = {
+      initialTracks: webampTracks,
+      zIndex: 99999,
+      windowLayout: {
+        main: { position: { top: 0, left: 0 } },
+        equalizer: { position: { top: 116, left: 0 } },
+        playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 2, extraWidth: 0 } },
+      },
+    };
+
+    if (skinToUse !== DEFAULT_SKIN) {
+      webampOptions.skinUrl = skinToUse;
+    }
 
     if (webampInstanceRef.current) {
       try {
@@ -52,27 +74,24 @@ export function GlobalAudioPlayer() {
       }
     }
 
-    console.log('[GLOBAL PLAYER] Creating Webamp with', webampTracks.length, 'tracks');
-
-    const webamp = new Webamp({
-      initialTracks: webampTracks,
-      zIndex: 99999,
-      windowLayout: {
-        main: { position: { top: 0, left: 0 } },
-        equalizer: { position: { top: 116, left: 0 } },
-        playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 2, extraWidth: 0 } },
-      },
-    });
-
+    const webamp = new Webamp(webampOptions);
     webampInstanceRef.current = webamp;
     setWebampRef(webamp);
     hasInitializedRef.current = true;
+    currentSkinRef.current = skinToUse;
 
     webamp.renderWhenReady(divRef)
       .then(() => {
         console.log('[GLOBAL PLAYER] Webamp rendered');
         setIsWebampRendered(true);
         setIsExpanded(true);
+
+        if (skinToUse !== DEFAULT_SKIN && webamp.setSkinFromUrl) {
+          console.log('[GLOBAL PLAYER] Applying custom skin:', skinToUse);
+          webamp.setSkinFromUrl(skinToUse).catch(err => {
+            console.error('[GLOBAL PLAYER] Error applying skin:', err);
+          });
+        }
 
         const unsubClose = webamp.onClose?.(() => {
           console.log('[GLOBAL PLAYER] Webamp closed by user');
@@ -100,7 +119,23 @@ export function GlobalAudioPlayer() {
           style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
         });
       });
-  }, [divRef, canPlay, webampTracks, userId]);
+  }, [divRef, canPlay, webampTracks, userId, selectedSkin]);
+
+  useEffect(() => {
+    if (webampInstanceRef.current && selectedSkin && selectedSkin !== currentSkinRef.current) {
+      console.log('[GLOBAL PLAYER] Applying new skin:', selectedSkin);
+      if (webampInstanceRef.current.setSkinFromUrl) {
+        webampInstanceRef.current.setSkinFromUrl(selectedSkin)
+          .then(() => {
+            console.log('[GLOBAL PLAYER] Custom skin applied');
+            currentSkinRef.current = selectedSkin;
+          })
+          .catch(err => {
+            console.error('[GLOBAL PLAYER] Error applying skin:', err);
+          });
+      }
+    }
+  }, [selectedSkin]);
 
   useEffect(() => {
     return () => {
@@ -115,6 +150,27 @@ export function GlobalAudioPlayer() {
       }
     };
   }, [listenersRef]);
+
+  useEffect(() => {
+    if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
+      console.log('[GLOBAL PLAYER] Setting new tracks:', webampTracks.length);
+      try {
+        if (webampInstanceRef.current.setTracksToPlay) {
+          webampInstanceRef.current.setTracksToPlay(webampTracks);
+        }
+      } catch (e) {
+        console.error('[GLOBAL PLAYER] Error setting tracks:', e);
+      }
+    }
+  }, [webampTracks, isWebampRendered]);
+
+  const handlePlayAlbum = () => {
+    if (currentTrack?.category === 'album') {
+      playAlbum(currentTrack);
+    } else {
+      setIsExpanded(true);
+    }
+  };
 
   if (!userId) return null;
 
@@ -158,9 +214,21 @@ export function GlobalAudioPlayer() {
           <div className="min-w-0 max-w-[180px]">
             <p className="text-white text-xs font-bold truncate">{currentTrack?.title || 'Tocando...'}</p>
             <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || ''}</p>
+            {queue.length > 1 && (
+              <p className="text-fuchsia-400/70 text-[9px]">{queue.length} faixas</p>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
+            {currentTrack?.category === 'album' && (
+              <button
+                onClick={handlePlayAlbum}
+                className="w-8 h-8 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 flex items-center justify-center text-purple-300 transition"
+                title="Tocar álbum"
+              >
+                <Headphones className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setIsExpanded(true)}
               className="w-8 h-8 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 transition"

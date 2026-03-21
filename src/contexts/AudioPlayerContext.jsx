@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 const AudioPlayerContext = createContext(null);
 
 export function AudioPlayerProvider({ children }) {
-  // ============ ESTADO DE CONTROLE ============
   const [webampRef, setWebampRef] = useState(null);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -16,20 +15,24 @@ export function AudioPlayerProvider({ children }) {
   const [userId, setUserId] = useState(null);
   const [preparing, setPreparing] = useState(false);
   const [webampTracks, setWebampTracks] = useState([]);
+  const [selectedSkin, setSelectedSkin] = useState(null);
 
-  // ============ REFS ============
   const listenersRef = useRef({});
 
-  // ============ INICIALIZAR USERID ============
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      
+      const savedSkin = localStorage.getItem('grooveflix_skin_url');
+      if (savedSkin) {
+        setSelectedSkin(savedSkin);
+        console.log('[AUDIO CONTEXT] Loaded saved skin:', savedSkin);
+      }
     };
     init();
   }, []);
 
-  // ============ FUNÇÃO: OBTER PRESIGNED URL ============
   const getPresignedUrl = useCallback(async (filePath) => {
     if (!filePath || !userId) return null;
     try {
@@ -58,7 +61,36 @@ export function AudioPlayerProvider({ children }) {
     }
   }, [userId]);
 
-  // ============ FUNÇÃO: PREPARAR TRACKS COM PRESIGNED URLS ============
+  const expandAlbumTracks = useCallback((item) => {
+    const tracks = [];
+    
+    if (item.audio_files && item.audio_files.length > 0) {
+      for (const file of item.audio_files) {
+        tracks.push({
+          id: `${item.id}_${file.name}`,
+          title: file.name.replace(/\.(mp3|flac|wav|ogg|m4a|aac)$/i, ''),
+          artist: item.artist || 'Desconhecido',
+          audioPath: file.path,
+          duration: undefined,
+          albumId: item.id,
+          albumTitle: item.title,
+        });
+      }
+    } else if (item.audioPath) {
+      tracks.push({
+        id: item.id,
+        title: item.title,
+        artist: item.artist || 'Desconhecido',
+        audioPath: item.audioPath,
+        duration: item.duration,
+        albumId: item.category === 'album' ? item.id : null,
+        albumTitle: item.category === 'album' ? item.title : null,
+      });
+    }
+    
+    return tracks;
+  }, []);
+
   const prepareWebampTracks = useCallback(async () => {
     if (!queue.length || !userId) {
       setWebampTracks([]);
@@ -69,46 +101,79 @@ export function AudioPlayerProvider({ children }) {
     const result = [];
 
     for (const item of queue) {
-      if (!item.audioPath) continue;
-      const url = await getPresignedUrl(item.audioPath);
-      if (url) {
-        result.push({
-          url,
-          duration: item.duration || undefined,
-          metaData: {
-            artist: item.artist || 'Desconhecido',
-            title: item.title || 'Sem título',
-          },
-        });
+      const expandedTracks = expandAlbumTracks(item);
+      
+      for (const track of expandedTracks) {
+        if (!track.audioPath) continue;
+        const url = await getPresignedUrl(track.audioPath);
+        if (url) {
+          result.push({
+            url,
+            duration: track.duration,
+            metaData: {
+              artist: track.artist,
+              title: track.title,
+              album: track.albumTitle || undefined,
+            },
+            _trackId: track.id,
+          });
+        }
       }
     }
 
     console.log('[AUDIO CONTEXT] Built webamp tracks:', result.length);
     setWebampTracks(result);
     setPreparing(false);
-  }, [queue, userId, getPresignedUrl]);
+  }, [queue, userId, getPresignedUrl, expandAlbumTracks]);
 
-  // ============ FUNÇÃO: TOCAR MÚSICA ============
   const playTrack = useCallback((track) => {
     if (!track) return;
     console.log('[AUDIO CONTEXT] Play track:', track.title);
+    
+    let queueTracks = [];
+    
+    if (track.category === 'album' && track.audio_files && track.audio_files.length > 0) {
+      queueTracks = expandAlbumTracks(track);
+      console.log('[AUDIO CONTEXT] Album expanded to', queueTracks.length, 'tracks');
+    } else {
+      queueTracks = [track];
+    }
+    
+    setQueue(queueTracks);
     setCurrentTrack(track);
     setIsPlaying(true);
-  }, []);
+  }, [expandAlbumTracks]);
 
-  // ============ FUNÇÃO: PAUSAR MÚSICA ============
+  const playAlbum = useCallback((albumItem) => {
+    if (!albumItem) return;
+    console.log('[AUDIO CONTEXT] Play album:', albumItem.title);
+    
+    const albumTracks = expandAlbumTracks(albumItem);
+    if (albumTracks.length === 0) {
+      toast.error('Este álbum não tem faixas disponíveis');
+      return;
+    }
+    
+    setQueue(albumTracks);
+    setCurrentTrack(albumItem);
+    setIsPlaying(true);
+    
+    toast.success(`Reproduzindo álbum`, {
+      description: `${albumItem.title} - ${albumTracks.length} faixas`,
+      duration: 3000,
+    });
+  }, [expandAlbumTracks]);
+
   const pauseTrack = useCallback(() => {
     console.log('[AUDIO CONTEXT] Pause');
     setIsPlaying(false);
   }, []);
 
-  // ============ FUNÇÃO: RETOMAR MÚSICA ============
   const resumeTrack = useCallback(() => {
     console.log('[AUDIO CONTEXT] Resume');
     setIsPlaying(true);
   }, []);
 
-  // ============ FUNÇÃO: LIMPAR QUEUE ============
   const clearQueue = useCallback(() => {
     console.log('[AUDIO CONTEXT] Clear queue');
     setQueue([]);
@@ -117,20 +182,17 @@ export function AudioPlayerProvider({ children }) {
     setIsPlaying(false);
   }, []);
 
-  // ============ FUNÇÃO: FECHAR PLAYER ============
   const closePlayer = useCallback(() => {
     console.log('[AUDIO CONTEXT] Close player');
     clearQueue();
     if (webampRef) {
       try {
-        // Cleanup listeners
         if (listenersRef.current.onClose) {
           listenersRef.current.onClose();
         }
         if (listenersRef.current.onTrackDidChange) {
           listenersRef.current.onTrackDidChange();
         }
-        // Dispose Webamp
         webampRef.dispose?.();
       } catch (e) {
         console.error('[AUDIO CONTEXT] Error disposing webamp:', e);
@@ -138,7 +200,18 @@ export function AudioPlayerProvider({ children }) {
     }
   }, [webampRef, clearQueue]);
 
-  // ============ EFEITO: PREPARAR TRACKS QUANDO QUEUE MUDA ============
+  const saveSkin = useCallback((skinUrl) => {
+    localStorage.setItem('grooveflix_skin_url', skinUrl);
+    setSelectedSkin(skinUrl);
+    console.log('[AUDIO CONTEXT] Skin saved:', skinUrl);
+  }, []);
+
+  const clearSkin = useCallback(() => {
+    localStorage.removeItem('grooveflix_skin_url');
+    setSelectedSkin(null);
+    console.log('[AUDIO CONTEXT] Skin cleared');
+  }, []);
+
   useEffect(() => {
     if (queue.length === 0) {
       setWebampTracks([]);
@@ -147,9 +220,7 @@ export function AudioPlayerProvider({ children }) {
     prepareWebampTracks();
   }, [queue, prepareWebampTracks]);
 
-  // ============ VALUE MEMOIZADO ============
   const value = useMemo(() => ({
-    // Estado
     currentTrack,
     queue,
     isPlaying,
@@ -160,8 +231,8 @@ export function AudioPlayerProvider({ children }) {
     webampRef,
     preparing,
     webampTracks,
+    selectedSkin,
 
-    // Ações
     setCurrentTrack,
     setQueue,
     setIsPlaying,
@@ -170,6 +241,7 @@ export function AudioPlayerProvider({ children }) {
     setDuration,
     setWebampRef,
     playTrack,
+    playAlbum,
     pauseTrack,
     resumeTrack,
     clearQueue,
@@ -178,6 +250,9 @@ export function AudioPlayerProvider({ children }) {
     setPreparing,
     setWebampTracks,
     listenersRef,
+    saveSkin,
+    clearSkin,
+    expandAlbumTracks,
   }), [
     currentTrack,
     queue,
@@ -189,12 +264,17 @@ export function AudioPlayerProvider({ children }) {
     webampRef,
     preparing,
     webampTracks,
+    selectedSkin,
     playTrack,
+    playAlbum,
     pauseTrack,
     resumeTrack,
     clearQueue,
     closePlayer,
     getPresignedUrl,
+    saveSkin,
+    clearSkin,
+    expandAlbumTracks,
   ]);
 
   return (
