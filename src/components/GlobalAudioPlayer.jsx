@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, X, ChevronUp, Headphones } from 'lucide-react';
+import { Music, X, ChevronUp, Headphones, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import Webamp from 'webamp';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
-
-const DEFAULT_SKIN = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/skins/base-2.91.wsz';
+import { LOCAL_SKINS, DEFAULT_SKIN_ID, getSkinFromLocalStorage } from '../utils/webampSkins';
+import SkinSelector from './SkinSelector';
 
 export function GlobalAudioPlayer() {
   const {
@@ -18,21 +18,30 @@ export function GlobalAudioPlayer() {
     preparing,
     listenersRef,
     closePlayer,
-    selectedSkin,
     playAlbum,
     isPlaying,
+    setSelectedSkin,
   } = useAudioPlayer();
 
   const [divRef, setDivRef] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isWebampRendered, setIsWebampRendered] = useState(false);
+  const [showSkinSelector, setShowSkinSelector] = useState(false);
+  const [currentSkinId, setCurrentSkinId] = useState(DEFAULT_SKIN_ID);
+  const [currentSkinUrl, setCurrentSkinUrl] = useState(null);
   const webampInstanceRef = useRef(null);
   const hasInitializedRef = useRef(false);
-  const currentSkinRef = useRef(null);
   const prevTrackRef = useRef(null);
   const prevWebampTracksRef = useRef([]);
 
   const hasTrack = queue.length > 0 && currentTrack;
+
+  useEffect(() => {
+    const skin = getSkinFromLocalStorage();
+    setCurrentSkinId(skin.id);
+    setCurrentSkinUrl(skin.url);
+    console.log('[GLOBAL PLAYER] Loaded skin from localStorage:', skin.name);
+  }, []);
 
   useEffect(() => {
     if (currentTrack && currentTrack !== prevTrackRef.current) {
@@ -64,7 +73,8 @@ export function GlobalAudioPlayer() {
       return;
     }
 
-    const skinToUse = selectedSkin || DEFAULT_SKIN;
+    const skinToUse = currentSkinUrl || LOCAL_SKINS.find(s => s.id === currentSkinId)?.url || LOCAL_SKINS[0].url;
+    console.log('[GLOBAL PLAYER] Using skin:', skinToUse);
 
     if (webampInstanceRef.current) {
       try {
@@ -86,14 +96,14 @@ export function GlobalAudioPlayer() {
     webampInstanceRef.current = webamp;
     setWebampRef(webamp);
     hasInitializedRef.current = true;
-    currentSkinRef.current = skinToUse;
 
     webamp.renderWhenReady(divRef)
       .then(() => {
         console.log('[GLOBAL PLAYER] Webamp rendered successfully');
         setIsWebampRendered(true);
 
-        if (skinToUse !== DEFAULT_SKIN && webamp.setSkinFromUrl) {
+        if (skinToUse !== LOCAL_SKINS[0].url && webamp.setSkinFromUrl) {
+          console.log('[GLOBAL PLAYER] Applying skin:', skinToUse);
           webamp.setSkinFromUrl(skinToUse).catch(err => {
             console.error('[GLOBAL PLAYER] Error applying skin:', err);
           });
@@ -132,7 +142,7 @@ export function GlobalAudioPlayer() {
         });
       });
 
-  }, [divRef, hasTrack, webampTracks.length, userId, selectedSkin, queue]);
+  }, [divRef, hasTrack, webampTracks.length, userId, currentSkinUrl, currentSkinId, queue]);
 
   useEffect(() => {
     if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
@@ -153,20 +163,31 @@ export function GlobalAudioPlayer() {
     }
   }, [webampTracks, isWebampRendered, queue.length]);
 
-  useEffect(() => {
-    if (webampInstanceRef.current && selectedSkin && selectedSkin !== currentSkinRef.current) {
-      console.log('[GLOBAL PLAYER] Applying new skin:', selectedSkin);
-      if (webampInstanceRef.current.setSkinFromUrl) {
-        webampInstanceRef.current.setSkinFromUrl(selectedSkin)
-          .then(() => {
-            currentSkinRef.current = selectedSkin;
-          })
-          .catch(err => {
-            console.error('[GLOBAL PLAYER] Error applying skin:', err);
-          });
+  const handleSkinChange = (skin) => {
+    console.log('[GLOBAL PLAYER] Changing skin to:', skin.name);
+    setCurrentSkinId(skin.id);
+    setCurrentSkinUrl(skin.url);
+    
+    hasInitializedRef.current = false;
+    setIsWebampRendered(false);
+    setShowSkinSelector(false);
+    
+    if (webampInstanceRef.current) {
+      try {
+        webampInstanceRef.current.dispose?.();
+        webampInstanceRef.current = null;
+      } catch (e) {
+        console.error('[GLOBAL PLAYER] Error disposing:', e);
       }
     }
-  }, [selectedSkin]);
+    
+    if (divRef && hasTrack) {
+      setTimeout(() => {
+        hasInitializedRef.current = false;
+        setIsWebampRendered(false);
+      }, 100);
+    }
+  };
 
   const handlePlayAlbum = () => {
     if (currentTrack?.category === 'album') {
@@ -200,11 +221,24 @@ export function GlobalAudioPlayer() {
     }
   };
 
+  const getCurrentSkinName = () => {
+    const skin = LOCAL_SKINS.find(s => s.id === currentSkinId);
+    return skin?.name || 'Classic';
+  };
+
   if (!userId) return null;
   if (!hasTrack) return null;
 
   return (
     <>
+      {showSkinSelector && (
+        <SkinSelector
+          currentSkinId={currentSkinId}
+          onSkinChange={handleSkinChange}
+          onClose={() => setShowSkinSelector(false)}
+        />
+      )}
+
       {preparing && (
         <div className="fixed bottom-20 right-4 flex items-center gap-3 bg-black/95 border border-fuchsia-500/30 rounded-2xl px-5 py-3 shadow-2xl shadow-fuchsia-500/10 z-[99997]">
           <div className="w-5 h-5 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
@@ -238,7 +272,7 @@ export function GlobalAudioPlayer() {
             <Music className={`w-5 h-5 text-fuchsia-400 ${isPlaying ? 'animate-pulse' : ''}`} />
           </div>
           
-          <div className="min-w-0 max-w-[180px]">
+          <div className="min-w-0 max-w-[150px]">
             <p className="text-white text-xs font-bold truncate">{currentTrack?.title || 'Tocando...'}</p>
             <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || ''}</p>
             {queue.length > 1 && (
@@ -247,6 +281,13 @@ export function GlobalAudioPlayer() {
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSkinSelector(true)}
+              className="w-8 h-8 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 flex items-center justify-center text-purple-300 transition"
+              title="Trocar skin"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
             {currentTrack?.category === 'album' && (
               <button
                 onClick={handlePlayAlbum}

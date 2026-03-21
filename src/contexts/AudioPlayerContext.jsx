@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { getSkinFromLocalStorage } from '../utils/webampSkins';
 
 const AudioPlayerContext = createContext(null);
 
@@ -25,11 +26,9 @@ export function AudioPlayerProvider({ children }) {
       console.log('[AUDIO CONTEXT] Session:', session?.user?.id);
       setUserId(session?.user?.id || null);
       
-      const savedSkin = localStorage.getItem('grooveflix_skin_url');
-      if (savedSkin) {
-        setSelectedSkin(savedSkin);
-        console.log('[AUDIO CONTEXT] Loaded saved skin:', savedSkin);
-      }
+      const savedSkin = getSkinFromLocalStorage();
+      setSelectedSkin(savedSkin.url);
+      console.log('[AUDIO CONTEXT] Loaded skin:', savedSkin.name, savedSkin.url);
     };
     
     init();
