@@ -18,8 +18,15 @@ export default function GrooveflixWebampPlayer({
   const getPresignedUrl = async (filePath) => {
     if (!filePath) return null;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Sessão não disponível');
       const { data, error } = await supabase.functions.invoke('b2-presign', {
         body: { file_path: filePath, user_id: userId, type: 'audio' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
       });
       if (error) throw error;
       if (!data?.url) throw new Error('URL não retornada');
