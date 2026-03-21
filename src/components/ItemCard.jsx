@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Disc, Play, Pause, Heart, Music, Clock } from 'lucide-react';
-import { toast } from 'sonner';
+import { Disc, Music, Clock, Tag, ArrowLeftRight, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 const DiscPlaceholder = () => (
@@ -24,25 +23,26 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+const formatPrice = (price) => {
+  if (!price || price === 0) return 'Sob consulta';
+  return `R$ ${Number(price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const getConditionColor = (condition) => {
+  const c = (condition || '').toUpperCase();
+  if (c === 'MINT' || c === 'NM') return 'text-emerald-400';
+  if (c === 'VG+' || c === 'VG') return 'text-yellow-400';
+  return 'text-orange-400';
+};
+
 export const ItemCard = ({ item, onPlay }) => {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const coverUrl = item.cover_url || item.image_url;
   const showPlaceholder = !coverUrl || imageError;
-
-  const handlePlay = (e) => {
-    e.stopPropagation();
-    if (onPlay) {
-      setIsPlaying(true);
-      onPlay(item);
-    } else {
-      navigate(`/play/${item.id}`);
-    }
-  };
 
   return (
     <div 
@@ -53,14 +53,43 @@ export const ItemCard = ({ item, onPlay }) => {
     >
       {/* Cover Image Container */}
       <div className="aspect-square w-full relative overflow-hidden bg-charcoal-deep">
-        {/* Hover Overlay with Play Button */}
-        <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-          <button
-            onClick={handlePlay}
-            className="w-16 h-16 rounded-full bg-gold-premium flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-300"
-          >
-            <Play size={28} className="text-charcoal-deep ml-1" fill="currentColor" />
-          </button>
+        {/* Hover Overlay with Item Details */}
+        <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-10 flex flex-col justify-end p-4 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Availability Badges */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {item.allow_sale && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                <Tag size={10} /> Venda
+              </span>
+            )}
+            {item.allow_swap && (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold uppercase tracking-wider">
+                <ArrowLeftRight size={10} /> Troca
+              </span>
+            )}
+          </div>
+
+          {/* Price */}
+          <div className="mb-2">
+            <p className="text-gold-premium font-black text-lg leading-tight">
+              {formatPrice(item.price)}
+            </p>
+          </div>
+
+          {/* Condition */}
+          {item.condition && (
+            <div className="flex items-center gap-1.5 mb-2">
+              <ShieldCheck size={12} className={getConditionColor(item.condition)} />
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${getConditionColor(item.condition)}`}>
+                {item.condition}
+              </span>
+            </div>
+          )}
+
+          {/* Click hint */}
+          <p className="text-white/40 text-[9px] uppercase tracking-widest">
+            Clique para ver detalhes
+          </p>
         </div>
 
         {/* Gradient Overlay */}
@@ -68,7 +97,7 @@ export const ItemCard = ({ item, onPlay }) => {
 
         {/* Genre Badge */}
         {item.genre && (
-          <div className="absolute top-3 left-3 z-10">
+          <div className="absolute top-3 left-3 z-20">
             <span className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider bg-gold-premium/20 border border-gold-premium/30 text-gold-premium backdrop-blur-md">
               {item.genre}
             </span>
@@ -116,14 +145,12 @@ export const ItemCard = ({ item, onPlay }) => {
             )}
           </div>
 
-          {/* Play indicator */}
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${isPlaying ? 'bg-gold-premium text-charcoal-deep' : 'bg-white/10 text-white/30 group-hover:bg-gold-premium/20 group-hover:text-gold-premium'}`}>
-            {isPlaying ? (
-              <Pause size={12} fill="currentColor" />
-            ) : (
-              <Play size={10} fill="currentColor" />
-            )}
-          </div>
+          {/* Condition Badge (always visible) */}
+          {item.condition && (
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${getConditionColor(item.condition)}`}>
+              {item.condition}
+            </span>
+          )}
         </div>
       </div>
     </div>

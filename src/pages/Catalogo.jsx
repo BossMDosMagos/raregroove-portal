@@ -271,7 +271,7 @@ export default function Catalogo() {
                   className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
-                  <ItemCard item={item} onPlay={handlePlay} />
+                  <ItemCard item={item} />
                 </div>
               ))}
             </div>
