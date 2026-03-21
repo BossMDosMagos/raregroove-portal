@@ -191,7 +191,26 @@ npx supabase functions list
 
 ---
 
-## Estado Atual (2026-03-20 21:51)
+## Correções Rodada 3 (2026-03-20 22:35)
+
+**PROBLEMA:** Covers não carregavam, WebampPlayer tinha autenticação redundante
+
+**CORREÇÃO #1: coverPath não retornado em normalizeTracks**
+- **Arquivo:** `src/pages/Grooveflix.jsx`
+- **Bug:** `normalizeTracks()` calculava `coverPath` mas não o incluía no objeto retornado
+- **Impacto:** GrooveflixRow nunca encontrava `coverPath` para chamar b2-presign
+- **Fix:** Adicionado `coverPath` ao objeto retornado
+
+**CORREÇÃO #2: WebampPlayer auth simplificada**
+- **Arquivo:** `src/components/GrooveflixWebampPlayer.jsx`
+- **Bug:** Auth manual redundante com `getSession()` antes do invoke
+- **Fix:** Removida verificação manual, `supabase.functions.invoke` já inclui auth automaticamente
+
+**Deploy:** https://f7ebffec.raregroove-portal.pages.dev
+
+---
+
+## Estado Atual (2026-03-20 22:35)
 
 ### ✅ Feito
 - [x] Edge Function `cleanup-grooveflix` criada e deployada
@@ -209,13 +228,15 @@ npx supabase functions list
 - [x] **FIX CRÍTICO: Audio agora toca em álbuns** (GrooveflixUploader.jsx)
 - [x] **FIX CRÍTICO: Retry automático no player** (GrooveflixPlayer.jsx)
 - [x] **Tradução para português** (Grooveflix.jsx)
+- [x] **FIX: coverPath adicionado a normalizeTracks** (Grooveflix.jsx)
+- [x] **FIX: WebampPlayer auth simplificada** (GrooveflixWebampPlayer.jsx)
+- [x] **Deploy: https://f7ebffec.raregroove-portal.pages.dev**
 
 ### 🔄 Pendente
-- [ ] Compilar com `npm run build` (PowerShell 7+ agora disponível)
-- [ ] Deploy frontend para Cloudflare Pages
 - [ ] Testar exibição de capas em produção
 - [ ] Testar playback de áudio após upload
 - [ ] Testar delete seguro
+- [ ] Verificar streaming HI-FI com Webamp
 
 ### ⚠️ Observações
 - Bucket B2 está privado, precisa de signed URLs
