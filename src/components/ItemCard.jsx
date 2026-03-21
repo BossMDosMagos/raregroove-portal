@@ -39,7 +39,6 @@ export const ItemCard = ({ item, onPlay }) => {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   const coverUrl = item.cover_url || item.image_url;
   const showPlaceholder = !coverUrl || imageError;
@@ -47,53 +46,41 @@ export const ItemCard = ({ item, onPlay }) => {
   return (
     <div 
       onClick={() => navigate(`/item/${item.id}`)}
-      className="cursor-pointer group relative rounded-2xl overflow-hidden bg-charcoal-deep/50 border border-white/5 hover:border-gold-premium/40 transition-all duration-500 hover:shadow-[0_0_40px_-10px_rgba(212,175,55,0.3)] hover:-translate-y-1"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="cursor-pointer group relative rounded-2xl overflow-hidden bg-charcoal-deep/50 border border-white/5 hover:border-gold-premium/40 transition-all duration-500 hover:shadow-[0_0_40px_-10px_rgba(212,175,55,0.3)]"
     >
-      {/* Cover Image Container */}
+      {/* Cover Image Container - 50% larger */}
       <div className="aspect-square w-full relative overflow-hidden bg-charcoal-deep">
-        {/* Hover Overlay with Item Details */}
-        <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-10 flex flex-col justify-end p-4 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Always Visible Overlay with Item Details */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent z-10 flex flex-col justify-end p-4">
           {/* Availability Badges */}
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-2">
             {item.allow_sale && (
-              <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
-                <Tag size={10} /> Venda
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/25 border border-emerald-500/50 text-emerald-300">
+                <Tag size={9} /> Venda
               </span>
             )}
             {item.allow_swap && (
-              <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-bold uppercase tracking-wider">
-                <ArrowLeftRight size={10} /> Troca
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/25 border border-blue-500/50 text-blue-300">
+                <ArrowLeftRight size={9} /> Troca
               </span>
             )}
           </div>
 
           {/* Price */}
-          <div className="mb-2">
-            <p className="text-gold-premium font-black text-lg leading-tight">
-              {formatPrice(item.price)}
-            </p>
-          </div>
+          <p className="text-gold-premium font-black text-xl leading-tight mb-1">
+            {formatPrice(item.price)}
+          </p>
 
           {/* Condition */}
           {item.condition && (
-            <div className="flex items-center gap-1.5 mb-2">
-              <ShieldCheck size={12} className={getConditionColor(item.condition)} />
+            <div className="flex items-center gap-1">
+              <ShieldCheck size={11} className={getConditionColor(item.condition)} />
               <span className={`text-[10px] font-bold uppercase tracking-wider ${getConditionColor(item.condition)}`}>
                 {item.condition}
               </span>
             </div>
           )}
-
-          {/* Click hint */}
-          <p className="text-white/40 text-[9px] uppercase tracking-widest">
-            Clique para ver detalhes
-          </p>
         </div>
-
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-charcoal-deep via-transparent to-transparent z-5 pointer-events-none" />
 
         {/* Genre Badge */}
         {item.genre && (
@@ -113,7 +100,7 @@ export const ItemCard = ({ item, onPlay }) => {
             alt={item.title}
             loading="lazy"
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-cover"
           />
         )}
       </div>
