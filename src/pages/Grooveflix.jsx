@@ -130,7 +130,7 @@ export default function Grooveflix() {
     toast.message('Faixa selecionada', { description: `“${track.title}” por ${track.artist}` });
   };
   const handlePlayTrack = (track) => {
-    if (!track?.id || (!track?.audioPath && !track?.previewPath)) {
+    if (!track?.id || !track?.audioPath) {
       toast.error('Sem áudio disponível', { description: 'Esta faixa não possui arquivo de áudio.' });
       return;
     }
@@ -237,7 +237,7 @@ export default function Grooveflix() {
                   <p className="text-lg font-bold truncate">{selectedTrack.title}</p>
                   <p className="text-sm text-white/60 truncate">{selectedTrack.artist}</p>
                   <p className="text-xs text-white/40">Categoria: {selectedTrack.category}</p>
-                  {selectedTrack.audioPath || selectedTrack.previewPath && (
+                  {selectedTrack.audioPath && (
                     <button
                       onClick={() => handlePlayTrack(selectedTrack)}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white text-xs font-black uppercase tracking-wider hover:shadow-lg hover:shadow-fuchsia-500/20 transition"

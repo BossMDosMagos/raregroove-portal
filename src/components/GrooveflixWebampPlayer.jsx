@@ -52,9 +52,7 @@ export default function GrooveflixWebampPlayer({
     const buildTracks = async () => {
       const result = [];
       for (const item of items) {
-        const filePath = item.previewPath || item.audioPath;
-        if (!filePath) continue;
-        const url = await getPresignedUrl(filePath);
+        const url = await getPresignedUrl(item.audioPath);
         if (url) {
           result.push({
             url,

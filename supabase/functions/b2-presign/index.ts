@@ -125,6 +125,7 @@ serve(async (req) => {
 
     if (!downloadAuthRes.ok) {
       // Fallback: retornar URL pública
+      console.log('[B2-PRESIGN] Download auth failed, using public URL');
       return new Response(
         JSON.stringify({ 
           url: `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`,
