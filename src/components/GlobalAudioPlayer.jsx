@@ -48,13 +48,20 @@ export function GlobalAudioPlayer() {
   }, [currentTrack, isWebampRendered]);
 
   useEffect(() => {
-    if (!divRef) return;
+    console.log('[GLOBAL PLAYER] Effect triggered - divRef:', !!divRef, 'hasTrack:', hasTrack, 'webampTracks:', webampTracks.length, 'userId:', !!userId);
+    
+    if (!divRef) {
+      console.log('[GLOBAL PLAYER] No divRef yet, skipping');
+      return;
+    }
     
     if (!hasTrack || webampTracks.length === 0) {
+      console.log('[GLOBAL PLAYER] No track or no webampTracks, skipping. hasTrack:', hasTrack, 'webampTracks:', webampTracks.length);
       return;
     }
 
     if (hasInitializedRef.current && isWebampRendered) {
+      console.log('[GLOBAL PLAYER] Already initialized, skipping');
       return;
     }
 
@@ -69,12 +76,14 @@ export function GlobalAudioPlayer() {
     }
 
     const skinToUse = selectedSkin || DEFAULT_SKIN;
-    console.log('[GLOBAL PLAYER] Creating Webamp, skin:', skinToUse);
+    console.log('[GLOBAL PLAYER] Creating Webamp with', webampTracks.length, 'tracks, skin:', skinToUse);
 
     const webampOptions = {
       initialTracks: webampTracks,
       zIndex: 99999,
     };
+    
+    console.log('[GLOBAL PLAYER] Webamp options:', JSON.stringify({ trackCount: webampTracks.length, skin: skinToUse }));
 
     if (webampInstanceRef.current) {
       try {

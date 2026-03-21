@@ -23,6 +23,7 @@ export function AudioPlayerProvider({ children }) {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      console.log('[AUDIO CONTEXT] User initialized:', user?.id);
       
       const savedSkin = localStorage.getItem('grooveflix_skin_url');
       if (savedSkin) {
@@ -34,15 +35,25 @@ export function AudioPlayerProvider({ children }) {
   }, []);
 
   const getPresignedUrl = useCallback(async (filePath) => {
-    if (!filePath || !userId) return null;
+    if (!filePath) {
+      console.warn('[AUDIO CONTEXT] No filePath provided to getPresignedUrl');
+      return null;
+    }
+    if (!userId) {
+      console.warn('[AUDIO CONTEXT] No userId available for presign');
+      return null;
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
       if (!token) {
+        console.warn('[AUDIO CONTEXT] No session token');
         throw new Error('Sessão não disponível');
       }
 
+      console.log('[AUDIO CONTEXT] Getting presigned URL for:', filePath);
       const { data, error } = await supabase.functions.invoke('b2-presign', {
         body: { file_path: filePath, user_id: userId, type: 'audio' },
       });
@@ -51,8 +62,12 @@ export function AudioPlayerProvider({ children }) {
         console.error('[AUDIO CONTEXT] Presign error:', error);
         throw error;
       }
-      if (!data?.url) throw new Error('URL não retornada');
+      if (!data?.url) {
+        console.warn('[AUDIO CONTEXT] No URL returned from presign');
+        throw new Error('URL não retornada');
+      }
 
+      console.log('[AUDIO CONTEXT] Got presigned URL:', data.url.substring(0, 80) + '...');
       return data.url;
     } catch (e) {
       console.error('[AUDIO CONTEXT] Error getting presigned URL:', e.message);
@@ -91,20 +106,28 @@ export function AudioPlayerProvider({ children }) {
     return tracks;
   }, []);
 
-  const prepareWebampTracks = useCallback(async () => {
-    if (!queue.length || !userId) {
+  const prepareWebampTracks = useCallback(async (queueToPrepare, currentUserId) => {
+    console.log('[AUDIO CONTEXT] prepareWebampTracks called, queue length:', queueToPrepare.length, 'userId:', currentUserId);
+    
+    if (!queueToPrepare.length || !currentUserId) {
+      console.log('[AUDIO CONTEXT] Skipping prepare - empty queue or no userId');
       setWebampTracks([]);
+      setPreparing(false);
       return;
     }
 
     setPreparing(true);
     const result = [];
 
-    for (const item of queue) {
+    for (const item of queueToPrepare) {
+      console.log('[AUDIO CONTEXT] Processing track:', item.title, 'audioPath:', item.audioPath);
       const expandedTracks = expandAlbumTracks(item);
       
       for (const track of expandedTracks) {
-        if (!track.audioPath) continue;
+        if (!track.audioPath) {
+          console.warn('[AUDIO CONTEXT] Skipping track - no audioPath:', track.title);
+          continue;
+        }
         const url = await getPresignedUrl(track.audioPath);
         if (url) {
           result.push({
@@ -121,14 +144,17 @@ export function AudioPlayerProvider({ children }) {
       }
     }
 
-    console.log('[AUDIO CONTEXT] Built webamp tracks:', result.length);
+    console.log('[AUDIO CONTEXT] Built webamp tracks:', result.length, 'tracks');
     setWebampTracks(result);
     setPreparing(false);
-  }, [queue, userId, getPresignedUrl, expandAlbumTracks]);
+  }, [expandAlbumTracks, getPresignedUrl]);
 
   const playTrack = useCallback((track) => {
-    if (!track) return;
-    console.log('[AUDIO CONTEXT] Play track:', track.title);
+    if (!track) {
+      console.warn('[AUDIO CONTEXT] playTrack called with no track');
+      return;
+    }
+    console.log('[AUDIO CONTEXT] playTrack called:', track.title);
     
     let queueTracks = [];
     
@@ -139,6 +165,7 @@ export function AudioPlayerProvider({ children }) {
       queueTracks = [track];
     }
     
+    console.log('[AUDIO CONTEXT] Setting queue with', queueTracks.length, 'tracks');
     setQueue(queueTracks);
     setCurrentTrack(track);
     setIsPlaying(true);
@@ -146,7 +173,7 @@ export function AudioPlayerProvider({ children }) {
 
   const playAlbum = useCallback((albumItem) => {
     if (!albumItem) return;
-    console.log('[AUDIO CONTEXT] Play album:', albumItem.title);
+    console.log('[AUDIO CONTEXT] playAlbum called:', albumItem.title);
     
     const albumTracks = expandAlbumTracks(albumItem);
     if (albumTracks.length === 0) {
@@ -213,12 +240,13 @@ export function AudioPlayerProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    console.log('[AUDIO CONTEXT] Queue changed, length:', queue.length, 'userId:', userId);
     if (queue.length === 0) {
       setWebampTracks([]);
       return;
     }
-    prepareWebampTracks();
-  }, [queue, prepareWebampTracks]);
+    prepareWebampTracks(queue, userId);
+  }, [queue, userId, prepareWebampTracks]);
 
   const value = useMemo(() => ({
     currentTrack,
