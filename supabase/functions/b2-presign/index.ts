@@ -57,8 +57,9 @@ serve(async (req) => {
     const filePath = String(body?.file_path || body?.path || '').trim().replace(/^\/+/, '');
     const userId = String(body?.userId || body?.user_id || '').trim();
     const fileType = String(body?.type || 'audio');
+    const authHeader = req.headers.get('Authorization') || '';
     
-    console.log('[B2-PRESIGN] Request:', { filePath, userId, fileType });
+    console.log('[B2-PRESIGN] Request:', { filePath, userId, fileType, hasAuth: !!authHeader });
     
     if (!filePath) {
       return new Response(JSON.stringify({ error: 'missing_file_path' }), { 
@@ -69,15 +70,16 @@ serve(async (req) => {
     const isCover = fileType === 'cover';
     
     if (isCover) {
-      console.log('[B2-PRESIGN] Cover request - allowing without auth');
+      console.log('[B2-PRESIGN] Cover request - bypassing auth check');
     } else if (!userId) {
       return new Response(JSON.stringify({ error: 'missing_userId' }), { 
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     } else {
       const access = await checkAccess(userId);
+      console.log('[B2-PRESIGN] Access check result:', access);
       if (!access.allowed) {
-        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida' }), { 
+        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida', userId }), { 
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
