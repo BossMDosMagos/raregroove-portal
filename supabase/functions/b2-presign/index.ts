@@ -92,8 +92,12 @@ serve(async (req) => {
       });
     }
 
-    // B2 Authorization
-    const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
+    // Since bucket is public, return public URL
+    const url = `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`;
+    return new Response(
+      JSON.stringify({ url, isPublic: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
       headers: { 'Authorization': 'Basic ' + encoded, 'Content-Type': 'application/json' },
