@@ -22,6 +22,7 @@ export function GlobalAudioPlayer() {
     saveSkin,
     clearSkin,
     playAlbum,
+    isPlaying,
   } = useAudioPlayer();
 
   const [divRef, setDivRef] = useState(null);
@@ -30,13 +31,34 @@ export function GlobalAudioPlayer() {
   const webampInstanceRef = useRef(null);
   const hasInitializedRef = useRef(false);
   const currentSkinRef = useRef(null);
+  const prevTrackRef = useRef(null);
 
   const hasTrack = queue.length > 0 && currentTrack;
-  const canPlay = queue.length > 0 && webampTracks.length > 0 && userId;
 
   useEffect(() => {
-    if (!divRef || !canPlay) return;
-    if (hasInitializedRef.current && isWebampRendered) return;
+    if (currentTrack && currentTrack !== prevTrackRef.current) {
+      console.log('[GLOBAL PLAYER] New track selected:', currentTrack.title);
+      prevTrackRef.current = currentTrack;
+      
+      if (!isWebampRendered) {
+        console.log('[GLOBAL PLAYER] Auto-expanding player for track:', currentTrack.title);
+        setIsExpanded(true);
+      }
+    }
+  }, [currentTrack, isWebampRendered]);
+
+  useEffect(() => {
+    if (!divRef) return;
+    
+    if (!hasTrack || webampTracks.length === 0) {
+      return;
+    }
+
+    if (hasInitializedRef.current && isWebampRendered) {
+      return;
+    }
+
+    console.log('[GLOBAL PLAYER] Initializing Webamp...');
 
     if (!Webamp.browserIsSupported()) {
       toast.error('Navegador não suportado', {
@@ -52,16 +74,7 @@ export function GlobalAudioPlayer() {
     const webampOptions = {
       initialTracks: webampTracks,
       zIndex: 99999,
-      windowLayout: {
-        main: { position: { top: 0, left: 0 } },
-        equalizer: { position: { top: 116, left: 0 } },
-        playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 2, extraWidth: 0 } },
-      },
     };
-
-    if (skinToUse !== DEFAULT_SKIN) {
-      webampOptions.skinUrl = skinToUse;
-    }
 
     if (webampInstanceRef.current) {
       try {
@@ -69,6 +82,7 @@ export function GlobalAudioPlayer() {
         if (listenersRef.current.onTrackDidChange) listenersRef.current.onTrackDidChange();
         webampInstanceRef.current.dispose?.();
         webampInstanceRef.current = null;
+        hasInitializedRef.current = false;
       } catch (e) {
         console.error('[GLOBAL PLAYER] Error cleaning up:', e);
       }
@@ -82,9 +96,8 @@ export function GlobalAudioPlayer() {
 
     webamp.renderWhenReady(divRef)
       .then(() => {
-        console.log('[GLOBAL PLAYER] Webamp rendered');
+        console.log('[GLOBAL PLAYER] Webamp rendered successfully');
         setIsWebampRendered(true);
-        setIsExpanded(true);
 
         if (skinToUse !== DEFAULT_SKIN && webamp.setSkinFromUrl) {
           console.log('[GLOBAL PLAYER] Applying custom skin:', skinToUse);
@@ -114,12 +127,14 @@ export function GlobalAudioPlayer() {
       })
       .catch((err) => {
         console.error('[GLOBAL PLAYER] Error rendering:', err);
+        hasInitializedRef.current = false;
         toast.error('Erro no player', {
           description: err.message,
           style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
         });
       });
-  }, [divRef, canPlay, webampTracks, userId, selectedSkin]);
+
+  }, [divRef, hasTrack, webampTracks.length, userId, selectedSkin, queue]);
 
   useEffect(() => {
     if (webampInstanceRef.current && selectedSkin && selectedSkin !== currentSkinRef.current) {
@@ -136,20 +151,6 @@ export function GlobalAudioPlayer() {
       }
     }
   }, [selectedSkin]);
-
-  useEffect(() => {
-    return () => {
-      if (webampInstanceRef.current) {
-        try {
-          if (listenersRef.current.onClose) listenersRef.current.onClose();
-          if (listenersRef.current.onTrackDidChange) listenersRef.current.onTrackDidChange();
-          webampInstanceRef.current.dispose?.();
-        } catch (e) {
-          console.error('[GLOBAL PLAYER] Cleanup error:', e);
-        }
-      }
-    };
-  }, [listenersRef]);
 
   useEffect(() => {
     if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
@@ -172,8 +173,29 @@ export function GlobalAudioPlayer() {
     }
   };
 
-  if (!userId) return null;
+  const handleExpand = () => {
+    setIsExpanded(true);
+    hasInitializedRef.current = false;
+    setIsWebampRendered(false);
+  };
 
+  const handleClose = () => {
+    setIsExpanded(false);
+    if (webampInstanceRef.current) {
+      try {
+        if (listenersRef.current.onClose) listenersRef.current.onClose();
+        if (listenersRef.current.onTrackDidChange) listenersRef.current.onTrackDidChange();
+        webampInstanceRef.current.dispose?.();
+        webampInstanceRef.current = null;
+        hasInitializedRef.current = false;
+        setIsWebampRendered(false);
+      } catch (e) {
+        console.error('[GLOBAL PLAYER] Error disposing:', e);
+      }
+    }
+  };
+
+  if (!userId) return null;
   if (!hasTrack) return null;
 
   return (
@@ -208,7 +230,7 @@ export function GlobalAudioPlayer() {
       >
         <div className="flex items-center gap-3 bg-gradient-to-r from-black via-fuchsia-950/80 to-black border border-fuchsia-500/40 rounded-2xl px-4 py-3 shadow-2xl shadow-fuchsia-500/20">
           <div className="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center">
-            <Music className="w-5 h-5 text-fuchsia-400 animate-pulse" />
+            <Music className={`w-5 h-5 text-fuchsia-400 ${isPlaying ? 'animate-pulse' : ''}`} />
           </div>
           
           <div className="min-w-0 max-w-[180px]">
@@ -230,13 +252,13 @@ export function GlobalAudioPlayer() {
               </button>
             )}
             <button
-              onClick={() => setIsExpanded(true)}
+              onClick={handleExpand}
               className="w-8 h-8 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 transition"
             >
               <ChevronUp className="w-4 h-4" />
             </button>
             <button
-              onClick={() => closePlayer()}
+              onClick={handleClose}
               className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition"
             >
               <X className="w-4 h-4" />
