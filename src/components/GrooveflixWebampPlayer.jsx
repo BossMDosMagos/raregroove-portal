@@ -27,11 +27,16 @@ export default function GrooveflixWebampPlayer({
     try {
       console.log('[PRESIGN] Requesting URL for:', filePath, 'userId:', userId);
       
+      const session = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('b2-presign', {
         body: {
           file_path: filePath,
           user_id: userId,
           type: 'audio'
+        },
+        headers: {
+          'Authorization': 'Bearer ' + (session?.data?.session?.access_token || ''),
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
         }
       });
 
