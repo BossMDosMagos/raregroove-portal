@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import GrooveflixRow from '../components/GrooveflixRow';
 import GrooveflixUploader from '../components/GrooveflixUploader';
-import GrooveflixWebampPlayer from '../components/GrooveflixWebampPlayer';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
+import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
@@ -37,13 +37,13 @@ function normalizeTracks(items = []) {
 export default function Grooveflix() {
   const { t } = useI18n();
   const { isTrialing, isActive } = useSubscription();
+  const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
-  const [showWebampPlayer, setShowWebampPlayer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
@@ -156,11 +156,18 @@ export default function Grooveflix() {
   };
 
   const handlePlayTrack = () => {
-    if (selectedTrack?.audioPath) {
-      setShowWebampPlayer(true);
-    } else {
+    if (!selectedTrack?.audioPath) {
       toast.error('Sem áudio', { description: 'Esta faixa não possui arquivo de áudio.' });
+      return;
     }
+    // Define a fila com todos os itens filtrados
+    setQueue(filteredItems);
+    // Toca a faixa selecionada
+    playTrack(selectedTrack);
+    toast.success('Reproduzindo...', {
+      description: `${selectedTrack.title} - ${selectedTrack.artist}`,
+      duration: 2000,
+    });
   };
 
   const handleDelete = async (id) => {
@@ -298,17 +305,6 @@ export default function Grooveflix() {
           loadItems();
         }}
         isAdmin={isAdmin}
-      />
-
-      <GrooveflixWebampPlayer
-        isOpen={showWebampPlayer}
-        onClose={() => setShowWebampPlayer(false)}
-        track={selectedTrack}
-        queue={filteredItems}
-        onTrackChange={setSelectedTrackId}
-        isTrialing={isTrialing}
-        canDownload={isActive}
-        userId={userId}
       />
     </div>
   );

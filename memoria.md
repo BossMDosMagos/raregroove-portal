@@ -461,3 +461,124 @@ git push  # ✅ Everything up-to-date no main
 
 *Sessão encerrada: 2026-03-20 19:25 UTC-3*
 *Commit de encerramento: "refactor: rebuild Grooveflix page core for stable upload/stream listing (no native player)" + "feat: integrate webamp player with b2 presigned streaming urls"*
+
+---
+
+## Correções Rodada 5 (2026-03-21 13:53) - CORREÇÃO CORS B2
+
+### PROBLEMA CRÍTICO
+- B2 Native API não adiciona headers CORS nas respostas
+- Browser bloqueava imagens e áudios por CORS preflight
+- S3 Signature V4 retornava 403 (inferno no Deno)
+
+### SOLUÇÃO: Token na URL, nunca no Header
+
+**O SEGREDO DO CORS NO B2:**
+O navegador é "fofoqueiro" - se ele vê um Header de autorização indo pra outro domínio, ele trava tudo (CORS preflight). Quando o token vai na URL como query parameter, o browser trata como link comum e o CORS do B2 deixa passar.
+
+### Mudanças Implementadas
+
+#### 1. b2-presign (Edge Function)
+**Arquivo:** `supabase/functions/b2-presign/index.ts`
+
+Agora usa `b2_get_download_authorization` e retorna URL no formato:
+```
+https://f005.backblazeb2.com/file/Cofre-RareGroove-01/[path]?Authorization=[token]
+```
+
+**Código-chave:**
+```typescript
+async function b2GetDownloadAuth(apiUrl: string, authToken: string) {
+  const res = await fetch(`${apiUrl}/b2api/v2/b2_get_download_authorization`, {
+    method: 'POST',
+    headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bucketId: BUCKET_ID,
+      fileNamePrefix: '',
+      validDurationInSeconds: 3600
+    })
+  });
+  return res.json();
+}
+
+// Gera URL com token na URL
+const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${safeFilePath}?Authorization=${downloadAuth.authorizationToken}`;
+```
+
+#### 2. Frontend (GrooveflixRow.jsx, GrooveflixWebampPlayer.jsx)
+- Usa `b2-presign` para obter URL com token na query string
+- Imagens `<img>` e Webamp recebem URLs completas com `?Authorization=...`
+- **NUNCA** passa auth via headers no fetch/axios para o B2
+
+#### 3. CORS Bucket Configurado
+**Bucket:** `Cofre-RareGroove-01`
+**Regra CORS:**
+```json
+{
+  "corsRuleName": "AllowStreaming",
+  "allowedOrigins": ["*"],
+  "allowedHeaders": ["range", "authorization"],
+  "allowedOperations": ["b2_download_file_by_name"],
+  "maxAgeSeconds": 3600,
+  "exposeHeaders": ["x-bz-content-sha1", "content-range", "content-length"]
+}
+```
+
+**Comando para configurar CORS:**
+```bash
+# 1. Pegar token de auth
+TOKEN=$(curl -s "https://api005.backblazeb2.com/b2api/v2/b2_authorize_account" \
+  -u "$B2_KEY_ID:$B2_APPLICATION_KEY" -H "Content-Type: application/json" -d '{}' | \
+  grep -o '"authorizationToken":"[^"]*"' | cut -d'"' -f4)
+
+# 2. Atualizar bucket com CORS
+curl -s "https://api005.backblazeb2.com/b2api/v2/b2_update_bucket" \
+  -H "Authorization: $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "accountId": "6f3db4a31f57",
+    "bucketId": "56cfb33d8ba45a4391cf0517",
+    "corsRules": [{
+      "corsRuleName": "AllowStreaming",
+      "allowedOrigins": ["*"],
+      "allowedHeaders": ["range", "authorization"],
+      "allowedOperations": ["b2_download_file_by_name"],
+      "maxAgeSeconds": 3600,
+      "exposeHeaders": ["x-bz-content-sha1", "content-range", "content-length"]
+    }]
+  }'
+```
+
+### Configurações B2 Atuais
+- **Bucket ID:** 56cfb33d8ba45a4391cf0517
+- **Bucket Name:** Cofre-RareGroove-01
+- **Account ID:** 6f3db4a31f57
+- **API URL:** https://api005.backblazeb2.com
+- **Download URL:** https://f005.backblazeb2.com
+- **Key ID:** 0056f3db4a31f570000000002
+
+### Commit
+```bash
+git commit -m "fix: B2 native API with token in URL query param (fixes CORS)"
+git push
+```
+
+---
+
+## Estado Atual (2026-03-21 13:53)
+
+### ✅ Feito
+- [x] b2-presign usa API Nativa com token na URL
+- [x] CORS configurado no bucket B2 (range + authorization headers)
+- [x] Frontend usa URL completa com ?Authorization=
+- [x] Imagens e áudios carregam sem CORS errors
+- [x] Webamp consegue fazer seek (header Range exposto)
+
+### 🔄 Fluxo Completo
+1. Upload → `b2-upload-url` → B2 Native API
+2. Visualizar cover → `b2-presign` → URL com `?Authorization=` → `<img>`
+3. Tocar áudio → `b2-presign` → URL com `?Authorization=` → Webamp
+4. Browser não faz preflight (token está na URL, não no header)
+
+---
+
+*Última atualização: 2026-03-21 13:53 UTC-3*

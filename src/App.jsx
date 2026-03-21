@@ -5,6 +5,7 @@ import { Toaster, toast } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
+import { GlobalAudioPlayer } from './components/GlobalAudioPlayer';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
 import CartDrawer from './components/CartDrawer.jsx';
@@ -218,6 +219,8 @@ export default function App() {
   return (
     <HelmetProvider>
       <ErrorBoundary>
+        <GlobalAudioPlayer />
+
         <Router>
           <UnreadMessagesProvider>
             <CartProvider>
