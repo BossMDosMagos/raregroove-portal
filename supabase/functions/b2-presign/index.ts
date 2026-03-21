@@ -1,5 +1,5 @@
-// Supabase Edge Function para streaming de áudio via Backblaze B2
-// Admin bypass para streaming
+# Supabase Edge Function para streaming de áudio via Backblaze B2
+# Admin bypass para streaming
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -88,16 +88,12 @@ serve(async (req) => {
     if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
       console.error('[B2-PRESIGN] B2 credentials not configured');
       return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Since bucket is public, return public URL
-    const url = `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`;
-    return new Response(
-      JSON.stringify({ url, isPublic: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // B2 Authorization
+    const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
       headers: { 'Authorization': 'Basic ' + encoded, 'Content-Type': 'application/json' },
@@ -106,8 +102,8 @@ serve(async (req) => {
 
     if (!authRes.ok) {
       return new Response(JSON.stringify({ error: 'B2 auth failed' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const authData = await authRes.json();
@@ -115,7 +111,7 @@ serve(async (req) => {
     // Get download authorization
     const pathParts = filePath.split('/');
     const prefix = pathParts.slice(0, -1).join('/') + '/';
-    const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
+    const downloadAuthRes = await fetch(${authData.apiUrl}/b2api/v4/b2_get_download_authorization, {
       method: 'POST',
       headers: { 
         'Authorization': authData.authorizationToken, 
@@ -129,19 +125,14 @@ serve(async (req) => {
     });
 
     if (!downloadAuthRes.ok) {
-      // Fallback: retornar URL pública
-      console.log('[B2-PRESIGN] Download auth failed, using public URL');
-      return new Response(
-        JSON.stringify({ 
-          url: `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`,
-          isPublic: true
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      console.log('[B2-PRESIGN] Download auth failed');
+      return new Response(JSON.stringify({ error: 'Download auth failed' }), { 
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const downloadAuth = await downloadAuthRes.json();
-    const url = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+    const url = ${B2_DOWNLOAD_URL}/file//?Authorization=;
 
     return new Response(
       JSON.stringify({ url, expiresIn: 7200 }),
