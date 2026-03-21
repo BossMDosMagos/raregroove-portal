@@ -33,13 +33,13 @@ async function b2Auth() {
   return res.json();
 }
 
-async function b2GetDownloadAuth(apiUrl: string, authToken: string) {
+async function b2GetDownloadAuth(apiUrl: string, authToken: string, prefix: string = '') {
   const res = await fetch(`${apiUrl}/b2api/v2/b2_get_download_authorization`, {
     method: 'POST',
     headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       bucketId: BUCKET_ID,
-      fileNamePrefix: '',
+      fileNamePrefix: prefix,
       validDurationInSeconds: 3600
     })
   });
@@ -72,19 +72,6 @@ async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin:
   }
 }
 
-async function getItemOwner(supabaseAdmin: ReturnType<typeof createClient>, itemId: string): Promise<string | null> {
-  try {
-    const { data } = await supabaseAdmin
-      .from('items')
-      .select('seller_id')
-      .eq('id', itemId)
-      .single();
-    return data?.seller_id || null;
-  } catch {
-    return null;
-  }
-}
-
 function extractUserIdFromPath(filePath: string): string | null {
   const match = filePath.match(/^user_([^/]+)\//);
   return match ? match[1] : null;
@@ -113,19 +100,30 @@ serve(async (req) => {
     const isCover = fileType === 'cover';
     const supabaseAdmin = getServiceClient();
 
+    // Para COVERS: ainda precisa de token, mas usa prefix mais curto
     if (isCover) {
-      const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${encodeURIComponent(filePath)}`;
+      // Covers também precisam de auth token para buckets privados
+      // Usa prefix vazio para Covers (prefix permite qualquer arquivo)
+      const authData = await b2Auth();
+      const downloadAuth = await b2GetDownloadAuth(authData.apiUrl, authData.authorizationToken, '');
+      
+      // URL LIMPA - sem encodeURIComponent nas barras!
+      // B2 Native API espera caminhos limpos
+      const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+      
+      console.log('[B2-PRESIGN] Cover URL generated:', downloadUrl.substring(0, 100) + '...');
+      
       return new Response(
         JSON.stringify({ 
           url: downloadUrl,
-          expiresIn: 3600,
-          storage: 'b2_native',
-          public: true
+          expiresIn: downloadAuth.validDurationInSeconds,
+          storage: 'b2_native'
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Para ÁUDIOS: precisa de userId
     if (!userId) {
       return new Response(JSON.stringify({ error: 'missing_userId' }), {
         status: 400,
@@ -141,6 +139,7 @@ serve(async (req) => {
       });
     }
 
+    // Validar se é o dono do arquivo
     const pathOwnerId = extractUserIdFromPath(filePath);
     if (pathOwnerId && pathOwnerId !== userId && !access.isAdmin && access.userLevel < 999) {
       console.log('[B2-PRESIGN] Access denied - user:', userId, 'owner:', pathOwnerId);
@@ -151,12 +150,12 @@ serve(async (req) => {
     }
 
     const authData = await b2Auth();
-    const downloadAuth = await b2GetDownloadAuth(authData.apiUrl, authData.authorizationToken);
+    const downloadAuth = await b2GetDownloadAuth(authData.apiUrl, authData.authorizationToken, '');
 
-    const safeFilePath = filePath.split('/').map(p => encodeURIComponent(p)).join('/');
-    const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${safeFilePath}?Authorization=${downloadAuth.authorizationToken}`;
+    // URL LIMPA - NÃO encoda as barras! (%2F quebra o B2)
+    const downloadUrl = `${B2_NATIVE_URL}/file/${BUCKET_NAME}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
 
-    console.log('[B2-PRESIGN] Generated URL for user:', userId);
+    console.log('[B2-PRESIGN] Generated URL for user:', userId, 'path:', filePath);
 
     return new Response(
       JSON.stringify({ 
