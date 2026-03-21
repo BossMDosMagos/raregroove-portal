@@ -21,11 +21,8 @@ export default function GrooveflixRow({ title, items, onPick, onDelete, canDelet
 
       for (const it of itemsNeedingUrl) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const token = session?.access_token;
           const { data, error } = await supabase.functions.invoke('b2-presign', {
             body: { file_path: it.coverPath, type: 'cover' },
-            ...(token ? { headers: { 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY } } : {}),
           });
           
           console.log('[COVER] Result:', error ? error.message : 'OK', 'for:', it.id, 'data:', data);

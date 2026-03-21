@@ -17,7 +17,9 @@ const B2_BUCKET_ID = Deno.env.get('B2_BUCKET_ID') || '56cfb33d8ba45a4391cf0517';
 const B2_DOWNLOAD_URL = Deno.env.get('B2_DOWNLOAD_URL') || 'https://s3.us-east-005.backblazeb2.com';
 
 function getServiceClient() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
 }
 
 async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin: boolean }> {
