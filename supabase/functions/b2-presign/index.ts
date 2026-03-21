@@ -109,7 +109,8 @@ serve(async (req) => {
     const authData = await authRes.json();
 
     // Get download authorization
-    const prefix = filePath.split('/').slice(0, 3).join('/') + '/';
+    const pathParts = filePath.split('/');
+    const prefix = pathParts.slice(0, -1).join('/') + '/';
     const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
       method: 'POST',
       headers: { 
