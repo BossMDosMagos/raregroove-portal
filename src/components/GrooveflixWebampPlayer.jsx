@@ -94,28 +94,39 @@ export default function GrooveflixWebampPlayer({
 
     setIsLoading(true);
     try {
-      // Injeta CSS do Webamp se não estiver presente
+      // Verifica suporte
+      if (!Webamp.browserIsSupported()) {
+        console.error('[WEBAMP] Browser not supported');
+        toast.error('Navegador não suportado', { description: 'Webamp requer WebGL.' });
+        return;
+      }
+
+      // Injeta CSS do Webamp v2.2.0
       if (!document.getElementById('webamp-css')) {
         const link = document.createElement('link');
         link.id = 'webamp-css';
         link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/webamp@1.4.2/webamp.css';
+        link.href = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/webamp.css';
         document.head.appendChild(link);
       }
 
       // Se já existe uma instância, destruir primeiro
       if (webampRef.current) {
-        webampRef.current.close();
+        webampRef.current.dispose();
       }
 
       webampRef.current = new Webamp({
         initialTracks: tracks,
         initialSkin: {
-          url: 'https://cdn.jsdelivr.net/npm/webamp@1.4.2/skins/base-2.91.wsz'
+          url: 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/skins/base-2.91.wsz'
         }
       });
 
-      webampRef.current.renderWhenReady(containerRef.current);
+      webampRef.current.renderWhenReady(containerRef.current).then(() => {
+        console.log('[WEBAMP] Rendered successfully');
+      }).catch((err) => {
+        console.error('[WEBAMP] Render error:', err);
+      });
 
       // Listener para mudanças de faixa
       webampRef.current.onTrackChange((newTrack) => {
@@ -144,7 +155,7 @@ export default function GrooveflixWebampPlayer({
     return () => {
       if (webampRef.current) {
         try {
-          webampRef.current.close();
+          webampRef.current.dispose();
         } catch {
           // silent
         }
