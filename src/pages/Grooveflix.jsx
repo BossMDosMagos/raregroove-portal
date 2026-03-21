@@ -31,7 +31,7 @@ function normalizeTracks(items = []) {
       metadata,
       raw: item,
     };
-  }).filter((track) => track.id && (track.audioPath || track.coverUrl));
+  }).filter((track) => track.id && (track.audioPath || track.coverUrl || track.coverPath));
 }
 
 export default function Grooveflix() {
@@ -97,7 +97,7 @@ export default function Grooveflix() {
       console.log('[GROOVEFLIX] Sample track:', tracks[0]);
       
       setItems(tracks);
-      if (!selectedTrackId && tracks.length > 0) setSelectedTrackId(tracks[0].id);
+      setSelectedTrackId((prev) => (!prev && tracks.length > 0 ? tracks[0].id : prev));
 
     } catch (e) {
       toast.error('Erro ao carregar Grooveflix', {
@@ -108,7 +108,7 @@ export default function Grooveflix() {
     } finally {
       setLoading(false);
     }
-  }, [selectedTrackId]);
+  }, []);
 
   useEffect(() => {
     void loadItems();

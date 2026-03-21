@@ -20,7 +20,6 @@ export default function GrooveflixWebampPlayer({
   const [isLoading, setIsLoading] = useState(false);
   const [tracks, setTracks] = useState([]);
 
-  // Função para obter URL presignada do Backblaze B2
   const getPresignedUrl = async (filePath) => {
     if (!filePath) return null;
     
@@ -58,63 +57,63 @@ export default function GrooveflixWebampPlayer({
     }
   };
 
-  // Preparar faixas para o Webamp
   useEffect(() => {
+    if (!isOpen || !userId) return;
+
     const prepareTracks = async () => {
       if (!queue || queue.length === 0) return;
 
+      const withAudio = queue.filter((item) => item.audioPath);
+      if (withAudio.length === 0) return;
+
       const webampTracks = [];
-      for (const item of queue) {
-        if (item.audioPath) {
-          const url = await getPresignedUrl(item.audioPath);
-          if (url) {
-            webampTracks.push({
-              url: url,
-              title: item.title || 'Sem título',
+      for (const item of withAudio) {
+        const url = await getPresignedUrl(item.audioPath);
+        if (url) {
+          webampTracks.push({
+            url,
+            title: item.title || 'Sem título',
+            artist: item.artist || 'Desconhecido',
+            duration: 0,
+            metaData: {
               artist: item.artist || 'Desconhecido',
-              duration: 0, // Webamp vai detectar ao fazer metadata
-              metaData: {
-                artist: item.artist || 'Desconhecido',
-                title: item.title || 'Sem título',
-                album: item.title,
-              }
-            });
-          }
+              title: item.title || 'Sem título',
+              album: item.title,
+            }
+          });
         }
       }
       setTracks(webampTracks);
     };
 
     prepareTracks();
-  }, [queue, userId]);
+  }, [isOpen, userId, queue]);
 
-  // Inicializar Webamp
   useEffect(() => {
     if (!isOpen || !containerRef.current || tracks.length === 0) return;
 
+    if (!Webamp.browserIsSupported()) {
+      console.error('[WEBAMP] Browser not supported');
+      toast.error('Navegador não suportado', { description: 'Webamp requer WebGL.' });
+      return;
+    }
+
+    if (!document.getElementById('webamp-css')) {
+      const link = document.createElement('link');
+      link.id = 'webamp-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/webamp.css';
+      document.head.appendChild(link);
+    }
+
+    if (webampRef.current) {
+      webampRef.current.dispose();
+      webampRef.current = null;
+    }
+
     setIsLoading(true);
+
     try {
-      // Verifica suporte
-      if (!Webamp.browserIsSupported()) {
-        console.error('[WEBAMP] Browser not supported');
-        toast.error('Navegador não suportado', { description: 'Webamp requer WebGL.' });
-        return;
-      }
-
-      // Injeta CSS do Webamp v2.2.0
-      if (!document.getElementById('webamp-css')) {
-        const link = document.createElement('link');
-        link.id = 'webamp-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/webamp.css';
-        document.head.appendChild(link);
-      }
-
-      // Se já existe uma instância, destruir primeiro
-      if (webampRef.current) {
-        webampRef.current.dispose();
-      }
-
       webampRef.current = new Webamp({
         initialTracks: tracks,
         initialSkin: {
@@ -122,15 +121,22 @@ export default function GrooveflixWebampPlayer({
         }
       });
 
-      webampRef.current.renderWhenReady(containerRef.current).then(() => {
-        console.log('[WEBAMP] Rendered successfully');
-      }).catch((err) => {
-        console.error('[WEBAMP] Render error:', err);
-      });
+      webampRef.current.renderWhenReady(containerRef.current)
+        .then(() => {
+          console.log('[WEBAMP] Rendered successfully');
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error('[WEBAMP] Render error:', err);
+          toast.error('Erro ao renderizar player', {
+            description: err.message,
+            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
+          });
+          setIsLoading(false);
+        });
 
-      // Listener para mudanças de faixa
       webampRef.current.onTrackChange((newTrack) => {
-        if (newTrack && newTrack.metaData) {
+        if (newTrack?.metaData) {
           const trackTitle = newTrack.metaData.title || newTrack.metaData.artist;
           const queueItem = queue.find((q) => q.title === trackTitle);
           if (queueItem) {
@@ -145,12 +151,10 @@ export default function GrooveflixWebampPlayer({
         description: e.message,
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
       });
-    } finally {
       setIsLoading(false);
     }
   }, [isOpen, tracks, queue, onTrackChange]);
 
-  // Cleanup ao desmontar
   useEffect(() => {
     return () => {
       if (webampRef.current) {
@@ -159,29 +163,42 @@ export default function GrooveflixWebampPlayer({
         } catch {
           // silent
         }
+        webampRef.current = null;
       }
     };
   }, []);
 
   if (!isOpen) return null;
 
+  if (!userId) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+        <div className="relative bg-charcoal-deep border border-fuchsia-500/20 rounded-2xl p-6 text-center space-y-3 max-w-sm mx-4">
+          <p className="text-white font-bold">Faça login para ouvir</p>
+          <p className="text-white/50 text-sm">É necessário estar autenticado para acessar o streaming.</p>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 text-xs font-black uppercase tracking-wider hover:bg-fuchsia-500/30 transition">
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Overlay escuro */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
 
-      {/* Container do player */}
       <div className={`relative flex flex-col transition-all duration-300 ${
         isExpanded
-          ? 'inset-0 bg-gradient-to-br from-black via-charcoal-deep to-black'
-          : 'bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border border-fuchsia-500/20 rounded-t-2xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep'
+          ? 'fixed inset-0 bg-gradient-to-br from-black via-charcoal-deep to-black'
+          : 'fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border border-fuchsia-500/20 rounded-t-2xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep'
       }`}>
         
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <span className="text-xs font-black uppercase tracking-widest text-fuchsia-300">
-              🎵 GROOVEFLIX PLAYER
+              GROOVEFLIX PLAYER
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -204,12 +221,13 @@ export default function GrooveflixWebampPlayer({
           </div>
         </div>
 
-        {/* Webamp Container */}
         <div className={`relative flex-1 flex items-center justify-center overflow-hidden ${isExpanded ? 'p-8' : 'p-4'}`}>
-          {isLoading ? (
+          {isLoading || tracks.length === 0 ? (
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
-              <p className="text-white/60 text-sm">Carregando player...</p>
+              <p className="text-white/60 text-sm">
+                {tracks.length === 0 ? 'Obtendo URLs de streaming...' : 'Carregando player...'}
+              </p>
             </div>
           ) : (
             <div
@@ -222,14 +240,13 @@ export default function GrooveflixWebampPlayer({
           )}
         </div>
 
-        {/* Rodapé com informações */}
         {track && (
           <div className="border-t border-white/10 p-4 bg-black/40 backdrop-blur-sm">
             <div className="space-y-2">
               <p className="text-sm font-bold text-white truncate">{track.title}</p>
               <p className="text-xs text-white/60 truncate">{track.artist}</p>
               {isTrialing && (
-                <p className="text-[10px] text-yellow-400/70">⚠️ Trial ativo - qualidade limitada</p>
+                <p className="text-[10px] text-yellow-400/70">Trial ativo - qualidade limitada</p>
               )}
             </div>
           </div>

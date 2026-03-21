@@ -195,19 +195,20 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     
     console.log('[UPLOAD] Iniciando upload server-side...');
     
-    const userId = (await supabase.auth.getUser()).data.user?.id;
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token || supabaseAnonKey;
+    const currentUserId = session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
     
-    // Enviar arquivo via FormData para upload server-side (evita CORS)
     const formData = new FormData();
     formData.append('filename', file.name);
     formData.append('category', fileCategory);
-    formData.append('userId', userId);
+    formData.append('userId', currentUserId);
     formData.append('file', file);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
       headers: { 
-        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Authorization': `Bearer ${accessToken}`,
         'apikey': supabaseAnonKey
       },
       body: formData

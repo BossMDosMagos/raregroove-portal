@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { 
   Download, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX, 
-  ListMusic, Maximize, Minimize, Headphones, Disc3, 
+  ListMusic, Maximize, Minimize, Headphones, Disc3, Radio,
   Shuffle, Repeat, Repeat1, Heart, Share2, MoreHorizontal,
   ChevronUp, ChevronDown, X, Upload, Clock, Wifi, WifiOff
 } from 'lucide-react';
