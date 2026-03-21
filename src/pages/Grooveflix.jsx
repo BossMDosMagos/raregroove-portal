@@ -103,12 +103,15 @@ export default function Grooveflix() {
       console.log('[GROOVEFLIX] Items with grooveflix metadata:', grooveflixItems.length);
 
       if (grooveflixItems.length > 0) {
+        const sample = grooveflixItems[0];
         console.log('[GROOVEFLIX] Sample grooveflix item:', JSON.stringify({
-          id: grooveflixItems[0].id,
-          title: grooveflixItems[0].title,
-          category: grooveflixItems[0].metadata?.grooveflix?.category,
-          hasAudio: !!grooveflixItems[0].metadata?.grooveflix?.audio_path,
-          hasCover: !!grooveflixItems[0].metadata?.grooveflix?.cover_path,
+          id: sample.id,
+          title: sample.title,
+          category: sample.metadata?.grooveflix?.category,
+          hasAudio: !!sample.metadata?.grooveflix?.audio_path,
+          hasAudioFiles: !!sample.metadata?.grooveflix?.audio_files,
+          audioFilesCount: sample.metadata?.grooveflix?.audio_files?.length || 0,
+          hasCover: !!sample.metadata?.grooveflix?.cover_path,
         }, null, 2));
       }
 
@@ -158,6 +161,15 @@ export default function Grooveflix() {
   };
 
   const handlePlayTrack = () => {
+    console.log('[GROOVEFLIX] handlePlayTrack called, selectedTrack:', {
+      id: selectedTrack?.id,
+      title: selectedTrack?.title,
+      category: selectedTrack?.category,
+      audioPath: selectedTrack?.audioPath,
+      audioFiles: selectedTrack?.audioFiles,
+      audioFilesLength: selectedTrack?.audioFiles?.length,
+    });
+    
     if (!selectedTrack?.audioPath && (!selectedTrack?.audioFiles || selectedTrack.audioFiles.length === 0)) {
       toast.error('Sem áudio', { description: 'Esta faixa não possui arquivo de áudio.' });
       return;

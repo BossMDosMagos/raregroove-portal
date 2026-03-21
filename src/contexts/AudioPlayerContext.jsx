@@ -79,8 +79,11 @@ export function AudioPlayerProvider({ children }) {
   const expandAlbumTracks = useCallback((item) => {
     const tracks = [];
     
-    if (item.audio_files && item.audio_files.length > 0) {
-      for (const file of item.audio_files) {
+    const audioFiles = item.audio_files || item.audioFiles || [];
+    console.log('[AUDIO CONTEXT] expandAlbumTracks - item:', item.title, 'audioFiles:', audioFiles.length);
+    
+    if (audioFiles.length > 0) {
+      for (const file of audioFiles) {
         tracks.push({
           id: `${item.id}_${file.name}`,
           title: file.name.replace(/\.(mp3|flac|wav|ogg|m4a|aac)$/i, ''),
@@ -103,6 +106,7 @@ export function AudioPlayerProvider({ children }) {
       });
     }
     
+    console.log('[AUDIO CONTEXT] expandAlbumTracks - returning', tracks.length, 'tracks');
     return tracks;
   }, []);
 
@@ -154,15 +158,21 @@ export function AudioPlayerProvider({ children }) {
       console.warn('[AUDIO CONTEXT] playTrack called with no track');
       return;
     }
-    console.log('[AUDIO CONTEXT] playTrack called:', track.title);
+    console.log('[AUDIO CONTEXT] playTrack called:', track.title, 'category:', track.category, 'audioFiles:', track.audioFiles?.length);
     
     let queueTracks = [];
     
+    console.log('[AUDIO CONTEXT] Checking album - category:', track.category, 'audio_files:', track.audio_files, 'audioFiles:', track.audioFiles);
+    
     if (track.category === 'album' && track.audio_files && track.audio_files.length > 0) {
       queueTracks = expandAlbumTracks(track);
-      console.log('[AUDIO CONTEXT] Album expanded to', queueTracks.length, 'tracks');
+      console.log('[AUDIO CONTEXT] Album expanded from audio_files to', queueTracks.length, 'tracks');
+    } else if (track.category === 'album' && track.audioFiles && track.audioFiles.length > 0) {
+      queueTracks = expandAlbumTracks(track);
+      console.log('[AUDIO CONTEXT] Album expanded from audioFiles to', queueTracks.length, 'tracks');
     } else {
       queueTracks = [track];
+      console.log('[AUDIO CONTEXT] Single track - queue will have 1 track');
     }
     
     console.log('[AUDIO CONTEXT] Setting queue with', queueTracks.length, 'tracks');
