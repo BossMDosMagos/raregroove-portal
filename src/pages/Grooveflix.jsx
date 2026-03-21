@@ -83,11 +83,13 @@ export default function Grooveflix() {
   }, [profile?.id]);
 
   const loadItems = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('items')
         .select('id, title, artist, image_url, metadata, created_at')
+        .eq('seller_id', userId)
         .order('created_at', { ascending: false })
         .limit(120);
 
@@ -110,7 +112,7 @@ export default function Grooveflix() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void loadItems();
