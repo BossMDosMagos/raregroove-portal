@@ -24,22 +24,30 @@ async function checkAccess(userId: string): Promise<{ allowed: boolean; isAdmin:
   if (!userId) return { allowed: false, isAdmin: false };
   try {
     const supabaseAdmin = getServiceClient();
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('profiles')
       .select('is_admin, subscription_status, user_level')
       .eq('id', userId)
       .single();
     
-    if (!data) return { allowed: false, isAdmin: false };
+    console.log('[B2-PRESIGN] Profile data:', { data, error });
+    
+    if (error || !data) return { allowed: false, isAdmin: false };
+    
+    const userLevel = Number(data.user_level || 0);
+    const status = String(data.subscription_status || 'inactive').toLowerCase();
+    
+    console.log('[B2-PRESIGN] User check:', { isAdmin: data.is_admin, userLevel, status });
+    
     if (data.is_admin) return { allowed: true, isAdmin: true };
     
-    const status = data.subscription_status?.toLowerCase() || 'inactive';
-    const userLevel = Number(data.user_level || 0);
+    if (userLevel >= 999) return { allowed: true, isAdmin: false };
     
     if (status === 'active' && userLevel >= 1) return { allowed: true, isAdmin: false };
     
     return { allowed: false, isAdmin: false };
-  } catch {
+  } catch (e) {
+    console.error('[B2-PRESIGN] CheckAccess error:', e);
     return { allowed: false, isAdmin: false };
   }
 }
