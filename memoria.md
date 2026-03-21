@@ -210,41 +210,73 @@ npx supabase functions list
 
 ---
 
-## Estado Atual (2026-03-20 22:35)
+## Correções Rodada 4 (2026-03-21 09:52)
+
+**PROBLEMA:** CDs cadastrados em "Meu Acervo" apareciam na página Grooveflix.
+
+**CORREÇÃO: Filtrar apenas itens Grooveflix**
+- **Arquivo:** `src/pages/Grooveflix.jsx`
+- **Mudança:** Adicionado filtro `metadata.grooveflix.category` no cliente
+- **Código:**
+```javascript
+const grooveflixItems = (data || []).filter(item => 
+  item.metadata?.grooveflix?.category
+);
+```
+- **Impacto:** Apenas itens de streaming aparecem no Grooveflix
+
+---
+
+## Estado Atual (2026-03-21 09:52)
 
 ### ✅ Feito
 - [x] Edge Function `cleanup-grooveflix` criada e deployada
 - [x] Edge Function `grooveflix-delete` criada e deployada
+- [x] Edge Function `b2-presign` com credenciais B2 hardcoded (fallback)
+- [x] Capas via `b2-presign` type='cover' (sem auth necessária)
 - [x] 404 handling no frontend (GrooveflixRow.jsx)
-- [x] Logs de debug no uploader
-- [x] Capas públicas via `b2-presign` (type='cover')
-- [x] Edge Function `b2-presign` deployada e testada
-- [x] Corrigido `GrooveflixPlayer.jsx` - headers Authorization/apikey na função presign
-- [x] Corrigido `Grooveflix.jsx` - headers Authorization/apikey na função delete
-- [x] Filtrado itens Grooveflix no MyItems.jsx (não aparecem como venda)
-- [x] Filtrado itens Grooveflix no Catalogo.jsx (não aparecem como venda)
-- [x] Build OK
-- [x] Deploy frontend para Cloudflare Pages ✅
-- [x] **FIX CRÍTICO: Audio agora toca em álbuns** (GrooveflixUploader.jsx)
-- [x] **FIX CRÍTICO: Retry automático no player** (GrooveflixPlayer.jsx)
-- [x] **Tradução para português** (Grooveflix.jsx)
-- [x] **FIX: coverPath adicionado a normalizeTracks** (Grooveflix.jsx)
-- [x] **FIX: WebampPlayer auth simplificada** (GrooveflixWebampPlayer.jsx)
-- [x] **Deploy: https://f7ebffec.raregroove-portal.pages.dev**
+- [x] Headers Authorization Bearer em todas as chamadas b2-presign
+- [x] CSP configurado para Webamp (unsafe-eval, worker-src, wss)
+- [x] **FIX: coverPath em normalizeTracks** (Grooveflix.jsx)
+- [x] **FIX: Webamp container 470x350px** (GrooveflixWebampPlayer.jsx)
+- [x] **FIX: CSS Webamp via CDN** (cdn.jsdelivr.net/npm/webamp@2.2.0)
+- [x] **FIX: Filtrar itens Grooveflix** (metadata.grooveflix.category)
+- [x] Build OK, Deploy OK
 
 ### 🔄 Pendente
 - [ ] Testar exibição de capas em produção
-- [ ] Testar playback de áudio após upload
+- [ ] Testar playback de áudio com Webamp
 - [ ] Testar delete seguro
-- [ ] Verificar streaming HI-FI com Webamp
 
 ### ⚠️ Observações
-- Bucket B2 está privado, precisa de signed URLs
-- Capas são públicas via `b2-presign` com `type='cover'`
-- Áudios ainda requerem assinatura ativa
-- Itens do Grooveflix são filtrados de "Meu Acervo" e "Catálogo"
+- Bucket B2 privado, usa signed URLs (7200s)
+- Capas: `type='cover'` não requer auth
+- Áudios: requer assinatura ativa
+- Webamp v2.2.0 com skin base-2.91.wsz
+
+### 🌐 Links
+- **Produção:** https://production.raregroove-portal.pages.dev
+- **Preview:** https://5092a6a1.raregroove-portal.pages.dev
 
 ---
+
+## Comandos Úteis
+
+```bash
+# Build local
+npm run build
+
+# Deploy Frontend (Cloudflare Pages)
+npx wrangler pages deploy dist --project-name=raregroove-portal --branch=production
+
+# Deploy Edge Functions (Supabase)
+npx supabase functions deploy b2-presign
+npx supabase functions deploy cleanup-grooveflix
+npx supabase functions deploy grooveflix-delete
+
+# Listar deployments
+npx wrangler pages deployment list --project-name=raregroove-portal
+```
 
 ## Variáveis de Ambiente
 
@@ -256,24 +288,11 @@ B2_APPLICATION_KEY=...
 CLOUDFLARE_API_TOKEN=cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 ```
 
----
-
-## Próximos Passos
-
-1. **Verificar deploy** - Aguardar Cloudflare Pages atualizar
-2. **Testar UI** - Abrir portalraregroove.com/grooveflix
-3. **Executar cleanup** - POST para cleanup-grooveflix
-4. **Testar delete** - Botão de excluir deve funcionar
-
----
-
 ## Contatos Técnicos
 
 - **Supabase:** https://supabase.com/dashboard/project/hlfirfukbrisfpebaaur
 - **Cloudflare:** https://dash.cloudflare.com
 - **B2:** https://www.backblaze.com/b2/cloud-storage.html
-
----
 
 ---
 
