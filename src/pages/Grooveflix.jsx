@@ -58,6 +58,7 @@ export default function Grooveflix() {
 
   useEffect(() => {
     const init = async () => {
+      console.log('[GROOVEFLIX] Checking admin, profile.id:', profile?.id);
       try {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -65,11 +66,14 @@ export default function Grooveflix() {
           .eq('id', profile?.id)
           .single();
 
+        console.log('[GROOVEFLIX] Profile check result:', { profileData, profileError, isAdmin: profileData?.is_admin });
+        
         if (!profileError && profileData?.is_admin) {
           setIsAdmin(true);
+          console.log('[GROOVEFLIX] Admin mode enabled');
         }
-      } catch {
-        // silencioso
+      } catch (e) {
+        console.error('[GROOVEFLIX] Admin check error:', e);
       }
     };
 
