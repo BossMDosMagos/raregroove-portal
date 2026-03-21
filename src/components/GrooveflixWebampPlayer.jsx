@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import Webamp from 'webamp';
 
-export default function GrooveflixWebampPlayer({ 
-  track, 
-  isOpen, 
-  onClose, 
+export default function GrooveflixWebampPlayer({
+  track,
+  isOpen,
+  onClose,
   onTrackChange,
   queue = [],
   isTrialing = false,
@@ -30,7 +30,7 @@ export default function GrooveflixWebampPlayer({
       const { data, error } = await supabase.functions.invoke('b2-presign', {
         body: {
           file_path: filePath,
-          user_id: userId || null,
+          user_id: userId,
           type: 'audio'
         }
       });
@@ -156,8 +156,8 @@ export default function GrooveflixWebampPlayer({
 
       {/* Container do player */}
       <div className={`relative flex flex-col transition-all duration-300 ${
-        isExpanded 
-          ? 'inset-0 bg-gradient-to-br from-black via-charcoal-deep to-black' 
+        isExpanded
+          ? 'inset-0 bg-gradient-to-br from-black via-charcoal-deep to-black'
           : 'bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border border-fuchsia-500/20 rounded-t-2xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep'
       }`}>
         

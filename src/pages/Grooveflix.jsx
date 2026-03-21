@@ -25,6 +25,7 @@ function normalizeTracks(items = []) {
       title: item.title || 'Sem título',
       artist: item.artist || 'Desconhecido',
       coverUrl,
+      coverPath,
       category,
       audioPath,
       metadata,
@@ -191,7 +192,26 @@ export default function Grooveflix() {
                   title={section.title}
                   items={section.items}
                   onPick={handleTrackPick}
-                  onDelete={isAdmin ? (id) => void supabase.from('items').delete().eq('id', id).then(() => void loadItems()) : undefined}
+                  onDelete={isAdmin ? async (id) => {
+                    const session = await supabase.auth.getSession();
+                    if (!session?.data?.session?.access_token) {
+                      toast.error('Autenticação necessária', { description: 'Faça login para deletar itens.' });
+                      return;
+                    }
+                    const { error } = await supabase.functions.invoke('grooveflix-delete', {
+                      body: { itemId: id, userId: userId },
+                      headers: {
+                        'Authorization': `Bearer ${session.data.session.access_token}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+                      }
+                    });
+                    if (error) {
+                      toast.error('Erro ao deletar item', { description: error.message });
+                    } else {
+                      toast.success('Item deletado com sucesso!');
+                      void loadItems();
+                    }
+                  } : undefined}
                   canDelete={isAdmin}
                 />
               ))
