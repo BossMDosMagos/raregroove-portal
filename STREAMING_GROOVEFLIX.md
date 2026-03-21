@@ -171,15 +171,35 @@ metadata: {
 9. Item aparece no Grooveflix
 ```
 
-### Carregamento de Álbuns
+### Reprodução de Álbuns (DETALHADO)
 ```
-1. Usuário clica em álbum
-2. playAlbum(item) → expandAlbumTracks(item.audio_files)
-3. Cada arquivo em audio_files vira uma track individual
-4. setQueue([track1, track2, ...])
-5. prepareWebampTracks() gera presigned URLs
-6. webamp.setTracksToPlay(tracks) carrega playlist completa
-7. Player mostra todas as faixas do álbum
+1. Usuário clica em card de álbum
+   ↓
+2. Grooveflix.jsx: handlePlayTrack()
+   - selectedTrack.audioFiles = array de 9 tracks
+   - playTrack(selectedTrack) chamado
+   ↓
+3. AudioPlayerContext.jsx: playTrack(track)
+   - expandAlbumTracks(track) → expande audio_files
+   - setQueue([track1, track2, ...track9])
+   - setCurrentTrack(track)
+   ↓
+4. AudioPlayerContext.jsx: prepareWebampTracks()
+   - Loop em cada track da queue
+   - Para cada track: getPresignedUrl(audioPath)
+   - Gera URLs assinadas B2 com ?Authorization=
+   - Retorna array de webampTracks
+   ↓
+5. AudioPlayerContext.jsx: setWebampTracks([...])
+   - webampTracks.state atualizado
+   ↓
+6. GlobalAudioPlayer.jsx: useEffect([webampTracks])
+   - webamp.setTracksToPlay(webampTracks)
+   - webamp.showPlaylistWindow()
+   ↓
+7. Webamp abre com playlist completa!
+   - Todas as faixas visíveis na playlist
+   - Primeira faixa começa a tocar
 ```
 
 ### Visualizar Covers
@@ -256,6 +276,41 @@ Quando minimizado, aparece barra flutuante no canto inferior direito com:
 - Número de faixas (se álbum)
 - Botão para expandir
 - Botão para fechar
+
+### Autenticação no AudioPlayerContext
+
+**CRÍTICO:** O AudioPlayerContext precisa do userId para gerar presigned URLs. Usa-se:
+```javascript
+// Escuta mudanças de auth
+const { data: { session } } = await supabase.auth.getSession();
+setUserId(session?.user?.id || null);
+
+const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  setUserId(session?.user?.id || null);
+});
+```
+
+**IMPORTANTE:** `getUser()` pode retornar null se chamado cedo demais. Sempre use `getSession()` + `onAuthStateChange()`.
+
+---
+
+## Content Security Policy (CSP)
+
+O CSP deve permitir o CSS do Webamp. Adicione no `index.html`:
+
+```html
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com;
+  style-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+  style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com data:;
+  img-src 'self' data: blob: https://*.backblazeb2.com https://*.supabase.co;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.backblazeb2.com;
+  media-src 'self' blob: data: https://*.backblazeb2.com;
+  worker-src 'self' blob: 'unsafe-eval';
+" />
+```
 
 ---
 
@@ -355,4 +410,4 @@ VITE_SUPABASE_ANON_KEY=...
 
 ---
 
-*Documentação atualizada: 2026-03-22*
+*Documentação atualizada: 2026-03-22 16:40 UTC-3*

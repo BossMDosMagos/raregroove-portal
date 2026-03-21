@@ -672,4 +672,110 @@ localStorage['grooveflix_skin_url']
 
 ---
 
-*Última atualização: 2026-03-22 15:09 UTC-3*
+## Correções Rodada 7 (2026-03-22 16:40) - Webamp Album Player Funcionando
+
+### Problema: userId null no AudioPlayerContext
+
+**Sintoma:** Webamp só carregava 1 faixa, álbum não expandia
+
+**Causa:** `supabase.auth.getUser()` retornava null quando chamado no init do context
+
+**Solução:** Usar `supabase.auth.getSession()` + `onAuthStateChange()` para escutar mudanças de auth
+```javascript
+const { data: { session } } = await supabase.auth.getSession();
+setUserId(session?.user?.id || null);
+
+const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  setUserId(session?.user?.id || null);
+});
+```
+
+### Melhorias no GlobalAudioPlayer
+
+- Auto-expande player quando track é selecionado
+- Mostra playlist com `webamp.showPlaylistWindow()`
+- Mini-player mostra número de faixas
+- Texto de preparo mostra "Preparando X faixas..."
+
+### Melhorias no b2-presign
+
+- Covers agora recebem token de autorização (antes não tinha)
+- URLs SEM encodeURIComponent nas barras (%2F)
+- `fileNamePrefix` vazio para permitir qualquer arquivo
+
+### Melhorias no CSP
+
+- Adicionado meta tag CSP no index.html
+- `style-src-elem` configurado para cdn.jsdelivr.net
+
+### Commit Final
+```bash
+git commit -m "fix: AudioPlayerContext now listens to auth state changes"
+git push
+```
+
+---
+
+## Estado Atual (2026-03-22 16:40 UTC-3) - GROOVEFLIX FUNCIONANDO! 🎵
+
+### ✅ Feito
+- [x] Path `user_{user_id}/{category}/{item_id}/{filename}` no B2
+- [x] Item criado primeiro para obter ID
+- [x] Álbuns expandidos em 9+ faixas automaticamente
+- [x] `webamp.setTracksToPlay()` carrega playlist completa
+- [x] `webamp.showPlaylistWindow()` mostra playlist
+- [x] Skin salva em localStorage
+- [x] Skin aplicada automaticamente no init
+- [x] Validação de dono no b2-presign
+- [x] Player global persistente entre páginas
+- [x] Covers carregam com token B2
+- [x] URLs limpas sem %2F
+- [x] CSP configurado para Webamp CSS
+- [x] Auth state listener no AudioPlayerContext
+
+### 🎵 Fluxo Completo de Reprodução
+
+```
+1. Usuário clica em card de álbum
+   ↓
+2. Grooveflix.jsx: handlePlayTrack()
+   - selectedTrack.audioFiles = 9 tracks
+   ↓
+3. AudioPlayerContext: playTrack(track)
+   - expandAlbumTracks(track) → 9 tracks
+   - setQueue([...9 tracks])
+   ↓
+4. AudioPlayerContext: prepareWebampTracks()
+   - Para cada track: getPresignedUrl(audioPath)
+   - Gera 9 URLs assinadas B2
+   ↓
+5. AudioPlayerContext: setWebampTracks([...9 tracks])
+   ↓
+6. GlobalAudioPlayer detecta mudança
+   - webamp.setTracksToPlay(tracks)
+   - webamp.showPlaylistWindow()
+   ↓
+7. Webamp abre com playlist completa!
+   - "Live in Washington 1964"
+   - 14 - Roll Over Beethoven.flac
+   - 15 - I Want to Hold Your Hand.flac
+   - ... (todas 9 faixas)
+```
+
+### 🎨 Mini-Player
+
+Quando minimizado, mostra:
+```
+🎵 Live in Washington 1964
+   Beatles
+   9 faixas
+```
+
+Botões:
+- 🎧 Tocar álbum completo (se for álbum)
+- ⬆️ Expandir player
+- ❌ Fechar
+
+---
+
+*Última atualização: 2026-03-22 16:40 UTC-3*
