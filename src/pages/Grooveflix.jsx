@@ -130,6 +130,7 @@ export default function Grooveflix() {
       console.log('[GROOVEFLIX] Normalized tracks:', tracks.length);
 
       setItems(tracks);
+      setLoading(false);
       if (tracks.length > 0 && !selectedTrackId) {
         setSelectedTrackId(tracks[0].id);
       }
