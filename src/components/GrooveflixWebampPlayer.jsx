@@ -8,6 +8,7 @@ export default function GrooveflixWebampPlayer({
   onClose,
   onTrackChange,
   queue = [],
+  track = null,
   userId = null,
 }) {
   const [divRef, setDivRef] = useState(null);
@@ -40,7 +41,8 @@ export default function GrooveflixWebampPlayer({
   useEffect(() => {
     if (!isOpen || !userId) return;
 
-    const items = queue.filter((item) => item.audioPath);
+    const effectiveQueue = track ? [track] : queue;
+    const items = effectiveQueue.filter((item) => item.audioPath);
     if (items.length === 0) return;
 
     setPreparing(true);
@@ -67,7 +69,7 @@ export default function GrooveflixWebampPlayer({
     };
 
     buildTracks();
-  }, [isOpen, userId, queue]);
+  }, [isOpen, userId, track, queue]);
 
   useEffect(() => {
     if (!isOpen || !ready || !divRef || webampTracks.length === 0) return;
