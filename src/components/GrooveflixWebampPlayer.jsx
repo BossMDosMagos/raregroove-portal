@@ -31,9 +31,10 @@ export default function GrooveflixWebampPlayer({
       });
       if (error) throw error;
       if (!data?.url) throw new Error('URL não retornada');
+      console.log('[WEBAMP] Presigned URL for', filePath, ':', data.url);
       return data.url;
     } catch (e) {
-      console.error('[PRESIGN] Error:', e.message);
+      console.error('[WEBAMP] Error getting presigned URL:', e.message);
       return null;
     }
   };
@@ -51,7 +52,9 @@ export default function GrooveflixWebampPlayer({
     const buildTracks = async () => {
       const result = [];
       for (const item of items) {
-        const url = await getPresignedUrl(item.audioPath);
+        const filePath = item.previewPath || item.audioPath;
+        if (!filePath) continue;
+        const url = await getPresignedUrl(filePath);
         if (url) {
           result.push({
             url,
@@ -63,6 +66,7 @@ export default function GrooveflixWebampPlayer({
           });
         }
       }
+      console.log('[WEBAMP] Built tracks:', result);
       setWebampTracks(result);
       setPreparing(false);
       setReady(result.length > 0);
@@ -99,6 +103,7 @@ export default function GrooveflixWebampPlayer({
         playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 2, extraWidth: 0 } },
       },
     });
+    console.log('[WEBAMP] Created Webamp with tracks:', webampTracks);
 
     webamp.renderWhenReady(divRef)
       .then(() => {
