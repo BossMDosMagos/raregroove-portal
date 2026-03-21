@@ -1,58 +1,36 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, Maximize, Minimize } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import Webamp from 'webamp';
 
 export default function GrooveflixWebampPlayer({
-  track,
   isOpen,
   onClose,
   onTrackChange,
   queue = [],
-  isTrialing = false,
-  canDownload = false,
-  userId = null
+  userId = null,
 }) {
-  const containerRef = useRef(null);
-  const webampRef = useRef(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [tracks, setTracks] = useState([]);
+  const [divRef, setDivRef] = useState(null);
+  const [preparing, setPreparing] = useState(false);
+  const [webampTracks, setWebampTracks] = useState([]);
+  const [ready, setReady] = useState(false);
 
   const getPresignedUrl = async (filePath) => {
     if (!filePath) return null;
-    
     try {
-      console.log('[PRESIGN] Requesting URL for:', filePath, 'userId:', userId);
-      
       const session = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('b2-presign', {
-        body: {
-          file_path: filePath,
-          user_id: userId,
-          type: 'audio'
-        },
+        body: { file_path: filePath, user_id: userId, type: 'audio' },
         headers: {
           'Authorization': 'Bearer ' + (session?.data?.session?.access_token || ''),
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
-        }
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
       });
-
-      if (error) {
-        console.error('[PRESIGN] Error from function:', error);
-        throw error;
-      }
-
-      if (!data?.url) {
-        console.warn('[PRESIGN] No URL in response:', data);
-        throw new Error('URL não retornada');
-      }
-
-      console.log('[PRESIGN] Success - URL obtained');
+      if (error) throw error;
+      if (!data?.url) throw new Error('URL não retornada');
       return data.url;
     } catch (e) {
-      console.error('[PRESIGN] Error catch:', e);
+      console.error('[PRESIGN] Error:', e.message);
       return null;
     }
   };
@@ -60,124 +38,97 @@ export default function GrooveflixWebampPlayer({
   useEffect(() => {
     if (!isOpen || !userId) return;
 
-    const prepareTracks = async () => {
-      if (!queue || queue.length === 0) return;
+    const items = queue.filter((item) => item.audioPath);
+    if (items.length === 0) return;
 
-      const withAudio = queue.filter((item) => item.audioPath);
-      if (withAudio.length === 0) return;
+    setPreparing(true);
+    setReady(false);
 
-      const webampTracks = [];
-      for (const item of withAudio) {
+    const buildTracks = async () => {
+      const result = [];
+      for (const item of items) {
         const url = await getPresignedUrl(item.audioPath);
         if (url) {
-          webampTracks.push({
+          result.push({
             url,
-            title: item.title || 'Sem título',
-            artist: item.artist || 'Desconhecido',
-            duration: 0,
+            duration: item.duration || undefined,
             metaData: {
               artist: item.artist || 'Desconhecido',
               title: item.title || 'Sem título',
-              album: item.title,
-            }
+            },
           });
         }
       }
-      setTracks(webampTracks);
+      setWebampTracks(result);
+      setPreparing(false);
+      setReady(result.length > 0);
     };
 
-    prepareTracks();
+    buildTracks();
   }, [isOpen, userId, queue]);
 
   useEffect(() => {
-    if (!isOpen || !containerRef.current || tracks.length === 0) return;
-
+    if (!isOpen || !ready || !divRef || webampTracks.length === 0) return;
     if (!Webamp.browserIsSupported()) {
-      console.error('[WEBAMP] Browser not supported');
-      toast.error('Navegador não suportado', { description: 'Webamp requer WebGL.' });
+      toast.error('Navegador não suportado', {
+        description: 'Webamp requer suporte a WebGL.',
+        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+      });
       return;
     }
 
-    if (!document.getElementById('webamp-css')) {
-      const link = document.createElement('link');
-      link.id = 'webamp-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/webamp.css';
-      document.head.appendChild(link);
-    }
+    const webamp = new Webamp({
+      initialTracks: webampTracks,
+      zIndex: 99999,
+      windowLayout: {
+        main: { position: { top: 0, left: 0 } },
+        equalizer: { position: { top: 116, left: 0 } },
+        playlist: { position: { top: 232, left: 0 }, size: { extraHeight: 2, extraWidth: 0 } },
+      },
+    });
 
-    if (webampRef.current) {
-      webampRef.current.dispose();
-      webampRef.current = null;
-    }
-
-    setIsLoading(true);
-
-    try {
-      webampRef.current = new Webamp({
-        initialTracks: tracks,
-        initialSkin: {
-          url: 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/skins/base-2.91.wsz'
-        }
-      });
-
-      webampRef.current.renderWhenReady(containerRef.current)
-        .then(() => {
-          console.log('[WEBAMP] Rendered successfully');
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error('[WEBAMP] Render error:', err);
-          toast.error('Erro ao renderizar player', {
-            description: err.message,
-            style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
-          });
-          setIsLoading(false);
+    webamp.renderWhenReady(divRef)
+      .then(() => {
+        console.log('[WEBAMP] Renderizado com sucesso');
+      })
+      .catch((err) => {
+        console.error('[WEBAMP] Erro ao renderizar:', err);
+        toast.error('Erro no player', {
+          description: err.message,
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
         });
-
-      webampRef.current.onTrackChange((newTrack) => {
-        if (newTrack?.metaData) {
-          const trackTitle = newTrack.metaData.title || newTrack.metaData.artist;
-          const queueItem = queue.find((q) => q.title === trackTitle);
-          if (queueItem) {
-            onTrackChange?.(queueItem.id);
-          }
-        }
       });
 
-    } catch (e) {
-      console.error('[WEBAMP] Init error:', e);
-      toast.error('Erro ao inicializar player', {
-        description: e.message,
-        style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' }
-      });
-      setIsLoading(false);
-    }
-  }, [isOpen, tracks, queue, onTrackChange]);
+    const unsubClose = webamp.onClose(() => {
+      onClose?.();
+    });
 
-  useEffect(() => {
+    const unsubTrack = webamp.onTrackDidChange((track) => {
+      if (!track?.metaData) return;
+      const match = queue.find((q) => q.title === track.metaData.title);
+      if (match) onTrackChange?.(match.id);
+    });
+
     return () => {
-      if (webampRef.current) {
-        try {
-          webampRef.current.dispose();
-        } catch {
-          // silent
-        }
-        webampRef.current = null;
-      }
+      unsubClose?.();
+      unsubTrack?.();
+      try { webamp.dispose(); } catch { /* silent */ }
     };
-  }, []);
+  }, [isOpen, ready, divRef, webampTracks]);
 
   if (!isOpen) return null;
 
   if (!userId) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
-        <div className="relative bg-charcoal-deep border border-fuchsia-500/20 rounded-2xl p-6 text-center space-y-3 max-w-sm mx-4">
+      <div className="fixed inset-0 z-[99998] flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-xl" onClick={onClose} />
+        <div className="relative bg-black border border-fuchsia-500/30 rounded-2xl p-6 text-center space-y-3 max-w-sm mx-4">
           <p className="text-white font-bold">Faça login para ouvir</p>
-          <p className="text-white/50 text-sm">É necessário estar autenticado para acessar o streaming.</p>
-          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 text-xs font-black uppercase tracking-wider hover:bg-fuchsia-500/30 transition">
+          <p className="text-white/50 text-sm">Autenticação necessária para acessar o streaming.</p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-fuchsia-200 text-xs font-black uppercase tracking-wider hover:bg-fuchsia-500/30 transition"
+          >
             Fechar
           </button>
         </div>
@@ -186,72 +137,29 @@ export default function GrooveflixWebampPlayer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
-
-      <div className={`relative flex flex-col transition-all duration-300 ${
-        isExpanded
-          ? 'fixed inset-0 bg-gradient-to-br from-black via-charcoal-deep to-black'
-          : 'fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border border-fuchsia-500/20 rounded-t-2xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep'
-      }`}>
-        
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-black uppercase tracking-widest text-fuchsia-300">
-              GROOVEFLIX PLAYER
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition"
-            >
-              {isExpanded ? (
-                <Minimize className="w-4 h-4" />
-              ) : (
-                <Maximize className="w-4 h-4" />
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+    <div
+      ref={setDivRef}
+      style={{
+        position: 'fixed',
+        bottom: 40,
+        right: 40,
+        width: 0,
+        height: 0,
+        zIndex: 99998,
+        pointerEvents: 'none',
+      }}
+    >
+      {preparing && (
+        <div
+          style={{ pointerEvents: 'auto' }}
+          className="fixed bottom-10 right-10 flex items-center gap-3 bg-black/90 border border-fuchsia-500/30 rounded-2xl px-5 py-3 shadow-2xl shadow-fuchsia-500/10"
+        >
+          <div className="w-5 h-5 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
+          <span className="text-fuchsia-300 text-xs font-black uppercase tracking-widest">
+            Preparando streaming...
+          </span>
         </div>
-
-        <div className={`relative flex-1 flex items-center justify-center overflow-hidden ${isExpanded ? 'p-8' : 'p-4'}`}>
-          {isLoading || tracks.length === 0 ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
-              <p className="text-white/60 text-sm">
-                {tracks.length === 0 ? 'Obtendo URLs de streaming...' : 'Carregando player...'}
-              </p>
-            </div>
-          ) : (
-            <div
-              ref={containerRef}
-              className="w-full h-full flex items-center justify-center bg-black/50 rounded-xl border border-white/10"
-              style={{
-                minHeight: isExpanded ? '400px' : '200px'
-              }}
-            />
-          )}
-        </div>
-
-        {track && (
-          <div className="border-t border-white/10 p-4 bg-black/40 backdrop-blur-sm">
-            <div className="space-y-2">
-              <p className="text-sm font-bold text-white truncate">{track.title}</p>
-              <p className="text-xs text-white/60 truncate">{track.artist}</p>
-              {isTrialing && (
-                <p className="text-[10px] text-yellow-400/70">Trial ativo - qualidade limitada</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
