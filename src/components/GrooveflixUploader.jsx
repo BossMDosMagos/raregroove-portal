@@ -333,7 +333,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         console.log('[UPLOAD] Item criado com ID:', itemId);
       }
 
-      const grooveflixData = item.metadata?.grooveflix || {};
+      const grooveflixData = (item?.metadata?.grooveflix) || (itemData.metadata?.grooveflix) || {};
 
       if (files.cover) {
         setUploadProgress(p => ({ ...p, cover: 'uploading' }));
