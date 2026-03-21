@@ -90,6 +90,9 @@ export function GlobalAudioPlayer() {
 
     const webamp = new Webamp({
       initialTracks: webampTracks,
+      initialSkin: {
+        url: skinToUse,
+      },
       zIndex: 99999,
     });
 
@@ -101,13 +104,6 @@ export function GlobalAudioPlayer() {
       .then(() => {
         console.log('[GLOBAL PLAYER] Webamp rendered successfully');
         setIsWebampRendered(true);
-
-        if (skinToUse !== LOCAL_SKINS[0].url && webamp.setSkinFromUrl) {
-          console.log('[GLOBAL PLAYER] Applying skin:', skinToUse);
-          webamp.setSkinFromUrl(skinToUse).catch(err => {
-            console.error('[GLOBAL PLAYER] Error applying skin:', err);
-          });
-        }
 
         if (queue.length > 1) {
           console.log('[GLOBAL PLAYER] Showing playlist for', queue.length, 'tracks');

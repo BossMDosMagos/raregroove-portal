@@ -1,38 +1,25 @@
 // Skins locais do Webamp - RareGroove HI-FI
-// Adicione arquivos .wsz na pasta /public/assets/webamp/skins/
+// Skins reais do Internet Archive com CORS
+// ws://skin-museum-og-captbaritone-webamp.vercel.app/api/og
 
 export const LOCAL_SKINS = [
   {
-    id: 'classic',
-    name: 'Classic Hi-Fi',
-    description: 'Winamp Classic Original',
-    url: '/assets/webamp/skins/classic.wsz',
-    preview: null,
+    id: 'classic_green',
+    name: 'Classic Green',
+    description: 'O Winamp clássico verde original',
+    url: '/assets/webamp/skins/classic_green.wsz',
+    preview: 'https://archive.org/cors/winampskin_Classic_Green_1/00_coverscreenshot.png',
   },
   {
-    id: 'dark',
-    name: 'Dark Groove',
-    description: 'Tema escuro RareGroove',
-    url: '/assets/webamp/skins/dark.wsz',
-    preview: null,
-  },
-  {
-    id: 'pioneer',
-    name: 'Pioneer CDJ',
-    description: 'Visual de CDJ Profissional',
-    url: '/assets/webamp/skins/pioneer.wsz',
-    preview: null,
-  },
-  {
-    id: 'technics',
-    name: 'Technics 1200',
-    description: 'Toca-discos clássico',
-    url: '/assets/webamp/skins/technics.wsz',
+    id: 'green_amp',
+    name: 'Green Amp',
+    description: 'Design moderno estilo amplificador',
+    url: '/assets/webamp/skins/green_amp.wsz',
     preview: null,
   },
 ];
 
-export const DEFAULT_SKIN_ID = 'classic';
+export const DEFAULT_SKIN_ID = 'classic_green';
 
 export function getSkinById(id) {
   return LOCAL_SKINS.find(skin => skin.id === id) || LOCAL_SKINS[0];

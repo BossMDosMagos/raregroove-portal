@@ -778,4 +778,48 @@ Botões:
 
 ---
 
-*Última atualização: 2026-03-22 16:40 UTC-3*
+## Correções Rodada 5 (2026-03-21) - Skins Reais
+
+### Problema: Arquivos .wsz corrompidos/placeholders
+
+Todos os skins no diretório `/public/assets/webamp/skins/` eram placeholders inválidos.
+
+### Solução: Download de skins reais
+
+1. **Fontes confiáveis:**
+   - Internet Archive (archive.org) - Skins Winamp com CORS
+   - Formato URL: `https://archive.org/cors/{identifier}/{filename}.wsz`
+
+2. **Skins baixados:**
+   ```
+   classic_green.wsz - 16,036 bytes (Winamp Classic Green original)
+   green_amp.wsz    - 73,848 bytes (Green Amp moderno)
+   ```
+
+3. **Atualizações no código:**
+   - `src/utils/webampSkins.js` - Atualizado com skins reais
+   - `src/components/GlobalAudioPlayer.jsx` - Adicionado `initialSkin` no construtor
+
+### Código - initialSkin no Webamp:
+
+```javascript
+const webamp = new Webamp({
+  initialTracks: webampTracks,
+  initialSkin: {
+    url: skinToUse,
+  },
+  zIndex: 99999,
+});
+```
+
+### Commit:
+```bash
+git add public/assets/webamp/skins/
+git add src/utils/webampSkins.js
+git add src/components/GlobalAudioPlayer.jsx
+git commit -m "feat: Download real Winamp skins from Internet Archive"
+```
+
+---
+
+*Última atualização: 2026-03-21 14:00 UTC-3*
