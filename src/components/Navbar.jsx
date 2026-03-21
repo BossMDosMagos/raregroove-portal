@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Search, ShoppingCart, LogOut, User, Settings, Wallet, Home, Bell } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, LogOut, User, Settings, Wallet, Home, Bell, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
@@ -326,6 +326,20 @@ export default function Navbar() {
                       <Settings size={16} />
                       <span className="text-sm">Configurações</span>
                     </Link>
+
+                    <button
+                      onClick={() => {
+                        setLocale(locale === 'pt-BR' ? 'en-US' : 'pt-BR');
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Globe size={16} />
+                      <span className="text-sm">{t('nav.dropdown.language')}</span>
+                      <span className="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">
+                        {locale === 'pt-BR' ? 'PT' : 'EN'}
+                      </span>
+                    </button>
                   </div>
 
                   <div className="border-t border-white/10 py-2">
