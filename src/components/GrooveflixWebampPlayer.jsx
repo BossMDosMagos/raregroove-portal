@@ -79,6 +79,15 @@ export default function GrooveflixWebampPlayer({
       return;
     }
 
+    // Inject Webamp CSS
+    if (!document.getElementById('webamp-css')) {
+      const link = document.createElement('link');
+      link.id = 'webamp-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/webamp@2.2.0/build/webamp.css';
+      document.head.appendChild(link);
+    }
+
     const webamp = new Webamp({
       initialTracks: webampTracks,
       zIndex: 99999,
@@ -145,15 +154,13 @@ export default function GrooveflixWebampPlayer({
         position: 'fixed',
         bottom: 40,
         right: 40,
-        width: 0,
-        height: 0,
+        width: 470,
+        height: 350,
         zIndex: 99998,
-        pointerEvents: 'none',
       }}
     >
       {preparing && (
         <div
-          style={{ pointerEvents: 'auto' }}
           className="fixed bottom-10 right-10 flex items-center gap-3 bg-black/90 border border-fuchsia-500/30 rounded-2xl px-5 py-3 shadow-2xl shadow-fuchsia-500/10"
         >
           <div className="w-5 h-5 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
