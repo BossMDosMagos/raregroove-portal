@@ -124,9 +124,6 @@ serve(async (req) => {
     const pathParts = filePath.split('/');
     const prefix = pathParts.slice(0, Math.min(3, pathParts.length)).join('/') + '/';
 
-    // Compensar diferença de relógio: URL válida a partir de 5 minutos no passado
-    const validFromTimestamp = Math.floor(Date.now() / 1000) - 300;
-
     const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
       method: 'POST',
       headers: {
@@ -136,8 +133,7 @@ serve(async (req) => {
       body: JSON.stringify({
         bucketId: B2_BUCKET_ID,
         fileNamePrefix: prefix,
-        validDurationInSeconds: 7200,
-        validFromTimestamp: validFromTimestamp
+        validDurationInSeconds: 7200
       })
     });
 
@@ -145,13 +141,20 @@ serve(async (req) => {
     let url: string;
 
     if (!downloadAuthRes.ok) {
-      console.log('[B2-PRESIGN] Download auth failed, using native B2 URL');
-      url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}`;
-    } else {
-      const downloadAuth = await downloadAuthRes.json();
-      // Usar API nativa B2 com token
-      url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+      const errBody = await downloadAuthRes.json();
+      console.error('[B2-PRESIGN] Download auth failed:', errBody);
+      return new Response(JSON.stringify({ error: 'Download auth failed', details: errBody }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+    
+    const downloadAuth = await downloadAuthRes.json();
+    console.log('[B2-PRESIGN] Got download auth token:', downloadAuth.authorizationToken?.substring(0, 20) + '...');
+    
+    // Usar API nativa B2 com token de autorização
+    url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+    console.log('[B2-PRESIGN] Generated URL:', url.substring(0, 80) + '...');
 
     console.log('[B2-PRESIGN] Returning URL for:', filePath);
 
