@@ -145,11 +145,12 @@ serve(async (req) => {
     let url: string;
 
     if (!downloadAuthRes.ok) {
-      console.log('[B2-PRESIGN] Download auth failed, using public URL');
-      url = `https://s3.us-east-005.backblazeb2.com/${bucketName}/${filePath}`;
+      console.log('[B2-PRESIGN] Download auth failed, using native B2 URL');
+      url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}`;
     } else {
       const downloadAuth = await downloadAuthRes.json();
-      url = `https://s3.us-east-005.backblazeb2.com/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+      // Usar API nativa B2 com token
+      url = `https://f005.backblazeb2.com/file/${bucketName}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
     }
 
     console.log('[B2-PRESIGN] Returning URL for:', filePath);
