@@ -1,6 +1,3 @@
-# Supabase Edge Function para streaming de áudio via Backblaze B2
-# Admin bypass para streaming
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -57,42 +54,45 @@ serve(async (req) => {
     const filePath = String(body?.file_path || body?.path || '').trim().replace(/^\/+/, '');
     const userId = String(body?.userId || body?.user_id || '').trim();
     const fileType = String(body?.type || 'audio');
-    const authHeader = req.headers.get('Authorization') || '';
     
-    console.log('[B2-PRESIGN] Request:', { filePath, userId, fileType, hasAuth: !!authHeader });
-    
+    console.log('[B2-PRESIGN] Request:', { filePath, userId, fileType });
+
     if (!filePath) {
-      return new Response(JSON.stringify({ error: 'missing_file_path' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'missing_file_path' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
+
     const isCover = fileType === 'cover';
-    
-    if (isCover) {
-      console.log('[B2-PRESIGN] Cover request - bypassing auth check');
-    } else if (!userId) {
-      return new Response(JSON.stringify({ error: 'missing_userId' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    } else {
+
+    if (!isCover) {
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'missing_userId' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const access = await checkAccess(userId);
       console.log('[B2-PRESIGN] Access check result:', access);
+
       if (!access.allowed) {
-        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida', userId }), { 
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        return new Response(JSON.stringify({ error: 'Assinatura ativa requerida', userId }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     }
 
     if (!B2_KEY_ID || !B2_APPLICATION_KEY) {
       console.error('[B2-PRESIGN] B2 credentials not configured');
-      return new Response(JSON.stringify({ error: 'B2 não configurado' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'B2 nao configurado' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // B2 Authorization
     const encoded = btoa(B2_KEY_ID + ':' + B2_APPLICATION_KEY);
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       method: 'POST',
@@ -101,21 +101,24 @@ serve(async (req) => {
     });
 
     if (!authRes.ok) {
-      return new Response(JSON.stringify({ error: 'B2 auth failed' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('[B2-PRESIGN] B2 auth failed:', authRes.status);
+      return new Response(JSON.stringify({ error: 'B2 auth failed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const authData = await authRes.json();
+    console.log('[B2-PRESIGN] B2 auth success, bucket:', B2_BUCKET_NAME);
 
-    // Get download authorization
     const pathParts = filePath.split('/');
-    const prefix = pathParts.slice(0, -1).join('/') + '/';
-    const downloadAuthRes = await fetch(${authData.apiUrl}/b2api/v4/b2_get_download_authorization, {
+    const prefix = pathParts.slice(0, Math.min(3, pathParts.length)).join('/') + '/';
+
+    const downloadAuthRes = await fetch(`${authData.apiUrl}/b2api/v4/b2_get_download_authorization`, {
       method: 'POST',
-      headers: { 
-        'Authorization': authData.authorizationToken, 
-        'Content-Type': 'application/json' 
+      headers: {
+        'Authorization': authData.authorizationToken,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         bucketId: B2_BUCKET_ID,
@@ -124,15 +127,17 @@ serve(async (req) => {
       })
     });
 
+    let url: string;
+
     if (!downloadAuthRes.ok) {
-      console.log('[B2-PRESIGN] Download auth failed');
-      return new Response(JSON.stringify({ error: 'Download auth failed' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('[B2-PRESIGN] Download auth failed, using public URL');
+      url = `${B2_DOWNLOAD_URL}/file/${B2_BUCKET_NAME}/${filePath}`;
+    } else {
+      const downloadAuth = await downloadAuthRes.json();
+      url = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
     }
 
-    const downloadAuth = await downloadAuthRes.json();
-    const url = ${B2_DOWNLOAD_URL}/file//?Authorization=;
+    console.log('[B2-PRESIGN] Returning URL for:', filePath);
 
     return new Response(
       JSON.stringify({ url, expiresIn: 7200 }),
@@ -140,9 +145,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    console.error('[B2-PRESIGN] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Erro interno' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 })
