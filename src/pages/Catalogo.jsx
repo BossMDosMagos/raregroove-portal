@@ -178,21 +178,16 @@ export default function Catalogo() {
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gold-premium/70 ml-1">
                   <Music size={12} /> {t('catalog.filters.genre')}
                 </label>
-                <div className="relative">
-                  <select
-                    value={filters.genre}
-                    onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
-                    className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 pr-10 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 appearance-none cursor-pointer"
-                  >
-                    <option value="" className="bg-charcoal-deep">{t('catalog.filters.allGenres')}</option>
-                    {uniqueGenres.map(genre => (
-                      <option key={genre} value={genre} className="bg-charcoal-deep">{genre}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none mt-3">
-                    <ChevronDown size={14} className="text-gold-premium/50" />
-                  </div>
-                </div>
+                <select
+                  value={filters.genre}
+                  onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
+                  className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 cursor-pointer"
+                >
+                  <option value="" className="bg-charcoal-deep">{t('catalog.filters.allGenres')}</option>
+                  {uniqueGenres.map(genre => (
+                    <option key={genre} value={genre} className="bg-charcoal-deep">{genre}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="group space-y-2">
@@ -200,19 +195,15 @@ export default function Catalogo() {
                   <Calendar size={12} /> {t('catalog.filters.year')}
                 </label>
                 <div className="relative">
-                  <select
+                  <input
+                    type="number"
+                    placeholder={t('catalog.filters.yearPlaceholder')}
                     value={filters.year}
                     onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-                    className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 pr-10 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 appearance-none cursor-pointer"
-                  >
-                    <option value="" className="bg-charcoal-deep">{t('catalog.filters.allYears')}</option>
-                    {uniqueYears.map(year => (
-                      <option key={year} value={year} className="bg-charcoal-deep">{year}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none mt-3">
-                    <ChevronDown size={14} className="text-gold-premium/50" />
-                  </div>
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    className="w-full bg-charcoal-deep/60 border border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-gold-premium/50 focus:ring-2 focus:ring-gold-premium/10 transition-all duration-300 placeholder:text-white/20"
+                  />
                 </div>
               </div>
 
