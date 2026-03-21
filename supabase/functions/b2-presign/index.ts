@@ -145,10 +145,10 @@ serve(async (req) => {
 
     if (!downloadAuthRes.ok) {
       console.log('[B2-PRESIGN] Download auth failed, using public URL');
-      url = `https://s3.us-east-005.backblazeb2.com/${B2_BUCKET_NAME}/${filePath}`;
+      url = `https://${B2_BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${filePath}`;
     } else {
       const downloadAuth = await downloadAuthRes.json();
-      url = `https://s3.us-east-005.backblazeb2.com/${B2_BUCKET_NAME}/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
+      url = `https://${B2_BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${filePath}?Authorization=${downloadAuth.authorizationToken}`;
     }
 
     console.log('[B2-PRESIGN] Returning URL for:', filePath);
