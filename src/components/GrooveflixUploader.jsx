@@ -1063,7 +1063,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
               onRemoveTrack={handleRemoveTrack}
             />
           ) : activeTab === 'discogs' && isAdmin ? (
-            <DiscogsImporter onClose={() => setActiveTab('super-card')} />
+            <DiscogsImporter />
           ) : (
           <>
           <div className="grid grid-cols-4 gap-3">

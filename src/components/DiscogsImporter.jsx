@@ -147,8 +147,6 @@ export function DiscogsImporter({ onClose }) {
     toast.success(t('grooveflix.discogs.importSuccess'), {
       description: `${albumTitle} - ${artistName}`,
     });
-
-    onClose?.();
   };
 
   return (
