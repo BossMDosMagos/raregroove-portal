@@ -118,11 +118,15 @@ export function DiscogsImporter({ onClose }) {
     const artistName = fullDetails.artists_sort || fullDetails.artists?.[0]?.name || selected.title.split(' - ')[0] || 'Unknown';
     const albumTitle = fullDetails.title || selected.title;
     
+    console.log('[DISCOGS IMPORT] fullDetails.images:', fullDetails.images);
+    
     const coverUrl = fullDetails.images?.[0]?.uri || 
                       fullDetails.images?.[0]?.uri150 || 
                       selected.thumb || 
                       fullDetails.thumb ||
                       null;
+    
+    console.log('[DISCOGS IMPORT] coverUrl:', coverUrl);
     
     const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
     const labels = fullDetails.labels?.map(l => l.name).filter(Boolean).join(', ');
