@@ -2,36 +2,37 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
+  console.log('[Discogs] Request received:', req.method)
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204,
-      headers: corsHeaders 
-    })
+    console.log('[Discogs] Handling CORS preflight')
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const discogsToken = Deno.env.get('DISCOGS_PERSONAL_ACCESS_TOKEN')
 
     if (!discogsToken) {
-      console.error('[Discogs] Missing DISCOGS_PERSONAL_ACCESS_TOKEN')
-      return new Response(JSON.stringify({ data: null, error: 'Discogs token not configured' }), {
+      console.error('[Discogs] Missing token')
+      return new Response(JSON.stringify({ error: 'Discogs token not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const { query, type = 'search', releaseId, limit = 20 } = await req.json()
+    const body = await req.json()
+    const { query, type = 'search', releaseId, limit = 20 } = body
 
     const baseUrl = 'https://api.discogs.com'
     const userAgent = 'RareGroovePortal/1.0 (+https://portalraregroove.com)'
 
     let url = ''
-    let data = null
 
     if (type === 'search') {
       const params = new URLSearchParams({
@@ -48,7 +49,7 @@ serve(async (req) => {
     } else if (type === 'artist' && releaseId) {
       url = `${baseUrl}/artists/${releaseId}`
     } else {
-      return new Response(JSON.stringify({ data: null, error: 'Invalid request type' }), {
+      return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -66,20 +67,19 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Discogs] API error: ${response.status}`, errorText)
-      return new Response(JSON.stringify({ data: null, error: `Discogs API error: ${response.status}` }), {
+      console.error(`[Discogs] Discogs API error: ${response.status}`, errorText)
+      return new Response(JSON.stringify({ error: `Discogs error: ${response.status}` }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    data = await response.json()
+    const data = await response.json()
+    const results = type === 'search' ? (data.results || []) : data
 
-    if (type === 'search') {
-      data = data.results || []
-    }
+    console.log(`[Discogs] Success: found ${Array.isArray(results) ? results.length : 1} items`)
 
-    return new Response(JSON.stringify({ data, error: null }), {
+    return new Response(JSON.stringify({ data: results, error: null }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
