@@ -2,33 +2,41 @@ import { supabase } from '../lib/supabase';
 
 const DISCOGS_EDGE_FUNCTION = 'discogs-search';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
+
+async function callEdgeFunction(body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/${DISCOGS_EDGE_FUNCTION}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Edge Function error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(data.error);
+  }
+  return data;
+}
+
 export const discogsService = {
   async searchReleases(query, options = {}) {
     try {
       const limit = options.limit || 20;
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        console.error('[DISCOGS] No access token');
-        return { data: [], error: 'Not authenticated' };
-      }
-
-      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
-        body: { query, type: 'search', limit },
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.error) {
-        console.error('[DISCOGS] Edge function error:', response.error);
-        return { data: [], error: response.error };
-      }
-
-      const results = response.data?.data || [];
-      return { data: results, error: null };
+      const data = await callEdgeFunction({ query, type: 'search', limit });
+      return { data: data.data || [], error: null };
     } catch (error) {
       console.error('[DISCOGS] Search error:', error);
       return { data: [], error };
@@ -37,26 +45,8 @@ export const discogsService = {
 
   async getRelease(releaseId) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        return { data: null, error: 'Not authenticated' };
-      }
-
-      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
-        body: { type: 'release', releaseId },
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.error) {
-        console.error('[DISCOGS] Edge function error:', response.error);
-        return { data: null, error: response.error };
-      }
-
-      return { data: response.data?.data, error: null };
+      const data = await callEdgeFunction({ type: 'release', releaseId });
+      return { data: data.data, error: null };
     } catch (error) {
       console.error('[DISCOGS] Get release error:', error);
       return { data: null, error };
@@ -65,25 +55,8 @@ export const discogsService = {
 
   async getMasterRelease(masterId) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        return { data: null, error: 'Not authenticated' };
-      }
-
-      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
-        body: { type: 'master', masterId },
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.error) {
-        return { data: null, error: response.error };
-      }
-
-      return { data: response.data?.data, error: null };
+      const data = await callEdgeFunction({ type: 'master', releaseId: masterId });
+      return { data: data.data, error: null };
     } catch (error) {
       console.error('[DISCOGS] Get master error:', error);
       return { data: null, error };
@@ -92,25 +65,8 @@ export const discogsService = {
 
   async getArtist(artistId) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        return { data: null, error: 'Not authenticated' };
-      }
-
-      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
-        body: { type: 'artist', artistId },
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.error) {
-        return { data: null, error: response.error };
-      }
-
-      return { data: response.data?.data, error: null };
+      const data = await callEdgeFunction({ type: 'artist', releaseId: artistId });
+      return { data: data.data, error: null };
     } catch (error) {
       console.error('[DISCOGS] Get artist error:', error);
       return { data: null, error };
