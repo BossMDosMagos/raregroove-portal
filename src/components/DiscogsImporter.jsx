@@ -1,7 +1,62 @@
 import { useState } from 'react';
-import { Search, Import, Check, ExternalLink, Music, Disc, Loader2 } from 'lucide-react';
-import { discogsService } from '../utils/discogsService';
+import { Search, Check, Disc, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
+
+async function searchDiscogs(query, limit = 20) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ query, type: 'search', limit }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Erro ${response.status}: ${errorData}`);
+  }
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(data.error);
+  }
+  return data.data;
+}
+
+async function getReleaseDetails(releaseId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ type: 'release', releaseId }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Erro ${response.status}: ${errorData}`);
+  }
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(data.error);
+  }
+  return data.data;
+}
 
 export function DiscogsImporter({ onSelectData, onClose }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,24 +73,19 @@ export function DiscogsImporter({ onSelectData, onClose }) {
     setSelected(null);
     setResults([]);
 
-    console.log('[DISCOGS] Searching for:', searchQuery);
-
-    const { data, error } = await discogsService.searchReleases(searchQuery, { limit: 20 });
-
-    if (error) {
-      console.error('[DISCOGS] Search error:', error);
-      toast.error('Erro na busca do Discogs', {
-        description: error.message || 'Verifique se o token está configurado',
-      });
-      setResults([]);
-    } else {
+    try {
+      const data = await searchDiscogs(searchQuery, 20);
       console.log('[DISCOGS] Found:', data?.length || 0, 'results');
       setResults(data || []);
       if (!data || data.length === 0) {
-        toast.info('Nenhum resultado encontrado', {
-          description: 'Tente outro termo de busca',
-        });
+        toast.info('Nenhum resultado encontrado');
       }
+    } catch (error) {
+      console.error('[DISCOGS] Search error:', error);
+      toast.error('Erro na busca do Discogs', {
+        description: error.message,
+      });
+      setResults([]);
     }
 
     setLoading(false);
@@ -45,8 +95,9 @@ export function DiscogsImporter({ onSelectData, onClose }) {
     setSelected(release);
     
     setFetchingDetails(true);
-    const { data: fullRelease, error } = await discogsService.getRelease(release.id);
-    setFetchingDetails(false);
+    try {
+      const fullRelease = await getReleaseDetails(release.id);
+      setFetchingDetails(false);
 
     if (error) {
       console.error('[DISCOGS] Error fetching release details:', error);
