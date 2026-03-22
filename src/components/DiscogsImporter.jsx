@@ -118,8 +118,8 @@ export function DiscogsImporter({ onClose }) {
     const artistName = fullDetails.artists_sort || fullDetails.artists?.[0]?.name || selected.title.split(' - ')[0] || 'Unknown';
     const albumTitle = fullDetails.title || selected.title;
     
-    const coverUrl = fullDetails.images?.[0]?.uri150 || 
-                      fullDetails.images?.[0]?.uri || 
+    const coverUrl = fullDetails.images?.[0]?.uri || 
+                      fullDetails.images?.[0]?.uri150 || 
                       selected.thumb || 
                       fullDetails.thumb ||
                       null;
@@ -133,15 +133,13 @@ export function DiscogsImporter({ onClose }) {
       duration: t.duration,
     })) || [];
 
-    console.log('[DISCOGS] Importing - coverUrl:', coverUrl);
-
     importFromDiscogs({
       title: albumTitle,
       artist: artistName,
       genre: genres.join(', '),
       year: fullDetails.year || selected.year || '',
       coverUrl: coverUrl,
-      coverUrlThumbnail: coverUrl,
+      coverUrlThumbnail: fullDetails.images?.[0]?.uri150 || fullDetails.images?.[0]?.uri || coverUrl,
       discogsId: selected.id,
       discogsMasterId: fullDetails.master_id,
       country: fullDetails.country,
