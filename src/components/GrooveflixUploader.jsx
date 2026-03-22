@@ -23,6 +23,10 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const isUploading = progress === 'uploading';
+  const isDone = progress === 'done';
+  const isError = progress === 'error';
+
   return (
     <div
       className={`relative border-2 border-dashed rounded-2xl p-5 transition-all duration-300 ${
@@ -61,10 +65,11 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
         onChange={onChange}
         {...(isFolder ? { webkitdirectory: '', directory: '' } : {})}
         multiple={isFolder}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        disabled={isUploading}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
       />
       
-      {progress === 'uploading' ? (
+      {isUploading ? (
         <div className="flex items-center justify-center gap-3 py-4">
           <div className="relative">
             <Loader2 className="animate-spin w-8 h-8 text-fuchsia-400" />
@@ -75,7 +80,7 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
             <p className="text-white/40 text-xs">Aguarde enquanto processamos seu arquivo</p>
           </div>
         </div>
-      ) : progress === 'done' ? (
+      ) : isDone ? (
         <div className="flex items-center justify-center gap-3 py-4">
           <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
             <CheckCircle className="w-6 h-6 text-emerald-400" />
@@ -85,7 +90,7 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
             <p className="text-white/40 text-xs">Arquivo disponível no Grooveflix</p>
           </div>
         </div>
-      ) : progress === 'error' ? (
+      ) : isError ? (
         <div className="flex items-center justify-center gap-3 py-4">
           <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center">
             <X className="w-6 h-6 text-red-400" />
@@ -125,6 +130,182 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function UploadFileItem({ file, index, status, onRemove }) {
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const getStatusIcon = () => {
+    switch (status) {
+      case 'uploading':
+        return <Loader2 className="w-4 h-4 text-fuchsia-400 animate-spin" />;
+      case 'done':
+        return <CheckCircle className="w-4 h-4 text-emerald-400" />;
+      case 'error':
+        return <X className="w-4 h-4 text-red-400" />;
+      default:
+        return <FileAudio className="w-4 h-4 text-white/40" />;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'uploading':
+        return 'text-fuchsia-300';
+      case 'done':
+        return 'text-emerald-300';
+      case 'error':
+        return 'text-red-300';
+      default:
+        return 'text-white/50';
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-xl border border-white/5">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+        status === 'done' ? 'bg-emerald-500/20' :
+        status === 'error' ? 'bg-red-500/20' :
+        status === 'uploading' ? 'bg-fuchsia-500/20' :
+        'bg-white/5'
+      }`}>
+        {getStatusIcon()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm truncate ${getStatusColor()}`} title={file.name}>
+          {index + 1}. {file.name}
+        </p>
+        <p className="text-white/30 text-xs">{formatSize(file.size)}</p>
+      </div>
+      {!status && (
+        <button
+          onClick={onRemove}
+          className="w-6 h-6 rounded hover:bg-white/10 flex items-center justify-center text-white/30 hover:text-white transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FolderUploadZone({ files, onChange, onUpload }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
+
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const audioFiles = files ? Array.from(files).filter(f => 
+    f.type.startsWith('audio/') || f.name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)
+  ) : [];
+
+  const handleRemoveFile = (indexToRemove) => {
+    const newFiles = Array.from(files).filter((_, i) => i !== indexToRemove);
+    const dt = new DataTransfer();
+    newFiles.forEach(f => dt.items.add(f));
+    onChange({ target: dt });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`relative border-2 border-dashed rounded-2xl p-6 transition-all duration-300 ${
+          dragOver
+            ? 'border-fuchsia-500 bg-fuchsia-500/10 scale-[1.02]'
+            : files && audioFiles.length > 0
+            ? 'border-fuchsia-500/50 bg-fuchsia-500/5'
+            : 'border-white/10 hover:border-white/20 bg-white/5'
+        }`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const dt = new DataTransfer();
+          const items = e.dataTransfer.items;
+          if (items) {
+            for (let i = 0; i < items.length; i++) {
+              const item = items[i];
+              if (item.kind === 'file') {
+                const f = item.getAsFile();
+                if (f) dt.files.push(f);
+              }
+            }
+          }
+          onChange({ target: dt });
+        }}
+      >
+        <input
+          type="file"
+          accept="audio/*,.mp3,.flac,.wav,.ogg,.m4a,.aac"
+          onChange={onChange}
+          webkitdirectory=""
+          directory=""
+          multiple
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+        
+        {audioFiles.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 flex items-center justify-center">
+                  <FolderOpen className="w-6 h-6 text-fuchsia-400" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">{audioFiles.length} músicas selecionadas</p>
+                  <p className="text-white/40 text-xs">
+                    {formatSize(audioFiles.reduce((acc, f) => acc + f.size, 0))} total
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); onChange({ target: { files: [] } }); }}
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+              {audioFiles.slice(0, 20).map((file, index) => (
+                <UploadFileItem
+                  key={`${file.name}-${index}`}
+                  file={file}
+                  index={index}
+                  status={uploadProgress[index]}
+                  onRemove={() => handleRemoveFile(index)}
+                />
+              ))}
+              {audioFiles.length > 20 && (
+                <p className="text-white/30 text-xs text-center py-2">
+                  ... e mais {audioFiles.length - 20} arquivos
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <FolderOpen className="w-7 h-7 text-white/30 group-hover:text-fuchsia-400 transition-colors" />
+            </div>
+            <div className="text-center">
+              <p className="text-white/60 font-medium">Selecione uma pasta com músicas</p>
+              <p className="text-white/30 text-xs mt-1">MP3, FLAC, WAV, OGG, M4A, AAC</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -443,7 +624,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
       if (updateError) throw updateError;
       
-      toast.success(item?.id ? 'CD atualizado com sucesso!' : 'CD adicionado ao Grooveflix!');
+      toast.success(item?.id ? t('grooveflix.upload.updated') : t('grooveflix.upload.success'));
 
       onSuccess?.();
       onClose();
@@ -619,15 +800,9 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             {category === 'album' || category === 'coletanea' ? (
               <div>
                 <label className="block text-xs text-white/60 mb-2">Pasta com Músicas *</label>
-                <FileUploadZone
-                  file={files.folder}
-                  isFolder
-                  fileCount={files.folder?.length || 0}
+                <FolderUploadZone
+                  files={files.folder}
                   onChange={(e) => handleFileSelect('folder', e)}
-                  icon={FolderOpen}
-                  progress={uploadProgress.folder_0}
-                  accept=""
-                  placeholder="Selecione a pasta com todas as músicas"
                 />
               </div>
             ) : category === 'single' ? (
@@ -706,24 +881,25 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         <div className="relative p-6 border-t border-white/10 flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 py-4 rounded-2xl border border-white/10 text-white/60 font-black uppercase tracking-widest text-xs hover:bg-white/5 hover:text-white transition"
+            disabled={uploading}
+            className="flex-1 py-4 rounded-2xl border border-white/10 text-white/60 font-black uppercase tracking-widest text-xs hover:bg-white/5 hover:text-white transition disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-fuchsia-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-fuchsia-500/20 transition disabled:opacity-70 flex items-center justify-center gap-2"
           >
             {uploading ? (
               <>
                 <Loader2 className="animate-spin w-4 h-4" />
-                Enviando...
+                Processando arquivos...
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
-                Adicionar ao Grooveflix
+                {t('grooveflix.upload.submit') || 'Adicionar ao Grooveflix'}
               </>
             )}
           </button>
