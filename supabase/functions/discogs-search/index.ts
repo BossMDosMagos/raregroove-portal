@@ -8,13 +8,22 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    })
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const discogsToken = Deno.env.get('DISCOGS_PERSONAL_ACCESS_TOKEN')!
+    const discogsToken = Deno.env.get('DISCOGS_PERSONAL_ACCESS_TOKEN')
+
+    if (!discogsToken) {
+      console.error('[Discogs] Missing DISCOGS_PERSONAL_ACCESS_TOKEN')
+      return new Response(JSON.stringify({ data: null, error: 'Discogs token not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const { query, type = 'search', releaseId, limit = 20 } = await req.json()
 
@@ -34,8 +43,15 @@ serve(async (req) => {
       url = `${baseUrl}/database/search?${params}`
     } else if (type === 'release' && releaseId) {
       url = `${baseUrl}/releases/${releaseId}`
+    } else if (type === 'master' && releaseId) {
+      url = `${baseUrl}/masters/${releaseId}`
+    } else if (type === 'artist' && releaseId) {
+      url = `${baseUrl}/artists/${releaseId}`
     } else {
-      throw new Error('Invalid request type')
+      return new Response(JSON.stringify({ data: null, error: 'Invalid request type' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     console.log(`[Discogs] Fetching: ${type} - ${query || releaseId}`)
@@ -51,7 +67,10 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[Discogs] API error: ${response.status}`, errorText)
-      throw new Error(`Discogs API error: ${response.status}`)
+      return new Response(JSON.stringify({ data: null, error: `Discogs API error: ${response.status}` }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     data = await response.json()
