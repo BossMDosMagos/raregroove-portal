@@ -9,9 +9,19 @@ export function GrooveflixPlayerProvider({ children }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loadingTrack, setLoadingTrack] = useState(null);
+  const [userId, setUserId] = useState(null);
   const audioCacheRef = useRef(new Map());
-  const preloadQueueRef = useRef(null);
-  const preloadTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const { data: { session } } = supabase.auth.getSession();
+    setUserId(session?.user?.id || null);
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id || null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
 
   const getPresignedUrl = useCallback(async (filePath) => {
     if (!filePath) return null;
@@ -22,14 +32,21 @@ export function GrooveflixPlayerProvider({ children }) {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const currentUserId = session?.user?.id || userId;
+
+      if (!currentUserId) {
+        console.warn('[GROOVEFLIX PLAYER] No userId for presign');
+        return null;
+      }
+
+      console.log('[GROOVEFLIX PLAYER] Getting presigned URL for:', filePath, 'userId:', currentUserId);
 
       const { data, error } = await supabase.functions.invoke('b2-presign', {
-        body: { file_path: filePath, type: 'audio' },
+        body: { file_path: filePath, userId: currentUserId, type: 'audio' },
       });
 
       if (error || !data?.url) {
-        console.warn('[GROOVEFLIX PLAYER] No URL from presign:', error);
+        console.warn('[GROOVEFLIX PLAYER] No URL from presign:', error, data);
         return null;
       }
 
@@ -39,7 +56,7 @@ export function GrooveflixPlayerProvider({ children }) {
       console.error('[GROOVEFLIX PLAYER] Presign error:', e);
       return null;
     }
-  }, []);
+  }, [userId]);
 
   const preloadNextTrack = useCallback(async () => {
     const nextIndex = currentIndex + 1;
@@ -49,7 +66,7 @@ export function GrooveflixPlayerProvider({ children }) {
     if (!nextTrack?.audioPath || audioCacheRef.current.has(nextTrack.audioPath)) return;
 
     console.log('[GROOVEFLIX PLAYER] Pre-loading next track:', nextTrack.title);
-    preloadQueueRef.current = getPresignedUrl(nextTrack.audioPath);
+    await getPresignedUrl(nextTrack.audioPath);
   }, [currentIndex, queue, getPresignedUrl]);
 
   const playAlbum = useCallback(async (item) => {
