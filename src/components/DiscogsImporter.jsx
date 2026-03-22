@@ -117,7 +117,13 @@ export function DiscogsImporter({ onClose }) {
 
     const artistName = fullDetails.artists_sort || fullDetails.artists?.[0]?.name || selected.title.split(' - ')[0] || 'Unknown';
     const albumTitle = fullDetails.title || selected.title;
-    const coverUrl = fullDetails.images?.[0]?.uri || selected.thumb || null;
+    
+    const coverUrl = fullDetails.images?.[0]?.uri || 
+                     fullDetails.images?.[0]?.uri150 || 
+                     selected.thumb || 
+                     fullDetails.thumb ||
+                     null;
+    
     const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
     const labels = fullDetails.labels?.map(l => l.name).filter(Boolean).join(', ');
     const catalogNumber = fullDetails.labels?.[0]?.catno;
@@ -126,6 +132,8 @@ export function DiscogsImporter({ onClose }) {
       title: t.title,
       duration: t.duration,
     })) || [];
+
+    console.log('[DISCOGS] Importing - coverUrl:', coverUrl, 'fullDetails.images:', fullDetails.images);
 
     importFromDiscogs({
       title: albumTitle,

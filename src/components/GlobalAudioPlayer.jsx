@@ -141,21 +141,27 @@ export function GlobalAudioPlayer() {
   }, [divRef, hasTrack, webampTracks.length, userId, currentSkinUrl, currentSkinId, queue]);
 
   useEffect(() => {
-    if (webampInstanceRef.current && webampTracks.length > 0 && isWebampRendered) {
-      if (JSON.stringify(webampTracks) !== JSON.stringify(prevWebampTracksRef.current)) {
-        console.log('[GLOBAL PLAYER] Setting tracks to play:', webampTracks.length);
-        prevWebampTracksRef.current = webampTracks;
-        try {
-          if (webampInstanceRef.current.setTracksToPlay) {
-            webampInstanceRef.current.setTracksToPlay(webampTracks);
-          }
-          if (queue.length > 1) {
-            webampInstanceRef.current.showPlaylistWindow?.();
-          }
-        } catch (e) {
-          console.error('[GLOBAL PLAYER] Error setting tracks:', e);
-        }
+    if (!webampInstanceRef.current || webampTracks.length === 0 || !isWebampRendered) return;
+    
+    const webampTracksJson = JSON.stringify(webampTracks.map(t => ({ url: t.url, title: t.metaData?.title })));
+    const prevTracksJson = JSON.stringify(prevWebampTracksRef.current.map(t => ({ url: t.url, title: t.metaData?.title })));
+    
+    if (webampTracksJson === prevTracksJson) {
+      return;
+    }
+    
+    console.log('[GLOBAL PLAYER] Setting tracks to play:', webampTracks.length);
+    prevWebampTracksRef.current = webampTracks;
+    
+    try {
+      if (webampInstanceRef.current.setTracksToPlay) {
+        webampInstanceRef.current.setTracksToPlay(webampTracks);
       }
+      if (queue.length > 1) {
+        webampInstanceRef.current.showPlaylistWindow?.();
+      }
+    } catch (e) {
+      console.error('[GLOBAL PLAYER] Error setting tracks:', e);
     }
   }, [webampTracks, isWebampRendered, queue.length]);
 
