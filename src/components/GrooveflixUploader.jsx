@@ -346,6 +346,15 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     artist: item?.artist || '',
     year: item?.year || '',
     genre: item?.genre || '',
+    coverUrl: item?.metadata?.grooveflix?.coverUrl || '',
+    discogsId: item?.metadata?.grooveflix?.discogsId || '',
+    discogsMasterId: item?.metadata?.grooveflix?.discogsMasterId || '',
+    country: item?.metadata?.grooveflix?.country || '',
+    labels: item?.metadata?.grooveflix?.labels || '',
+    catalogNumber: item?.metadata?.grooveflix?.catalogNumber || '',
+    formats: item?.metadata?.grooveflix?.formats || '',
+    tracklist: item?.metadata?.grooveflix?.tracklist || [],
+    description: item?.metadata?.grooveflix?.description || '',
   });
 
   const handleFileSelect = (type, e) => {
@@ -506,6 +515,14 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             iso_path: null,
             booklet_path: null,
             cover_path: null,
+            discogsId: metadata.discogsId || null,
+            discogsMasterId: metadata.discogsMasterId || null,
+            country: metadata.country || null,
+            labels: metadata.labels || null,
+            catalogNumber: metadata.catalogNumber || null,
+            formats: metadata.formats || null,
+            tracklist: metadata.tracklist || [],
+            description: metadata.description || null,
           },
         },
       };
@@ -524,7 +541,17 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         console.log('[UPLOAD] Item criado com ID:', itemId);
       }
 
-      const grooveflixData = (item?.metadata?.grooveflix) || (itemData.metadata?.grooveflix) || {};
+      const grooveflixData = {
+        ...((item?.metadata?.grooveflix) || (itemData.metadata?.grooveflix) || {}),
+        discogsId: metadata.discogsId || item?.metadata?.grooveflix?.discogsId || null,
+        discogsMasterId: metadata.discogsMasterId || item?.metadata?.grooveflix?.discogsMasterId || null,
+        country: metadata.country || item?.metadata?.grooveflix?.country || null,
+        labels: metadata.labels || item?.metadata?.grooveflix?.labels || null,
+        catalogNumber: metadata.catalogNumber || item?.metadata?.grooveflix?.catalogNumber || null,
+        formats: metadata.formats || item?.metadata?.grooveflix?.formats || null,
+        tracklist: metadata.tracklist?.length > 0 ? metadata.tracklist : (item?.metadata?.grooveflix?.tracklist || []),
+        description: metadata.description || item?.metadata?.grooveflix?.description || null,
+      };
 
       if (files.cover) {
         setUploadProgress(p => ({ ...p, cover: 'uploading' }));
@@ -640,7 +667,21 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       onClose();
       
       setFiles({ audio: null, folder: null, preview: null, iso: null, booklet: null, cover: null });
-      setMetadata({ title: '', artist: '', year: '', genre: '' });
+      setMetadata({
+        title: '',
+        artist: '',
+        year: '',
+        genre: '',
+        coverUrl: '',
+        discogsId: '',
+        discogsMasterId: '',
+        country: '',
+        labels: '',
+        catalogNumber: '',
+        formats: '',
+        tracklist: [],
+        description: '',
+      });
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -719,8 +760,15 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
                   artist: data.artist || prev.artist,
                   genre: data.genre || prev.genre,
                   year: data.year || prev.year,
-                  discogsId: data.discogsId,
                   coverUrl: data.coverUrl,
+                  discogsId: data.discogsId,
+                  discogsMasterId: data.discogsMasterId,
+                  country: data.country,
+                  labels: data.labels,
+                  catalogNumber: data.catalogNumber,
+                  formats: data.formats,
+                  tracklist: data.tracklist,
+                  description: data.description,
                 }));
                 setActiveTab('upload');
               }}

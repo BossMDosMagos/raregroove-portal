@@ -822,4 +822,125 @@ git commit -m "feat: Download real Winamp skins from Internet Archive"
 
 ---
 
-*Última atualização: 2026-03-21 14:00 UTC-3*
+---
+
+## Correções Rodada 8 (2026-03-22) - DiscogsImporter Enrichment + i18n
+
+### Problema: DiscogsImporter não exportava todos os dados
+
+**Sintoma:** Ao importar do Discogs, apenas título, artista, gênero e ano eram preenchidos.
+
+**Solução:** Enriquecer DiscogsImporter para exportar tracklist, labels, formats, country, catalogNumber, description.
+
+### Alterações em DiscogsImporter.jsx
+
+Agora exporta para o GrooveflixUploader:
+```javascript
+onSelectData({
+  title: albumTitle,
+  artist: artistName,
+  genre: genres.join(', '),
+  year: fullDetails.year || selected.year || '',
+  coverUrl: coverUrl,
+  discogsId: selected.id,
+  discogsMasterId: fullDetails.master_id,
+  country: fullDetails.country,
+  labels: labels,           // novo: gravadoras
+  catalogNumber: catalogNumber, // novo: número de catálogo
+  formats: fullDetails.formats?.map(f => f.name).join(', '), // novo: formatos
+  tracklist: tracklist,     // novo: lista de faixas
+  description: fullDetails.notes || '', // novo: notas
+});
+```
+
+### Alterações em GrooveflixUploader.jsx
+
+1. **onSelectData handler atualizado** para receber novos campos:
+   - discogsId, discogsMasterId, country, labels, catalogNumber, formats, tracklist, description
+
+2. **Metadata state expandido:**
+   ```javascript
+   const [metadata, setMetadata] = useState({
+     // ...campos existentes...
+     discogsId: '',
+     discogsMasterId: '',
+     country: '',
+     labels: '',
+     catalogNumber: '',
+     formats: '',
+     tracklist: [],
+     description: '',
+   });
+   ```
+
+3. **grooveflixData atualizado** para salvar todos os campos no banco:
+   ```javascript
+   const grooveflixData = {
+     // ...campos existentes...
+     discogsId: metadata.discogsId || null,
+     discogsMasterId: metadata.discogsMasterId || null,
+     country: metadata.country || null,
+     labels: metadata.labels || null,
+     catalogNumber: metadata.catalogNumber || null,
+     formats: metadata.formats || null,
+     tracklist: metadata.tracklist || [],
+     description: metadata.description || null,
+   };
+   ```
+
+### Traduções i18n Adicionadas
+
+Adicionadas chaves de tradução em I18nContext.jsx:
+
+**PT-BR:**
+```javascript
+'grooveflix.discogs.searchPlaceholder': 'Ex: Miles Davis Kind of Blue...',
+'grooveflix.discogs.searching': 'Buscando...',
+'grooveflix.discogs.search': 'Buscar',
+'grooveflix.discogs.noResults': 'Nenhum resultado encontrado',
+'grooveflix.discogs.resultsFound': 'resultados encontrados',
+'grooveflix.discogs.fetchError': 'Erro ao buscar detalhes',
+'grooveflix.discogs.importSuccess': 'Dados importados do Discogs!',
+'grooveflix.discogs.tracklist': 'Tracklist',
+'grooveflix.discogs.tracks': 'faixas',
+'grooveflix.discogs.moreTracks': '... e mais',
+'grooveflix.discogs.format': 'Formato',
+'grooveflix.discogs.viewOnDiscogs': 'Ver no Discogs',
+'grooveflix.discogs.import': 'Importar Dados',
+'grooveflix.discogs.noResultsQuery': 'Nenhum resultado para',
+'grooveflix.discogs.searchTip': 'Digite um termo de busca para encontrar álbuns',
+```
+
+**EN-US:**
+```javascript
+'grooveflix.discogs.searchPlaceholder': 'Ex: Miles Davis Kind of Blue...',
+'grooveflix.discogs.searching': 'Searching...',
+'grooveflix.discogs.search': 'Search',
+'grooveflix.discogs.noResults': 'No results found',
+'grooveflix.discogs.resultsFound': 'results found',
+'grooveflix.discogs.fetchError': 'Error fetching details',
+'grooveflix.discogs.importSuccess': 'Data imported from Discogs!',
+'grooveflix.discogs.tracklist': 'Tracklist',
+'grooveflix.discogs.tracks': 'tracks',
+'grooveflix.discogs.moreTracks': '... and more',
+'grooveflix.discogs.format': 'Format',
+'grooveflix.discogs.viewOnDiscogs': 'View on Discogs',
+'grooveflix.discogs.import': 'Import Data',
+'grooveflix.discogs.noResultsQuery': 'No results for',
+'grooveflix.discogs.searchTip': 'Enter a search term to find albums',
+```
+
+### UI do DiscogsImporter
+
+A interface agora mostra:
+- **Cover art** com loading spinner ao buscar detalhes
+- **Informações básicas:** título, artista, ano, país, gravadora
+- **Tags de gênero/estilo** (até 6)
+- **Tracklist** com posição, título e duração (mostra até 10)
+- **Formato** (CD, Vinil, Digital, etc.)
+- **Link para Discogs**
+- **Botão Importar Dados**
+
+---
+
+*Última atualização: 2026-03-22 UTC-3*
