@@ -937,9 +937,70 @@ A interface agora mostra:
 - **Informações básicas:** título, artista, ano, país, gravadora
 - **Tags de gênero/estilo** (até 6)
 - **Tracklist** com posição, título e duração (mostra até 10)
-- **Formato** (CD, Vinil, Digital, etc.)
-- **Link para Discogs**
-- **Botão Importar Dados**
+
+---
+
+## Correções Rodada 9 (2026-03-22) - Otimização de Performance
+
+### Problema: Lag no equalizador e capas não renderizando
+
+**Sintomas:**
+- Equalizador do Webamp com travamentos
+- Álbuns grandes demorando para carregar
+- Imagens do Discogs não apareciam
+
+### Soluções Implementadas
+
+#### 1. Lazy Loading para Imagens
+```jsx
+<img 
+  src={coverUrl} 
+  alt={title}
+  className="w-full h-full object-cover"
+  loading="lazy"  // ← Novo
+/>
+```
+
+#### 2. Thumbnails do Discogs
+O Discogs fornece imagens em múltiplos tamanhos:
+- `uri` - Imagem full size (grande)
+- `uri150` - Thumbnail 150x150 (leve)
+
+Agora usamos:
+- `uri150` para display inicial (carregamento rápido)
+- `uri` para visualização em tela cheia
+
+```javascript
+const coverUrlThumbnail = fullDetails.images?.[0]?.uri150 || selected.thumb;
+const coverUrl = fullDetails.images?.[0]?.uri || coverUrlThumbnail;
+```
+
+#### 3. Image Proxy para CORS
+Imagens do Discogs podem ter restrições de CORS. Adicionamos proxy na Edge Function:
+
+```
+/functions/v1/discogs-search/image-proxy?url=...
+```
+
+#### 4. React.memo nos Componentes
+GrooveflixCard agora é memoizado:
+```javascript
+const GrooveflixCard = memo(function GrooveflixCard({ item, onPick, ... }) {
+  // Componente só re-renderiza se suas props mudarem
+});
+```
+
+#### 5. Otimização do GrooveflixRow
+- Componente `GrooveflixRow` agora usa `memo()` para evitar re-renders desnecessários
+- `processedRef` para evitar recarregar URLs já processadas
+- `useMemo` para lista de items
+
+#### 6. Proxy de Imagens Discogs
+Nova rota na Edge Function para evitar CORS:
+```
+GET /functions/v1/discogs-search/image-proxy?url={encodedUrl}
+```
+Retorna a imagem com headers corretos para o browser.
 
 ---
 
