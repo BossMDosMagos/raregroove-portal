@@ -3,6 +3,7 @@ import { Search, Check, Disc, Loader2, Music, ExternalLink, Tag, Building, Globe
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useDiscogs } from '../contexts/DiscogsContext.jsx';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
@@ -59,8 +60,9 @@ async function getReleaseDetails(releaseId) {
   return data.data;
 }
 
-export function DiscogsImporter({ onSelectData, onClose }) {
+export function DiscogsImporter({ onClose }) {
   const { t } = useI18n();
+  const { importFromDiscogs } = useDiscogs();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -125,7 +127,7 @@ export function DiscogsImporter({ onSelectData, onClose }) {
       duration: t.duration,
     })) || [];
 
-    onSelectData({
+    importFromDiscogs({
       title: albumTitle,
       artist: artistName,
       genre: genres.join(', '),
@@ -139,11 +141,14 @@ export function DiscogsImporter({ onSelectData, onClose }) {
       formats: fullDetails.formats?.map(f => f.name).join(', '),
       tracklist: tracklist,
       description: fullDetails.notes || '',
+      fullDetails: fullDetails,
     });
 
     toast.success(t('grooveflix.discogs.importSuccess'), {
       description: `${albumTitle} - ${artistName}`,
     });
+
+    onClose?.();
   };
 
   return (

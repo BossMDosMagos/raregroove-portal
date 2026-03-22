@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { I18nProvider } from './contexts/I18nContext.jsx'
 import { SubscriptionProvider } from './contexts/SubscriptionContext.jsx'
 import { AudioPlayerProvider } from './contexts/AudioPlayerContext.jsx'
+import { DiscogsProvider } from './contexts/DiscogsContext.jsx'
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   import('./sentry.js').then(({ default: Sentry }) => {
@@ -34,7 +35,9 @@ createRoot(document.getElementById('root')).render(
     <I18nProvider>
       <SubscriptionProvider>
         <AudioPlayerProvider>
-          <App />
+          <DiscogsProvider>
+            <App />
+          </DiscogsProvider>
         </AudioPlayerProvider>
       </SubscriptionProvider>
     </I18nProvider>

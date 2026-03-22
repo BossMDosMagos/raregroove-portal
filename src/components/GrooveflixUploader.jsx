@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, X, FileAudio, File, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search } from 'lucide-react';
+import { Upload, X, FileAudio, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search, Check, Trash2, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { useDiscogs } from '../contexts/DiscogsContext.jsx';
 import { DiscogsImporter } from './DiscogsImporter.jsx';
 
 const FILE_TYPES = {
@@ -320,8 +321,281 @@ function FolderUploadZone({ files, onChange, onUpload }) {
   );
 }
 
+function TracklistEditor({ tracklist, onUpdateTrack, onRemoveTrack, onAddTrack }) {
+  if (!tracklist || tracklist.length === 0) {
+    return (
+      <div className="text-center py-6 text-white/30">
+        <Music className="w-8 h-8 mx-auto mb-2 opacity-30" />
+        <p>Sem tracklist disponível</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-fuchsia-300 font-medium uppercase tracking-wider">
+          {tracklist.length} faixas importadas do Discogs
+        </p>
+        <button
+          onClick={onAddTrack}
+          className="text-xs text-fuchsia-400 hover:text-fuchsia-300 flex items-center gap-1"
+        >
+          <span className="text-lg">+</span> Adicionar faixa
+        </button>
+      </div>
+      
+      <div className="max-h-64 overflow-y-auto space-y-1.5">
+        {tracklist.map((track, index) => (
+          <div key={index} className="flex items-center gap-2 bg-white/5 rounded-lg p-2 group">
+            <span className="w-8 text-center text-xs text-white/30 font-mono">
+              {track.position || index + 1}
+            </span>
+            <input
+              type="text"
+              value={track.title}
+              onChange={(e) => onUpdateTrack(index, 'title', e.target.value)}
+              className="flex-1 bg-transparent border-none text-sm text-white/80 focus:outline-none focus:text-white"
+              placeholder="Título da faixa"
+            />
+            <input
+              type="text"
+              value={track.duration || ''}
+              onChange={(e) => onUpdateTrack(index, 'duration', e.target.value)}
+              className="w-14 bg-transparent border-none text-xs text-white/40 font-mono focus:outline-none focus:text-white/60 text-right"
+              placeholder="0:00"
+            />
+            <button
+              onClick={() => onRemoveTrack(index)}
+              className="w-6 h-6 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 flex items-center justify-center text-white/30 hover:text-red-400 transition-all"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SuperCardView({ 
+  metadata, 
+  setMetadata, 
+  tracklist, 
+  setTracklist, 
+  discogsData,
+  clearDiscogs,
+  files,
+  handleFileSelect,
+  uploadProgress,
+  category,
+  setCategory,
+  CATEGORIES,
+  onAddTrack,
+  onUpdateTrack,
+  onRemoveTrack,
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-bold text-fuchsia-200 uppercase tracking-wider">
+              Sincronizado com Discogs
+            </span>
+          </div>
+          {discogsData?.discogsId && (
+            <a
+              href={`https://www.discogs.com/release/${discogsData.discogsId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-white/40 hover:text-fuchsia-300 flex items-center gap-1"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Ver no Discogs
+            </a>
+          )}
+        </div>
+        <button
+          onClick={clearDiscogs}
+          className="text-xs text-white/40 hover:text-red-400 flex items-center gap-1"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Limpar e recomeçar
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10">
+            {metadata.coverUrl ? (
+              <>
+                <img 
+                  src={metadata.coverUrl} 
+                  alt={metadata.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                  <p className="text-xs text-emerald-300 font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    Capa carregada do Discogs
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-white/30">
+                <Disc className="w-16 h-16 mb-2 opacity-30" />
+                <p className="text-sm">Sem capa</p>
+              </div>
+            )}
+          </div>
+
+          {discogsData?.labels && (
+            <div className="bg-white/5 rounded-xl p-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Gravadora</p>
+              <p className="text-sm text-white/80">{discogsData.labels}</p>
+              {discogsData.catalogNumber && (
+                <p className="text-xs text-white/40 mt-1">Catálogo: {discogsData.catalogNumber}</p>
+              )}
+            </div>
+          )}
+
+          {discogsData?.formats && (
+            <div className="bg-white/5 rounded-xl p-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Formato</p>
+              <p className="text-sm text-white/80">{discogsData.formats}</p>
+              {discogsData.country && (
+                <p className="text-xs text-white/40 mt-1">País: {discogsData.country}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-3 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
+                <Shield className="w-3 h-3" /> Título *
+              </label>
+              <input
+                type="text"
+                value={metadata.title}
+                onChange={(e) => setMetadata(m => ({ ...m, title: e.target.value }))}
+                placeholder="Nome do álbum"
+                className="w-full bg-white/5 border border-fuchsia-500/30 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
+                <Music className="w-3 h-3" /> Artista *
+              </label>
+              <input
+                type="text"
+                value={metadata.artist}
+                onChange={(e) => setMetadata(m => ({ ...m, artist: e.target.value }))}
+                placeholder="Nome do artista"
+                className="w-full bg-white/5 border border-fuchsia-500/30 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
+                <Disc className="w-3 h-3" /> Ano
+              </label>
+              <input
+                type="number"
+                value={metadata.year}
+                onChange={(e) => setMetadata(m => ({ ...m, year: e.target.value }))}
+                placeholder="2024"
+                className="w-full bg-white/5 border border-fuchsia-500/30 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
+                <Zap className="w-3 h-3" /> Gênero
+              </label>
+              <input
+                type="text"
+                value={metadata.genre}
+                onChange={(e) => setMetadata(m => ({ ...m, genre: e.target.value }))}
+                placeholder="Jazz, Funk, Soul..."
+                className="w-full bg-white/5 border border-fuchsia-500/30 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-3">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategory(cat.id)}
+                className={`group relative p-4 rounded-2xl border text-center transition-all duration-300 ${
+                  category === cat.id
+                    ? 'bg-fuchsia-500/20 border-fuchsia-500/50 shadow-lg shadow-fuchsia-500/10'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:border-white/20'
+                }`}
+              >
+                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-transform ${category === cat.id ? 'bg-fuchsia-500/30' : 'bg-white/5'}`}>
+                  <cat.icon className={`w-6 h-6 ${category === cat.id ? 'text-fuchsia-300' : 'text-white/40 group-hover:text-white/70'}`} />
+                </div>
+                <span className={`text-xs font-black uppercase ${category === cat.id ? 'text-fuchsia-200' : ''}`}>{cat.label}</span>
+                <p className={`text-[10px] mt-1 ${category === cat.id ? 'text-fuchsia-300/60' : 'text-white/30'}`}>{cat.description}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4">
+            <TracklistEditor
+              tracklist={tracklist}
+              onUpdateTrack={onUpdateTrack}
+              onRemoveTrack={onRemoveTrack}
+              onAddTrack={onAddTrack}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/50 ml-1">
+              <Upload className="w-3 h-3 inline mr-1" /> Arquivos de Áudio
+            </p>
+            {category === 'album' || category === 'coletanea' ? (
+              <FolderUploadZone
+                files={files.folder}
+                onChange={(e) => handleFileSelect('folder', e)}
+              />
+            ) : (
+              <FileUploadZone
+                file={files.audio}
+                onChange={(e) => handleFileSelect('audio', e)}
+                icon={FileAudio}
+                progress={uploadProgress.audio}
+                accept={FILE_TYPES.audio.accept}
+                placeholder="Selecione o arquivo de áudio"
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-white/60 mb-2">Preview (30-60 segundos, opcional)</label>
+            <FileUploadZone
+              file={files.preview}
+              onChange={(e) => handleFileSelect('preview', e)}
+              icon={Music}
+              progress={uploadProgress.preview}
+              accept={FILE_TYPES.preview.accept}
+              placeholder="Selecione o preview"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, isAdmin, userId }) {
   const { t } = useI18n();
+  const { importedData, hasImported, clearImportedData, updateImportedTrack } = useDiscogs();
   const [activeTab, setActiveTab] = useState('upload');
   const [uploading, setUploading] = useState(false);
   
@@ -353,9 +627,30 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     labels: item?.metadata?.grooveflix?.labels || '',
     catalogNumber: item?.metadata?.grooveflix?.catalogNumber || '',
     formats: item?.metadata?.grooveflix?.formats || '',
-    tracklist: item?.metadata?.grooveflix?.tracklist || [],
     description: item?.metadata?.grooveflix?.description || '',
   });
+  const [tracklist, setTracklist] = useState(item?.metadata?.grooveflix?.tracklist || []);
+
+  useEffect(() => {
+    if (hasImported && importedData) {
+      setMetadata({
+        title: importedData.title || '',
+        artist: importedData.artist || '',
+        year: importedData.year || '',
+        genre: importedData.genre || '',
+        coverUrl: importedData.coverUrl || '',
+        discogsId: importedData.discogsId || '',
+        discogsMasterId: importedData.discogsMasterId || '',
+        country: importedData.country || '',
+        labels: importedData.labels || '',
+        catalogNumber: importedData.catalogNumber || '',
+        formats: importedData.formats || '',
+        description: importedData.description || '',
+      });
+      setTracklist(importedData.tracklist || []);
+      setActiveTab('super-card');
+    }
+  }, [hasImported, importedData]);
 
   const handleFileSelect = (type, e) => {
     let selectedFiles = e.target.files;
@@ -515,13 +810,14 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             iso_path: null,
             booklet_path: null,
             cover_path: null,
+            coverUrl: metadata.coverUrl || null,
             discogsId: metadata.discogsId || null,
             discogsMasterId: metadata.discogsMasterId || null,
             country: metadata.country || null,
             labels: metadata.labels || null,
             catalogNumber: metadata.catalogNumber || null,
             formats: metadata.formats || null,
-            tracklist: metadata.tracklist || [],
+            tracklist: tracklist || [],
             description: metadata.description || null,
           },
         },
@@ -549,23 +845,9 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         labels: metadata.labels || item?.metadata?.grooveflix?.labels || null,
         catalogNumber: metadata.catalogNumber || item?.metadata?.grooveflix?.catalogNumber || null,
         formats: metadata.formats || item?.metadata?.grooveflix?.formats || null,
-        tracklist: metadata.tracklist?.length > 0 ? metadata.tracklist : (item?.metadata?.grooveflix?.tracklist || []),
+        tracklist: tracklist?.length > 0 ? tracklist : (item?.metadata?.grooveflix?.tracklist || []),
         description: metadata.description || item?.metadata?.grooveflix?.description || null,
       };
-
-      if (files.cover) {
-        setUploadProgress(p => ({ ...p, cover: 'uploading' }));
-        try {
-          const coverResult = await uploadToB2(files.cover, 'cover', itemId);
-          console.log('[COVER] Upload B2 result:', coverResult);
-          grooveflixData.cover_path = coverResult.filePath;
-          setUploadProgress(p => ({ ...p, cover: 'done' }));
-        } catch (e) {
-          console.error('[COVER] Upload error:', e);
-          toast.error(t('grooveflix.upload.coverError'), { description: e.message });
-          setUploadProgress(p => ({ ...p, cover: 'error' }));
-        }
-      }
 
       if (files.folder && files.folder.length > 0) {
         const audioFiles = [];
@@ -663,25 +945,13 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       
       toast.success(item?.id ? t('grooveflix.upload.updated') : t('grooveflix.upload.success'));
 
+      clearImportedData();
       onSuccess?.();
       onClose();
       
       setFiles({ audio: null, folder: null, preview: null, iso: null, booklet: null, cover: null });
-      setMetadata({
-        title: '',
-        artist: '',
-        year: '',
-        genre: '',
-        coverUrl: '',
-        discogsId: '',
-        discogsMasterId: '',
-        country: '',
-        labels: '',
-        catalogNumber: '',
-        formats: '',
-        tracklist: [],
-        description: '',
-      });
+      setMetadata({ title: '', artist: '', year: '', genre: '', coverUrl: '', discogsId: '', discogsMasterId: '', country: '', labels: '', catalogNumber: '', formats: '', description: '' });
+      setTracklist([]);
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -693,13 +963,37 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     }
   };
 
+  const handleClearDiscogs = () => {
+    clearImportedData();
+    setMetadata({ title: '', artist: '', year: '', genre: '', coverUrl: '', discogsId: '', discogsMasterId: '', country: '', labels: '', catalogNumber: '', formats: '', description: '' });
+    setTracklist([]);
+    setActiveTab('upload');
+  };
+
+  const handleUpdateTrack = (index, field, value) => {
+    const newTracklist = [...tracklist];
+    newTracklist[index] = { ...newTracklist[index], [field]: value };
+    setTracklist(newTracklist);
+    updateImportedTrack(index, field, value);
+  };
+
+  const handleRemoveTrack = (index) => {
+    const newTracklist = tracklist.filter((_, i) => i !== index);
+    setTracklist(newTracklist);
+  };
+
+  const handleAddTrack = () => {
+    const newTrack = { position: String(tracklist.length + 1), title: '', duration: '' };
+    setTracklist([...tracklist, newTrack]);
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
       
-      <div className="relative w-full max-w-3xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="relative w-full max-w-5xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[95vh] flex flex-col">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-fuchsia-500/5 rounded-full blur-[100px]" />
           <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[80px]" />
@@ -723,7 +1017,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         </div>
 
         <div className="relative p-6 space-y-6 overflow-y-auto flex-1">
-          {isAdmin && (
+          {isAdmin && activeTab !== 'super-card' && (
             <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
               <button
                 onClick={() => setActiveTab('upload')}
@@ -750,29 +1044,26 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             </div>
           )}
 
-          {activeTab === 'discogs' && isAdmin ? (
-            <DiscogsImporter
-              userId={userId}
-              onSelectData={(data) => {
-                setMetadata(prev => ({
-                  ...prev,
-                  title: data.title || prev.title,
-                  artist: data.artist || prev.artist,
-                  genre: data.genre || prev.genre,
-                  year: data.year || prev.year,
-                  coverUrl: data.coverUrl,
-                  discogsId: data.discogsId,
-                  discogsMasterId: data.discogsMasterId,
-                  country: data.country,
-                  labels: data.labels,
-                  catalogNumber: data.catalogNumber,
-                  formats: data.formats,
-                  tracklist: data.tracklist,
-                  description: data.description,
-                }));
-                setActiveTab('upload');
-              }}
+          {activeTab === 'super-card' ? (
+            <SuperCardView
+              metadata={metadata}
+              setMetadata={setMetadata}
+              tracklist={tracklist}
+              setTracklist={setTracklist}
+              discogsData={importedData}
+              clearDiscogs={handleClearDiscogs}
+              files={files}
+              handleFileSelect={handleFileSelect}
+              uploadProgress={uploadProgress}
+              category={category}
+              setCategory={setCategory}
+              CATEGORIES={CATEGORIES}
+              onAddTrack={handleAddTrack}
+              onUpdateTrack={handleUpdateTrack}
+              onRemoveTrack={handleRemoveTrack}
             />
+          ) : activeTab === 'discogs' && isAdmin ? (
+            <DiscogsImporter onClose={() => setActiveTab('super-card')} />
           ) : (
           <>
           <div className="grid grid-cols-4 gap-3">
