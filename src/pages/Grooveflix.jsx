@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import GrooveflixRow from '../components/GrooveflixRow';
 import GrooveflixUploader from '../components/GrooveflixUploader';
+import GrooveflixStreamPlayer from '../components/GrooveflixStreamPlayer';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
@@ -49,6 +50,7 @@ export default function Grooveflix() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [streamingItem, setStreamingItem] = useState(null);
 
   useEffect(() => {
     const init = async () => {
@@ -156,7 +158,15 @@ export default function Grooveflix() {
   const selectedTrack = items.find((item) => item.id === selectedTrackId);
 
   const handleTrackPick = (track) => {
+    console.log('[GROOVEFLIX] Track picked:', track.title);
+    
+    if (!track.audioPath && (!track.audioFiles || track.audioFiles.length === 0)) {
+      toast.error(t('grooveflix.noAudio'), { description: t('grooveflix.error.noAudio') });
+      return;
+    }
+    
     setSelectedTrackId(track.id);
+    setStreamingItem(track);
   };
 
   const handlePlayTrack = () => {
@@ -300,25 +310,11 @@ export default function Grooveflix() {
           </>
         )}
 
-        {selectedTrack && (
-          <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent p-4 border-t border-white/10">
-            <div className="max-w-[1600px] mx-auto flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-bold truncate">{selectedTrack.title}</p>
-                <p className="text-sm text-white/60 truncate">{selectedTrack.artist}</p>
-              </div>
-              {selectedTrack.audioPath ? (
-                <button
-                  onClick={handlePlayTrack}
-                  className="flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-bold uppercase tracking-wider hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
-                >
-                  <Music className="w-5 h-5" /> {t('grooveflix.play')}
-                </button>
-              ) : (
-                <span className="text-white/40 text-sm">{t('grooveflix.noAudio')}</span>
-              )}
-            </div>
-          </div>
+        {streamingItem && (
+          <GrooveflixStreamPlayer
+            item={streamingItem}
+            onClose={() => setStreamingItem(null)}
+          />
         )}
       </div>
 
