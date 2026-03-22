@@ -99,32 +99,31 @@ export function DiscogsImporter({ onSelectData, onClose }) {
       const fullRelease = await getReleaseDetails(release.id);
       setFetchingDetails(false);
 
-    if (error) {
+      const artistName = fullRelease?.artists_sort || fullRelease?.artists?.[0]?.name || release.title.split(' - ')[0] || 'Unknown';
+      const albumTitle = fullRelease?.title || release.title;
+      const coverUrl = fullRelease?.images?.[0]?.uri || release.thumb || null;
+      const genre = fullRelease?.genres?.[0] || release.genres?.[0] || '';
+      const year = fullRelease?.year || release.year || '';
+
+      console.log('[DISCOGS] Selected:', { artistName, albumTitle, coverUrl, genre, year });
+
+      if (onSelectData) {
+        onSelectData({
+          title: albumTitle,
+          artist: artistName,
+          genre: genre,
+          year: year,
+          coverUrl: coverUrl,
+          discogsId: release.id,
+        });
+        toast.success('Dados importados do Discogs!', {
+          description: `${albumTitle} - ${artistName}`,
+        });
+      }
+    } catch (error) {
       console.error('[DISCOGS] Error fetching release details:', error);
       toast.error('Erro ao buscar detalhes');
-      return;
-    }
-
-    const artistName = fullRelease?.artists_sort || fullRelease?.artists?.[0]?.name || release.title.split(' - ')[0] || 'Unknown';
-    const albumTitle = fullRelease?.title || release.title;
-    const coverUrl = fullRelease?.images?.[0]?.uri || release.thumb || null;
-    const genre = fullRelease?.genres?.[0] || release.genres?.[0] || '';
-    const year = fullRelease?.year || release.year || '';
-
-    console.log('[DISCOGS] Selected:', { artistName, albumTitle, coverUrl, genre, year });
-
-    if (onSelectData) {
-      onSelectData({
-        title: albumTitle,
-        artist: artistName,
-        genre: genre,
-        year: year,
-        coverUrl: coverUrl,
-        discogsId: release.id,
-      });
-      toast.success('Dados importados do Discogs!', {
-        description: `${albumTitle} - ${artistName}`,
-      });
+      setFetchingDetails(false);
     }
   };
 
