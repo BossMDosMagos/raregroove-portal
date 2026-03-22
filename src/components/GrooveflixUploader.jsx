@@ -640,15 +640,39 @@ function SuperCard({
   );
 }
 
-function DiscogsSearchModal({ isOpen, onClose }) {
+function DiscogsSearchModal({ isOpen, onClose, onImport, setMetadata, setTracklist }) {
   const { t } = useI18n();
-  const { hasImported } = useDiscogs();
+  const { hasImported, importedData } = useDiscogs();
 
   useEffect(() => {
-    if (hasImported && isOpen) {
+    if (hasImported && importedData && isOpen) {
+      if (onImport) {
+        onImport(importedData);
+      }
+      if (setMetadata) {
+        setMetadata(prev => ({
+          ...prev,
+          title: importedData.title || prev.title,
+          artist: importedData.artist || prev.artist,
+          year: importedData.year || prev.year,
+          genre: importedData.genre || prev.genre,
+          coverUrl: importedData.coverUrl || prev.coverUrl,
+          coverUrlThumbnail: importedData.coverUrlThumbnail || prev.coverUrlThumbnail,
+          discogsId: importedData.discogsId || prev.discogsId,
+          discogsMasterId: importedData.discogsMasterId || prev.discogsMasterId,
+          country: importedData.country || prev.country,
+          labels: importedData.labels || prev.labels,
+          catalogNumber: importedData.catalogNumber || prev.catalogNumber,
+          formats: importedData.formats || prev.formats,
+          description: importedData.description || prev.description,
+        }));
+      }
+      if (setTracklist) {
+        setTracklist(importedData.tracklist || []);
+      }
       onClose();
     }
-  }, [hasImported, isOpen, onClose]);
+  }, [hasImported, importedData, isOpen, onClose, onImport, setMetadata, setTracklist]);
 
   if (!isOpen) return null;
 
@@ -746,6 +770,28 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       setTracklist(importedData.tracklist || []);
     }
   }, [hasImported, importedData]);
+
+  useEffect(() => {
+    if (showDiscogsModal && importedData) {
+      setMetadata(prev => ({
+        ...prev,
+        title: importedData.title || prev.title,
+        artist: importedData.artist || prev.artist,
+        year: importedData.year || prev.year,
+        genre: importedData.genre || prev.genre,
+        coverUrl: importedData.coverUrl || prev.coverUrl,
+        coverUrlThumbnail: importedData.coverUrlThumbnail || prev.coverUrlThumbnail,
+        discogsId: importedData.discogsId || prev.discogsId,
+        discogsMasterId: importedData.discogsMasterId || prev.discogsMasterId,
+        country: importedData.country || prev.country,
+        labels: importedData.labels || prev.labels,
+        catalogNumber: importedData.catalogNumber || prev.catalogNumber,
+        formats: importedData.formats || prev.formats,
+        description: importedData.description || prev.description,
+      }));
+      setTracklist(importedData.tracklist || []);
+    }
+  }, [showDiscogsModal, importedData]);
 
   const handleFileSelect = (type, e) => {
     let selectedFiles = e.target.files;
@@ -1073,7 +1119,9 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     <>
       <DiscogsSearchModal 
         isOpen={showDiscogsModal} 
-        onClose={() => setShowDiscogsModal(false)} 
+        onClose={() => setShowDiscogsModal(false)}
+        setMetadata={setMetadata}
+        setTracklist={setTracklist}
       />
       
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
