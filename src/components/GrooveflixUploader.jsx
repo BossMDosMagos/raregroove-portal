@@ -456,49 +456,26 @@ function SuperCard({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10">
-            {metadata.coverUrl || metadata.coverUrlThumbnail ? (
+            {metadata.coverUrl ? (
               <>
                 <img 
-                  src={metadata.coverUrl || metadata.coverUrlThumbnail}
+                  src={metadata.coverUrl}
                   alt={metadata.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
-                  onLoad={(e) => {
-                    const fullImg = e.target.nextSibling;
-                    if (fullImg && fullImg.tagName === 'IMG') {
-                      fullImg.src = metadata.coverUrl;
-                    }
-                  }}
                   onError={(e) => {
-                    const fallbackImg = e.target.nextSibling;
-                    if (fallbackImg && fallbackImg.tagName === 'IMG') {
-                      e.target.style.display = 'none';
-                      fallbackImg.style.display = 'block';
-                    } else {
-                      e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
-                    }
+                    e.target.style.display = 'none';
+                    e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
                   }}
-                  style={{ display: metadata.coverUrlThumbnail ? 'block' : 'block' }}
                 />
-                {metadata.coverUrl && metadata.coverUrl !== metadata.coverUrlThumbnail && (
-                  <img 
-                    src={metadata.coverUrl}
-                    alt={metadata.title}
-                    className="hidden w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
-                    }}
-                  />
-                )}
                 <div className="fallback-placeholder hidden w-full h-full flex-col items-center justify-center text-white/30 absolute inset-0 bg-black/50">
                   <Disc className="w-16 h-16 mb-2 opacity-30" />
-                  <p className="text-sm">Erro ao carregar imagem</p>
+                  <p className="text-sm">Erro ao carregar</p>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                   <p className="text-xs text-emerald-300 font-medium flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    Capa {discogsData ? 'do Discogs' : 'carregada'}
+                    Capa do Discogs
                   </p>
                 </div>
               </>
@@ -1131,7 +1108,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
               setMetadata={setMetadata}
               tracklist={tracklist}
               setTracklist={setTracklist}
-              discogsData={hasImported ? importedData : (metadata.discogsId ? metadata : null)}
+              discogsData={importedData}
               clearDiscogs={handleClearDiscogs}
               files={files}
               handleFileSelect={handleFileSelect}
