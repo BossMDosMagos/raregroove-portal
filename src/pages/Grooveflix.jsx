@@ -190,18 +190,24 @@ export default function Grooveflix() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('grooveflix.delete.confirm'))) return;
+    toast.error(t('grooveflix.delete.confirm'), {
+      description: t('grooveflix.delete.irreversible'),
+      action: {
+        label: t('grooveflix.delete.action'),
+        onClick: async () => {
+          const { error } = await supabase.functions.invoke('grooveflix-delete', {
+            body: { itemId: id, userId },
+          });
 
-    const { error } = await supabase.functions.invoke('grooveflix-delete', {
-      body: { itemId: id, userId },
+          if (error) {
+            toast.error(t('grooveflix.delete.error'));
+          } else {
+            toast.success(t('grooveflix.delete.success'));
+            loadItems();
+          }
+        },
+      },
     });
-
-    if (error) {
-      toast.error(t('grooveflix.delete.error'));
-    } else {
-      toast.success(t('grooveflix.delete.success'));
-      loadItems();
-    }
   };
 
   return (

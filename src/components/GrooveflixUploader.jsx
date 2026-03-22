@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, X, FileAudio, File, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -198,6 +198,7 @@ function UploadFileItem({ file, index, status, onRemove }) {
 function FolderUploadZone({ files, onChange, onUpload }) {
   const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [localFiles, setLocalFiles] = useState([]);
 
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -205,12 +206,21 @@ function FolderUploadZone({ files, onChange, onUpload }) {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const audioFiles = files ? Array.from(files).filter(f => 
+  useEffect(() => {
+    if (files) {
+      setLocalFiles(Array.from(files));
+    } else {
+      setLocalFiles([]);
+    }
+  }, [files]);
+
+  const audioFiles = localFiles.filter(f => 
     f.type.startsWith('audio/') || f.name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)
-  ) : [];
+  );
 
   const handleRemoveFile = (indexToRemove) => {
-    const newFiles = Array.from(files).filter((_, i) => i !== indexToRemove);
+    const newFiles = localFiles.filter((_, i) => i !== indexToRemove);
+    setLocalFiles(newFiles);
     const dt = new DataTransfer();
     newFiles.forEach(f => dt.items.add(f));
     onChange({ target: dt });
