@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Max-Age': '86400',
 }
@@ -11,11 +11,44 @@ serve(async (req) => {
   console.log('[Discogs] Request received:', req.method)
 
   if (req.method === 'OPTIONS') {
-    console.log('[Discogs] Handling CORS preflight')
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const url = new URL(req.url)
+    
+    if (url.pathname.endsWith('/image-proxy')) {
+      const imageUrl = url.searchParams.get('url');
+      if (!imageUrl) {
+        return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('[Discogs] Proxying image:', imageUrl.substring(0, 100));
+      
+      const imageResponse = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+
+      if (!imageResponse.ok) {
+        return new Response('Image not found', { status: 404 });
+      }
+
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+
+      return new Response(imageBuffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    }
+
     const discogsToken = Deno.env.get('DISCOGS_PERSONAL_ACCESS_TOKEN')
 
     if (!discogsToken) {
@@ -32,7 +65,7 @@ serve(async (req) => {
     const baseUrl = 'https://api.discogs.com'
     const userAgent = 'RareGroovePortal/1.0 (+https://portalraregroove.com)'
 
-    let url = ''
+    let apiUrl = ''
 
     if (type === 'search') {
       const params = new URLSearchParams({
@@ -41,13 +74,13 @@ serve(async (req) => {
         per_page: limit.toString(),
         page: '1',
       })
-      url = `${baseUrl}/database/search?${params}`
+      apiUrl = `${baseUrl}/database/search?${params}`
     } else if (type === 'release' && releaseId) {
-      url = `${baseUrl}/releases/${releaseId}`
+      apiUrl = `${baseUrl}/releases/${releaseId}`
     } else if (type === 'master' && releaseId) {
-      url = `${baseUrl}/masters/${releaseId}`
+      apiUrl = `${baseUrl}/masters/${releaseId}`
     } else if (type === 'artist' && releaseId) {
-      url = `${baseUrl}/artists/${releaseId}`
+      apiUrl = `${baseUrl}/artists/${releaseId}`
     } else {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,
@@ -57,7 +90,7 @@ serve(async (req) => {
 
     console.log(`[Discogs] Fetching: ${type} - ${query || releaseId}`)
 
-    const response = await fetch(url, {
+    const response = await fetch(apiUrl, {
       headers: {
         'User-Agent': userAgent,
         'Authorization': `Discogs token=${discogsToken}`,

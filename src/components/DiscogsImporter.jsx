@@ -118,11 +118,20 @@ export function DiscogsImporter({ onClose }) {
     const artistName = fullDetails.artists_sort || fullDetails.artists?.[0]?.name || selected.title.split(' - ')[0] || 'Unknown';
     const albumTitle = fullDetails.title || selected.title;
     
-    const coverUrl = fullDetails.images?.[0]?.uri || 
-                     fullDetails.images?.[0]?.uri150 || 
-                     selected.thumb || 
-                     fullDetails.thumb ||
-                     null;
+    const rawCoverUrl = fullDetails.images?.[0]?.uri || 
+                         fullDetails.images?.[0]?.uri150 || 
+                         selected.thumb || 
+                         fullDetails.thumb ||
+                         null;
+    
+    const coverUrlThumbnail = fullDetails.images?.[0]?.uri150 || 
+                              selected.thumb || 
+                              fullDetails.thumb ||
+                              null;
+    
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+    const proxyUrl = rawCoverUrl ? `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(rawCoverUrl)}` : null;
+    const coverUrl = proxyUrl || coverUrlThumbnail;
     
     const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
     const labels = fullDetails.labels?.map(l => l.name).filter(Boolean).join(', ');
@@ -141,6 +150,7 @@ export function DiscogsImporter({ onClose }) {
       genre: genres.join(', '),
       year: fullDetails.year || selected.year || '',
       coverUrl: coverUrl,
+      coverUrlThumbnail: coverUrlThumbnail,
       discogsId: selected.id,
       discogsMasterId: fullDetails.master_id,
       country: fullDetails.country,

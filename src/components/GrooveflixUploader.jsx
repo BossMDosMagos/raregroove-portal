@@ -456,18 +456,42 @@ function SuperCard({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10">
-            {metadata.coverUrl ? (
+            {metadata.coverUrl || metadata.coverUrlThumbnail ? (
               <>
                 <img 
-                  src={metadata.coverUrl} 
+                  src={metadata.coverUrl || metadata.coverUrlThumbnail}
                   alt={metadata.title}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const fullImg = e.target.nextSibling;
+                    if (fullImg && fullImg.tagName === 'IMG') {
+                      fullImg.src = metadata.coverUrl;
+                    }
                   }}
+                  onError={(e) => {
+                    const fallbackImg = e.target.nextSibling;
+                    if (fallbackImg && fallbackImg.tagName === 'IMG') {
+                      e.target.style.display = 'none';
+                      fallbackImg.style.display = 'block';
+                    } else {
+                      e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
+                    }
+                  }}
+                  style={{ display: metadata.coverUrlThumbnail ? 'block' : 'block' }}
                 />
-                <div className="hidden w-full h-full flex-col items-center justify-center text-white/30 absolute inset-0 bg-black/50">
+                {metadata.coverUrl && metadata.coverUrl !== metadata.coverUrlThumbnail && (
+                  <img 
+                    src={metadata.coverUrl}
+                    alt={metadata.title}
+                    className="hidden w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
+                    }}
+                  />
+                )}
+                <div className="fallback-placeholder hidden w-full h-full flex-col items-center justify-center text-white/30 absolute inset-0 bg-black/50">
                   <Disc className="w-16 h-16 mb-2 opacity-30" />
                   <p className="text-sm">Erro ao carregar imagem</p>
                 </div>
@@ -713,6 +737,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     year: item?.year || '',
     genre: item?.genre || '',
     coverUrl: item?.metadata?.grooveflix?.coverUrl || '',
+    coverUrlThumbnail: item?.metadata?.grooveflix?.coverUrlThumbnail || '',
     discogsId: item?.metadata?.grooveflix?.discogsId || '',
     discogsMasterId: item?.metadata?.grooveflix?.discogsMasterId || '',
     country: item?.metadata?.grooveflix?.country || '',
@@ -732,6 +757,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         year: importedData.year || prev.year,
         genre: importedData.genre || prev.genre,
         coverUrl: importedData.coverUrl || prev.coverUrl,
+        coverUrlThumbnail: importedData.coverUrlThumbnail || prev.coverUrlThumbnail,
         discogsId: importedData.discogsId || prev.discogsId,
         discogsMasterId: importedData.discogsMasterId || prev.discogsMasterId,
         country: importedData.country || prev.country,
