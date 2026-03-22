@@ -712,9 +712,17 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           {activeTab === 'discogs' && isAdmin ? (
             <DiscogsImporter
               userId={userId}
-              onImportComplete={() => {
-                onSuccess?.();
-                onClose();
+              onSelectData={(data) => {
+                setMetadata(prev => ({
+                  ...prev,
+                  title: data.title || prev.title,
+                  artist: data.artist || prev.artist,
+                  genre: data.genre || prev.genre,
+                  year: data.year || prev.year,
+                  discogsId: data.discogsId,
+                  coverUrl: data.coverUrl,
+                }));
+                setActiveTab('upload');
               }}
             />
           ) : (

@@ -1,111 +1,118 @@
 import { supabase } from '../lib/supabase';
 
-const DISCOGS_API_BASE = 'https://api.discogs.com';
-const DISCOGS_USER_AGENT = 'RareGroove/3.0';
+const DISCOGS_EDGE_FUNCTION = 'discogs-search';
 
 export const discogsService = {
   async searchReleases(query, options = {}) {
     try {
-      const params = new URLSearchParams({
-        q: query,
-        type: 'release',
-        per_page: options.limit || 20,
-        page: options.page || 1,
-      });
+      const limit = options.limit || 20;
 
-      if (options.year) params.append('year', options.year);
-      if (options.genre) params.append('genre', options.genre);
-      if (options.country) params.append('country', options.country);
-      if (options.format) params.append('format', options.format);
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
 
-      const token = import.meta.env.VITE_DISCOGS_TOKEN;
-      if (!token) {
-        console.warn('[DISCOGS] Missing API token. Skipping request.');
-        return { data: [], error: 'Missing API token' };
+      if (!accessToken) {
+        console.error('[DISCOGS] No access token');
+        return { data: [], error: 'Not authenticated' };
       }
 
-      const response = await fetch(`${DISCOGS_API_BASE}/database/search?${params}`, {
+      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
+        body: { query, type: 'search', limit },
         headers: {
-          'User-Agent': DISCOGS_USER_AGENT,
-          'Accept': 'application/json',
-          'Authorization': `Discogs token=${token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Discogs API error: ${response.status}`);
+      if (response.error) {
+        console.error('[DISCOGS] Edge function error:', response.error);
+        return { data: [], error: response.error };
       }
 
-      const data = await response.json();
-      return { data: data.results, error: null };
+      const results = response.data?.data || [];
+      return { data: results, error: null };
     } catch (error) {
-      console.error('Discogs search error:', error);
+      console.error('[DISCOGS] Search error:', error);
       return { data: [], error };
     }
   },
 
   async getRelease(releaseId) {
     try {
-      const response = await fetch(`${DISCOGS_API_BASE}/releases/${releaseId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        return { data: null, error: 'Not authenticated' };
+      }
+
+      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
+        body: { type: 'release', releaseId },
         headers: {
-          'User-Agent': DISCOGS_USER_AGENT,
-          'Accept': 'application/json',
-          'Authorization': `Discogs token=${import.meta.env.VITE_DISCOGS_TOKEN}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Discogs API error: ${response.status}`);
+      if (response.error) {
+        console.error('[DISCOGS] Edge function error:', response.error);
+        return { data: null, error: response.error };
       }
 
-      const data = await response.json();
-      return { data, error: null };
+      return { data: response.data?.data, error: null };
     } catch (error) {
-      console.error('Discogs get release error:', error);
+      console.error('[DISCOGS] Get release error:', error);
       return { data: null, error };
     }
   },
 
   async getMasterRelease(masterId) {
     try {
-      const response = await fetch(`${DISCOGS_API_BASE}/masters/${masterId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        return { data: null, error: 'Not authenticated' };
+      }
+
+      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
+        body: { type: 'master', masterId },
         headers: {
-          'User-Agent': DISCOGS_USER_AGENT,
-          'Accept': 'application/json',
-          'Authorization': `Discogs token=${import.meta.env.VITE_DISCOGS_TOKEN}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Discogs API error: ${response.status}`);
+      if (response.error) {
+        return { data: null, error: response.error };
       }
 
-      const data = await response.json();
-      return { data, error: null };
+      return { data: response.data?.data, error: null };
     } catch (error) {
-      console.error('Discogs get master error:', error);
+      console.error('[DISCOGS] Get master error:', error);
       return { data: null, error };
     }
   },
 
   async getArtist(artistId) {
     try {
-      const response = await fetch(`${DISCOGS_API_BASE}/artists/${artistId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        return { data: null, error: 'Not authenticated' };
+      }
+
+      const response = await supabase.functions.invoke(DISCOGS_EDGE_FUNCTION, {
+        body: { type: 'artist', artistId },
         headers: {
-          'User-Agent': DISCOGS_USER_AGENT,
-          'Accept': 'application/json',
-          'Authorization': `Discogs token=${import.meta.env.VITE_DISCOGS_TOKEN}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Discogs API error: ${response.status}`);
+      if (response.error) {
+        return { data: null, error: response.error };
       }
 
-      const data = await response.json();
-      return { data, error: null };
+      return { data: response.data?.data, error: null };
     } catch (error) {
-      console.error('Discogs get artist error:', error);
+      console.error('[DISCOGS] Get artist error:', error);
       return { data: null, error };
     }
   },
@@ -129,7 +136,7 @@ export const discogsService = {
 
       return { data: priceSuggestions, error: null };
     } catch (error) {
-      console.error('Price suggestions error:', error);
+      console.error('[DISCOGS] Price suggestions error:', error);
       return { data: null, error };
     }
   },
@@ -170,7 +177,7 @@ export const discogsService = {
 
       return { data: item, error: null };
     } catch (error) {
-      console.error('Import from Discogs error:', error);
+      console.error('[DISCOGS] Import from Discogs error:', error);
       return { data: null, error };
     }
   },
@@ -215,7 +222,7 @@ export const discogsService = {
 
       return { data: updated, error: null };
     } catch (error) {
-      console.error('Sync from Discogs error:', error);
+      console.error('[DISCOGS] Sync from Discogs error:', error);
       return { data: null, error };
     }
   },
@@ -246,7 +253,7 @@ export const discogsService = {
 
       return { data: verification, error: null };
     } catch (error) {
-      console.error('Verify release error:', error);
+      console.error('[DISCOGS] Verify release error:', error);
       return { verified: false, error };
     }
   },
@@ -298,7 +305,7 @@ export const discogsGradingService = {
 
       return { data: suggestions, error: null };
     } catch (error) {
-      console.error('Suggest grade error:', error);
+      console.error('[DISCOGS] Suggest grade error:', error);
       return { data: null, error };
     }
   },
