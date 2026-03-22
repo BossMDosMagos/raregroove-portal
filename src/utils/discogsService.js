@@ -9,6 +9,8 @@ async function callEdgeFunction(body) {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || SUPABASE_ANON_KEY;
 
+  console.log('[DISCOGS] Calling Edge Function with body:', JSON.stringify(body));
+
   const response = await fetch(`${SUPABASE_URL}/functions/v1/${DISCOGS_EDGE_FUNCTION}`, {
     method: 'POST',
     headers: {
@@ -19,12 +21,17 @@ async function callEdgeFunction(body) {
     body: JSON.stringify(body),
   });
 
+  console.log('[DISCOGS] Response status:', response.status);
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Edge Function error: ${response.status} - ${errorText}`);
+    console.error('[DISCOGS] Error response:', errorText);
+    throw new Error(`Edge Function error: ${response.status}`);
   }
 
   const data = await response.json();
+  console.log('[DISCOGS] Response data:', data);
+  
   if (data.error) {
     throw new Error(data.error);
   }
