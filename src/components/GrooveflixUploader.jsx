@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, X, FileAudio, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search, Check, Trash2, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, X, FileAudio, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search, Check, Trash2, ExternalLink, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -196,9 +196,8 @@ function UploadFileItem({ file, index, status, onRemove }) {
   );
 }
 
-function FolderUploadZone({ files, onChange, onUpload }) {
+function FolderUploadZone({ files, onChange }) {
   const [dragOver, setDragOver] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({});
   const [localFiles, setLocalFiles] = useState([]);
 
   const formatSize = (bytes) => {
@@ -294,7 +293,6 @@ function FolderUploadZone({ files, onChange, onUpload }) {
                   key={`${file.name}-${index}`}
                   file={file}
                   index={index}
-                  status={uploadProgress[index]}
                   onRemove={() => handleRemoveFile(index)}
                 />
               ))}
@@ -324,9 +322,9 @@ function FolderUploadZone({ files, onChange, onUpload }) {
 function TracklistEditor({ tracklist, onUpdateTrack, onRemoveTrack, onAddTrack }) {
   if (!tracklist || tracklist.length === 0) {
     return (
-      <div className="text-center py-6 text-white/30">
-        <Music className="w-8 h-8 mx-auto mb-2 opacity-30" />
-        <p>Sem tracklist disponível</p>
+      <div className="text-center py-4 text-white/30">
+        <Music className="w-6 h-6 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">Sem tracklist - pode adicionar manualmente</p>
       </div>
     );
   }
@@ -335,7 +333,7 @@ function TracklistEditor({ tracklist, onUpdateTrack, onRemoveTrack, onAddTrack }
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-xs text-fuchsia-300 font-medium uppercase tracking-wider">
-          {tracklist.length} faixas importadas do Discogs
+          {tracklist.length} faixas {tracklist.length > 0 ? '(do Discogs)' : ''}
         </p>
         <button
           onClick={onAddTrack}
@@ -378,7 +376,7 @@ function TracklistEditor({ tracklist, onUpdateTrack, onRemoveTrack, onAddTrack }
   );
 }
 
-function SuperCardView({ 
+function SuperCard({ 
   metadata, 
   setMetadata, 
   tracklist, 
@@ -394,39 +392,66 @@ function SuperCardView({
   onAddTrack,
   onUpdateTrack,
   onRemoveTrack,
+  onOpenDiscogs,
+  showDiscogsButton,
 }) {
   const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 rounded-full">
+      {showDiscogsButton && (
+        <div className="border border-dashed border-fuchsia-500/30 rounded-2xl p-4 bg-fuchsia-500/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 flex items-center justify-center">
+                <Database className="w-5 h-5 text-fuchsia-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Importar do Discogs</p>
+                <p className="text-xs text-white/40">Busca automática de álbum, artista, capa e tracklist</p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenDiscogs}
+              className="px-4 py-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold rounded-xl text-sm transition-all flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />
+              Buscar Discogs
+            </button>
+          </div>
+        </div>
+      )}
+
+      {discogsData && (
+        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-xl p-3">
+          <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold text-fuchsia-200 uppercase tracking-wider">
+            <span className="text-sm font-medium text-emerald-200">
               Sincronizado com Discogs
             </span>
           </div>
-          {discogsData?.discogsId && (
-            <a
-              href={`https://www.discogs.com/release/${discogsData.discogsId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-white/40 hover:text-fuchsia-300 flex items-center gap-1"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Ver no Discogs
-            </a>
+          {discogsData.discogsId && (
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://www.discogs.com/release/${discogsData.discogsId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-white/40 hover:text-fuchsia-300 flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Ver no Discogs
+              </a>
+              <button
+                onClick={clearDiscogs}
+                className="text-xs text-white/40 hover:text-red-400 flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Limpar
+              </button>
+            </div>
           )}
         </div>
-        <button
-          onClick={clearDiscogs}
-          className="text-xs text-white/40 hover:text-red-400 flex items-center gap-1"
-        >
-          <RefreshCw className="w-3 h-3" />
-          Limpar e recomeçar
-        </button>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -437,18 +462,39 @@ function SuperCardView({
                   src={metadata.coverUrl} 
                   alt={metadata.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
                 />
+                <div className="hidden w-full h-full flex-col items-center justify-center text-white/30 absolute inset-0 bg-black/50">
+                  <Disc className="w-16 h-16 mb-2 opacity-30" />
+                  <p className="text-sm">Erro ao carregar imagem</p>
+                </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                   <p className="text-xs text-emerald-300 font-medium flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    Capa carregada do Discogs
+                    Capa {discogsData ? 'do Discogs' : 'carregada'}
                   </p>
                 </div>
               </>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-white/30">
+              <div className="w-full h-full flex flex-col items-center justify-center text-white/30 cursor-pointer hover:bg-white/5 transition" onClick={() => document.getElementById('cover-input')?.click()}>
                 <Disc className="w-16 h-16 mb-2 opacity-30" />
-                <p className="text-sm">Sem capa</p>
+                <p className="text-sm">Clique para adicionar capa</p>
+                <input
+                  id="cover-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const localUrl = URL.createObjectURL(file);
+                      setMetadata(m => ({ ...m, coverUrl: localUrl }));
+                    }
+                  }}
+                />
               </div>
             )}
           </div>
@@ -593,10 +639,56 @@ function SuperCardView({
   );
 }
 
+function DiscogsSearchModal({ isOpen, onClose }) {
+  const { t } = useI18n();
+  const { hasImported } = useDiscogs();
+
+  useEffect(() => {
+    if (hasImported && isOpen) {
+      onClose();
+    }
+  }, [hasImported, isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+      
+      <div className="relative w-full max-w-2xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[85vh] flex flex-col">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-fuchsia-500/5 rounded-full blur-[100px]" />
+        </div>
+
+        <div className="relative flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 flex items-center justify-center">
+              <Database className="w-6 h-6 text-fuchsia-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-wider text-white">
+                Importar do Discogs
+              </h2>
+              <p className="text-white/40 text-xs">Busca automática de metadados</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl hover:bg-white/10 transition flex items-center justify-center text-white/50 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="relative p-6 overflow-y-auto flex-1">
+          <DiscogsImporter />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, isAdmin, userId }) {
   const { t } = useI18n();
   const { importedData, hasImported, clearImportedData, updateImportedTrack } = useDiscogs();
-  const [activeTab, setActiveTab] = useState('upload');
+  const [showDiscogsModal, setShowDiscogsModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   
   const CATEGORIES = [
@@ -633,22 +725,22 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
   useEffect(() => {
     if (hasImported && importedData) {
-      setMetadata({
-        title: importedData.title || '',
-        artist: importedData.artist || '',
-        year: importedData.year || '',
-        genre: importedData.genre || '',
-        coverUrl: importedData.coverUrl || '',
-        discogsId: importedData.discogsId || '',
-        discogsMasterId: importedData.discogsMasterId || '',
-        country: importedData.country || '',
-        labels: importedData.labels || '',
-        catalogNumber: importedData.catalogNumber || '',
-        formats: importedData.formats || '',
-        description: importedData.description || '',
-      });
+      setMetadata(prev => ({
+        ...prev,
+        title: importedData.title || prev.title,
+        artist: importedData.artist || prev.artist,
+        year: importedData.year || prev.year,
+        genre: importedData.genre || prev.genre,
+        coverUrl: importedData.coverUrl || prev.coverUrl,
+        discogsId: importedData.discogsId || prev.discogsId,
+        discogsMasterId: importedData.discogsMasterId || prev.discogsMasterId,
+        country: importedData.country || prev.country,
+        labels: importedData.labels || prev.labels,
+        catalogNumber: importedData.catalogNumber || prev.catalogNumber,
+        formats: importedData.formats || prev.formats,
+        description: importedData.description || prev.description,
+      }));
       setTracklist(importedData.tracklist || []);
-      setActiveTab('super-card');
     }
   }, [hasImported, importedData]);
 
@@ -688,8 +780,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
-    console.log('[UPLOAD] Iniciando upload server-side para B2...');
-    
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token || supabaseAnonKey;
     const currentUserId = session?.user?.id || (await supabase.auth.getUser()).data.user?.id;
@@ -711,8 +801,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     });
 
     const data = await response.json();
-    console.log('[B2-UPLOAD] Response status:', response.status);
-    console.log('[B2-UPLOAD] Response data:', data);
     
     if (!response.ok) {
       throw new Error(data.error || data.message || `Erro ${response.status}`);
@@ -729,7 +817,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     }
     
     if (data.uploadUrl) {
-      console.log('[UPLOAD] Fallback para upload direto...');
       const uploadResponse = await fetch(data.uploadUrl, {
         method: 'POST',
         body: file,
@@ -760,7 +847,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
   const handleUpload = async () => {
     if (!metadata.title || !metadata.artist) {
-      toast.error('Preencha o título e artista');
+      toast.error(t('grooveflix.upload.titleRequired') || 'Preencha o título e artista');
       return;
     }
 
@@ -834,7 +921,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
         if (insertError) throw insertError;
         itemId = insertedItem.id;
-        console.log('[UPLOAD] Item criado com ID:', itemId);
       }
 
       const grooveflixData = {
@@ -860,7 +946,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
           try {
             const result = await uploadToB2(file, 'audio', itemId);
-            console.log(`[AUDIO] Upload B2 result for ${file.name}:`, result);
             audioFiles.push({
               name: file.name,
               path: result.filePath,
@@ -868,7 +953,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done' }));
           } catch (e) {
-            console.error(`[AUDIO] Upload error for ${file.name}:`, e);
             toast.error(`Erro no upload de ${file.name}`, { description: e.message });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'error' }));
           }
@@ -881,7 +965,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         
         if (audioFiles.length > 0) {
           grooveflixData.audio_path = audioFiles[0].path;
-          console.log('[AUDIO] Primeira faixa definida como audio_path:', audioFiles[0].path);
         }
       }
 
@@ -889,12 +972,10 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         setUploadProgress(p => ({ ...p, audio: 'uploading' }));
         try {
           const audioResult = await uploadToB2(files.audio, 'audio', itemId);
-          console.log('[AUDIO] Upload B2 result:', audioResult);
           grooveflixData.audio_path = audioResult.filePath;
           grooveflixData.audio_files = [{ name: files.audio.name, path: audioResult.filePath, size: files.audio.size }];
           setUploadProgress(p => ({ ...p, audio: 'done' }));
         } catch (e) {
-          console.error('[AUDIO] Upload error:', e);
           toast.error(t('grooveflix.upload.audioError'), { description: e.message });
           setUploadProgress(p => ({ ...p, audio: 'error' }));
         }
@@ -907,7 +988,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           grooveflixData.preview_path = previewResult.filePath;
           setUploadProgress(p => ({ ...p, preview: 'done' }));
         } catch (e) {
-          console.error('[PREVIEW] Upload error:', e);
           setUploadProgress(p => ({ ...p, preview: 'error' }));
         }
       }
@@ -919,7 +999,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           grooveflixData.iso_path = isoResult.filePath;
           setUploadProgress(p => ({ ...p, iso: 'done' }));
         } catch (e) {
-          console.error('[ISO] Upload error:', e);
           setUploadProgress(p => ({ ...p, iso: 'error' }));
         }
       }
@@ -931,7 +1010,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           grooveflixData.booklet_path = bookletResult.filePath;
           setUploadProgress(p => ({ ...p, booklet: 'done' }));
         } catch (e) {
-          console.error('[BOOKLET] Upload error:', e);
           setUploadProgress(p => ({ ...p, booklet: 'error' }));
         }
       }
@@ -967,7 +1045,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     clearImportedData();
     setMetadata({ title: '', artist: '', year: '', genre: '', coverUrl: '', discogsId: '', discogsMasterId: '', country: '', labels: '', catalogNumber: '', formats: '', description: '' });
     setTracklist([]);
-    setActiveTab('upload');
   };
 
   const handleUpdateTrack = (index, field, value) => {
@@ -990,67 +1067,45 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+    <>
+      <DiscogsSearchModal 
+        isOpen={showDiscogsModal} 
+        onClose={() => setShowDiscogsModal(false)} 
+      />
       
-      <div className="relative w-full max-w-5xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[95vh] flex flex-col">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-fuchsia-500/5 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[80px]" />
-        </div>
-
-        <div className="relative flex items-center justify-between p-6 border-b border-white/10">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 flex items-center justify-center">
-              <Cloud className="w-6 h-6 text-fuchsia-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black uppercase tracking-wider text-white">
-                Adicionar ao Grooveflix
-              </h2>
-              <p className="text-white/40 text-xs">Upload de conteúdo Hi-Fi</p>
-            </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+        
+        <div className="relative w-full max-w-5xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[95vh] flex flex-col">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-fuchsia-500/5 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[80px]" />
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-xl hover:bg-white/10 transition flex items-center justify-center text-white/50 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        <div className="relative p-6 space-y-6 overflow-y-auto flex-1">
-          {isAdmin && activeTab !== 'super-card' && (
-            <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
-              <button
-                onClick={() => setActiveTab('upload')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'upload'
-                    ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                Upload
-              </button>
-              <button
-                onClick={() => setActiveTab('discogs')}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'discogs'
-                    ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Search className="w-4 h-4" />
-                Discogs
-              </button>
+          <div className="relative flex items-center justify-between p-6 border-b border-white/10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 flex items-center justify-center">
+                <Cloud className="w-6 h-6 text-fuchsia-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-wider text-white">
+                  Adicionar ao Grooveflix
+                </h2>
+                <p className="text-white/40 text-xs">Upload de conteúdo Hi-Fi</p>
+              </div>
             </div>
-          )}
+            <button onClick={onClose} className="w-10 h-10 rounded-xl hover:bg-white/10 transition flex items-center justify-center text-white/50 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-          {activeTab === 'super-card' ? (
-            <SuperCardView
+          <div className="relative p-6 space-y-6 overflow-y-auto flex-1">
+            <SuperCard
               metadata={metadata}
               setMetadata={setMetadata}
               tracklist={tracklist}
               setTracklist={setTracklist}
-              discogsData={importedData}
+              discogsData={hasImported ? importedData : (metadata.discogsId ? metadata : null)}
               clearDiscogs={handleClearDiscogs}
               files={files}
               handleFileSelect={handleFileSelect}
@@ -1061,207 +1116,39 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
               onAddTrack={handleAddTrack}
               onUpdateTrack={handleUpdateTrack}
               onRemoveTrack={handleRemoveTrack}
+              onOpenDiscogs={() => setShowDiscogsModal(true)}
+              showDiscogsButton={isAdmin}
             />
-          ) : activeTab === 'discogs' && isAdmin ? (
-            <DiscogsImporter />
-          ) : (
-          <>
-          <div className="grid grid-cols-4 gap-3">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategory(cat.id)}
-                className={`group relative p-4 rounded-2xl border text-center transition-all duration-300 ${
-                  category === cat.id
-                    ? 'bg-fuchsia-500/20 border-fuchsia-500/50 shadow-lg shadow-fuchsia-500/10'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:border-white/20'
-                }`}
-              >
-                <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-transform ${category === cat.id ? 'bg-fuchsia-500/30' : 'bg-white/5'}`}>
-                  <cat.icon className={`w-6 h-6 ${category === cat.id ? 'text-fuchsia-300' : 'text-white/40 group-hover:text-white/70'}`} />
-                </div>
-                <span className={`text-xs font-black uppercase ${category === cat.id ? 'text-fuchsia-200' : ''}`}>{cat.label}</span>
-                <p className={`text-[10px] mt-1 ${category === cat.id ? 'text-fuchsia-300/60' : 'text-white/30'}`}>{cat.description}</p>
-              </button>
-            ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
-                <Shield className="w-3 h-3" /> Título *
-              </label>
-              <input
-                type="text"
-                value={metadata.title}
-                onChange={(e) => setMetadata(m => ({ ...m, title: e.target.value }))}
-                placeholder="Nome do álbum"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
-                <Music className="w-3 h-3" /> Artista *
-              </label>
-              <input
-                type="text"
-                value={metadata.artist}
-                onChange={(e) => setMetadata(m => ({ ...m, artist: e.target.value }))}
-                placeholder="Nome do artista"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
-                <Disc className="w-3 h-3" /> Ano
-              </label>
-              <input
-                type="number"
-                value={metadata.year}
-                onChange={(e) => setMetadata(m => ({ ...m, year: e.target.value }))}
-                placeholder="2024"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-300/70 ml-1">
-                <Zap className="w-3 h-3" /> Gênero
-              </label>
-              <input
-                type="text"
-                value={metadata.genre}
-                onChange={(e) => setMetadata(m => ({ ...m, genre: e.target.value }))}
-                placeholder="Jazz, Funk, Soul..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-white/20 focus:border-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 transition-all"
-              />
-            </div>
+          <div className="relative p-6 border-t border-white/10 flex gap-4">
+            <button
+              onClick={onClose}
+              disabled={uploading}
+              className="flex-1 py-4 rounded-2xl border border-white/10 text-white/60 font-black uppercase tracking-widest text-xs hover:bg-white/5 hover:text-white transition disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-fuchsia-500/20 transition disabled:opacity-70 flex items-center justify-center gap-2"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="animate-spin w-4 h-4" />
+                  Processando arquivos...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  {t('grooveflix.upload.submit') || 'Adicionar ao Grooveflix'}
+                </>
+              )}
+            </button>
           </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 ml-1">
-              <Upload className="w-3 h-3" /> Arquivos
-            </div>
-            
-            <div>
-              <label className="block text-xs text-white/60 mb-2">Capa do Álbum (imagem)</label>
-              <FileUploadZone
-                file={files.cover}
-                onChange={(e) => handleFileSelect('cover', e)}
-                icon={Image}
-                progress={uploadProgress.cover}
-                accept={FILE_TYPES.cover.accept}
-                placeholder="Selecione a capa (JPEG, PNG, WebP)"
-              />
-            </div>
-
-            {category === 'album' || category === 'coletanea' ? (
-              <div>
-                <label className="block text-xs text-white/60 mb-2">Pasta com Músicas *</label>
-                <FolderUploadZone
-                  files={files.folder}
-                  onChange={(e) => handleFileSelect('folder', e)}
-                />
-              </div>
-            ) : category === 'single' ? (
-              <div>
-                <label className="block text-xs text-white/60 mb-2">Arquivo de Áudio (MP3/FLAC/WAV) *</label>
-                <FileUploadZone
-                  file={files.audio}
-                  onChange={(e) => handleFileSelect('audio', e)}
-                  icon={FileAudio}
-                  progress={uploadProgress.audio}
-                  accept={FILE_TYPES.audio.accept}
-                  placeholder="Selecione o arquivo de áudio"
-                />
-              </div>
-            ) : null}
-
-            {category === 'iso' && (
-              <div>
-                <label className="block text-xs text-white/60 mb-2">Arquivo ISO (CD Completo) *</label>
-                <FileUploadZone
-                  file={files.iso}
-                  onChange={(e) => handleFileSelect('iso', e)}
-                  icon={HardDrive}
-                  progress={uploadProgress.iso}
-                  accept={FILE_TYPES.iso.accept}
-                  placeholder="Selecione o arquivo ISO"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs text-white/60 mb-2">Preview (30-60 segundos, opcional)</label>
-              <FileUploadZone
-                file={files.preview}
-                onChange={(e) => handleFileSelect('preview', e)}
-                icon={Music}
-                progress={uploadProgress.preview}
-                accept={FILE_TYPES.preview.accept}
-                placeholder="Selecione o preview"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-white/60 mb-2">Encarte/Livreto (PDF, opcional)</label>
-              <FileUploadZone
-                file={files.booklet}
-                onChange={(e) => handleFileSelect('booklet', e)}
-                icon={FileText}
-                progress={uploadProgress.booklet}
-                accept={FILE_TYPES.booklet.accept}
-                placeholder="Selecione o encarte em PDF"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-6 py-4 text-white/30 text-xs">
-            <div className="flex items-center gap-2">
-              <Cloud className="w-4 h-4" />
-              <span>Backblaze B2</span>
-            </div>
-            <div className="w-px h-4 bg-white/10" />
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span>SSL Seguro</span>
-            </div>
-            <div className="w-px h-4 bg-white/10" />
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              <span>Upload Rápido</span>
-            </div>
-          </div>
-        </>
-        )}
-        </div>
-
-        <div className="relative p-6 border-t border-white/10 flex gap-4">
-          <button
-            onClick={onClose}
-            disabled={uploading}
-            className="flex-1 py-4 rounded-2xl border border-white/10 text-white/60 font-black uppercase tracking-widest text-xs hover:bg-white/5 hover:text-white transition disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-fuchsia-500/20 transition disabled:opacity-70 flex items-center justify-center gap-2"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="animate-spin w-4 h-4" />
-                Processando arquivos...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                {t('grooveflix.upload.submit') || 'Adicionar ao Grooveflix'}
-              </>
-            )}
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
