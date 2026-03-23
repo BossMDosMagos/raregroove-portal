@@ -68,19 +68,20 @@ export function SuperAudioPlayer() {
 
   useEffect(() => {
     const ht = queue.length > 0 && currentTrack;
-    if (!currentTrack || !globalIsPlaying || !ht) return;
+    if (!currentTrack || !ht) return;
     
     const playCurrentTrack = async () => {
       const idx = queue.findIndex(t => t.id === currentTrack?.id);
-      if (idx >= 0 && idx !== currentQueueIndex) {
+      console.log('[SUPER PLAYER] playCurrentTrack:', { idx, currentQueueIndex, globalIsPlaying, isPlaying });
+      
+      if (idx >= 0) {
+        setCurrentQueueIndex(idx);
         await hydrateAndPlay(idx);
-      } else if (idx >= 0 && idx === currentQueueIndex && !isPlaying) {
-        await play();
       }
     };
     
     playCurrentTrack();
-  }, [currentTrack, globalIsPlaying]);
+  }, [currentTrack, queue]);
 
   const hydrateAndPlay = useCallback(async (index) => {
     if (index < 0 || index >= queue.length) return;

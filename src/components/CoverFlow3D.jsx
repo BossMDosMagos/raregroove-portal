@@ -109,6 +109,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        console.error('[PRESIGN] No userId available');
+        throw new Error('missing_userId');
+      }
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/b2-presign`, {
         method: 'POST',
@@ -117,7 +123,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           'Authorization': `Bearer ${accessToken}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ file_path: filePath, type }),
+        body: JSON.stringify({ file_path: filePath, userId, type }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -159,35 +165,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
     setActiveTrackIndex(index);
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const trackAudioFile = audioFiles[index];
-      if (!trackAudioFile?.path) {
-        toast.error('Faixa sem arquivo de áudio');
-        return;
-      }
-
-      const url = await getPresignedUrl(trackAudioFile.path, 'audio');
-      
-      if (!url) return;
-
-      if (playAlbum) {
-        playAlbum({
-          ...focusedItem,
-          audio_files: audioFiles,
-          tracklist: rawTracklist,
-        });
-      }
-
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        console.error('[PLAY TRACK] Error:', e);
-        toast.error('Erro ao reproduzir faixa');
-      }
+    if (playAlbum) {
+      playAlbum({
+        ...focusedItem,
+        audio_files: audioFiles,
+        tracklist: rawTracklist,
+      });
     }
   }, [focusedItem, audioFiles, playAlbum]);
 
