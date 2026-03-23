@@ -28,23 +28,43 @@ serve(async (req) => {
 
       console.log('[Discogs] Proxying image:', imageUrl.substring(0, 100));
       
-      const imageResponse = await fetch(imageUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      });
+      let imageResponse;
+      try {
+        imageResponse = await fetch(imageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.discogs.com/',
+            'Origin': 'https://portalraregroove.com',
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+      } catch (fetchError) {
+        console.error('[Discogs] Image fetch error:', fetchError.message);
+        return new Response('Failed to fetch image', { status: 502 });
+      }
 
       if (!imageResponse.ok) {
+        console.error('[Discogs] Image fetch failed:', imageResponse.status);
         return new Response('Image not found', { status: 404 });
       }
 
-      const imageBuffer = await imageResponse.arrayBuffer();
+      let imageBuffer;
+      try {
+        imageBuffer = await imageResponse.arrayBuffer();
+      } catch (bufferError) {
+        console.error('[Discogs] Buffer error:', bufferError.message);
+        return new Response('Failed to read image', { status: 502 });
+      }
+      
       const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
       return new Response(imageBuffer, {
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
     }

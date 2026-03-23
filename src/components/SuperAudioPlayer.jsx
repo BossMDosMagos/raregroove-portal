@@ -85,6 +85,67 @@ export function SuperAudioPlayer() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const hydrateAndPlayRef = useRef(null);
+
+  const hydrateAndPlay = useCallback(async (index) => {
+    if (index < 0 || index >= queue.length) {
+      console.log('[SUPER PLAYER] Invalid index:', index);
+      return;
+    }
+    
+    const track = queue[index];
+    if (!track) {
+      console.log('[SUPER PLAYER] No track at index:', index);
+      return;
+    }
+    
+    if (!track.audioPath) {
+      console.log('[SUPER PLAYER] No audioPath for track:', track.title);
+      toast.error('Este álbum não tem arquivo de áudio');
+      return;
+    }
+
+    console.log('[SUPER PLAYER] Hydrating:', track.title, '| path:', track.audioPath);
+    setIsLoading(true);
+    setDebug(`Carregando: ${track.title}`);
+    
+    try {
+      let url = trackUrls[track.audioPath];
+      
+      if (!url) {
+        console.log('[SUPER PLAYER] Getting presigned URL...');
+        url = await getPresignedUrl(track.audioPath);
+        
+        if (!url) {
+          console.error('[SUPER PLAYER] Failed to get presigned URL');
+          setDebug('Erro de URL');
+          toast.error('Erro ao acessar arquivo de áudio');
+          return;
+        }
+        
+        console.log('[SUPER PLAYER] Presigned URL received');
+        setTrackUrls(prev => ({ ...prev, [track.audioPath]: url }));
+      }
+      
+      console.log('[SUPER PLAYER] Loading audio...');
+      await loadTrack(url);
+      
+      console.log('[SUPER PLAYER] Starting playback...');
+      await play();
+      
+      setDebug('');
+      console.log('[SUPER PLAYER] Playback started!');
+    } catch (e) {
+      console.error('[SUPER PLAYER] Error:', e);
+      setDebug('Erro: ' + e.message);
+      toast.error('Erro ao reproduzir: ' + e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [queue, trackUrls, getPresignedUrl, loadTrack, play]);
+
+  hydrateAndPlayRef.current = hydrateAndPlay;
+
   useEffect(() => {
     const ht = queue.length > 0 && currentTrack;
     if (!ht || queue.length === 0) return;
@@ -96,67 +157,28 @@ export function SuperAudioPlayer() {
   }, [currentTrack, queue]);
 
   useEffect(() => {
-    const ht = queue.length > 0 && currentTrack;
-    if (!currentTrack || !ht || !globalIsPlaying) return;
+    if (!currentTrack || queue.length === 0) return;
+    if (!globalIsPlaying) return;
+    
+    const idx = queue.findIndex(t => t.id === currentTrack?.id);
+    if (idx < 0) return;
+    
+    console.log('[SUPER PLAYER] Auto-playing track:', currentTrack?.title, 'at index:', idx);
+    setCurrentQueueIndex(idx);
     
     const playCurrentTrack = async () => {
-      const idx = queue.findIndex(t => t.id === currentTrack?.id);
-      console.log('[SUPER PLAYER] Auto-playing:', currentTrack?.title);
-      if (idx >= 0) {
-        setCurrentQueueIndex(idx);
-        await hydrateAndPlay(idx);
+      try {
+        if (hydrateAndPlayRef.current) {
+          await hydrateAndPlayRef.current(idx);
+        }
+      } catch (e) {
+        console.error('[SUPER PLAYER] Play error:', e);
+        toast.error('Erro ao reproduzir');
       }
     };
     
-    const timeoutId = setTimeout(playCurrentTrack, 100);
-    return () => clearTimeout(timeoutId);
-  }, [currentTrack?.id, globalIsPlaying]);
-
-  const hydrateAndPlay = useCallback(async (index) => {
-    if (index < 0 || index >= queue.length) return;
-    
-    const track = queue[index];
-    if (!track?.audioPath) {
-      console.log('[SUPER PLAYER] No audioPath for track:', track?.title);
-      return;
-    }
-
-    console.log('[SUPER PLAYER] Hydrating track:', track.title, 'path:', track.audioPath);
-    setIsLoading(true);
-    setDebug(`Loading: ${track.title}`);
-    
-    try {
-      let url = trackUrls[track.audioPath];
-      
-      if (!url) {
-        console.log('[SUPER PLAYER] Fetching presigned URL...');
-        url = await getPresignedUrl(track.audioPath);
-        console.log('[SUPER PLAYER] Presigned URL:', url ? 'received' : 'null');
-        if (url) {
-          setTrackUrls(prev => ({ ...prev, [track.audioPath]: url }));
-        }
-      }
-      
-      if (url) {
-        console.log('[SUPER PLAYER] Loading track with URL...');
-        await loadTrack(url);
-        await play();
-        setCurrentTrack(track);
-        setGlobalIsPlaying(true);
-        setCurrentQueueIndex(index);
-        setDebug('');
-      } else {
-        setDebug('URL error');
-        toast.error('Erro ao obter URL do áudio');
-      }
-    } catch (e) {
-      console.error('[SUPER PLAYER] Load error:', e);
-      setDebug('Error: ' + e.message);
-      toast.error('Erro ao carregar faixa');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queue, trackUrls, getPresignedUrl, loadTrack, play, setCurrentTrack, setGlobalIsPlaying]);
+    playCurrentTrack();
+  }, [currentTrack, globalIsPlaying, queue]);
 
   const handlePlayPause = useCallback(async () => {
     if (!isReady) {
@@ -171,13 +193,13 @@ export function SuperAudioPlayer() {
       if (queue.length > 0 && currentTrack) {
         const idx = queue.findIndex(t => t.id === currentTrack?.id);
         if (idx >= 0) {
-          await hydrateAndPlay(idx);
+          hydrateAndPlayRef.current?.(idx);
         }
       }
       await play();
       setGlobalIsPlaying(true);
     }
-  }, [isReady, isPlaying, queue, currentTrack, initAudioContext, play, pause, setGlobalIsPlaying, hydrateAndPlay]);
+  }, [isReady, isPlaying, queue, currentTrack, initAudioContext, play, pause, setGlobalIsPlaying]);
 
   const handleStop = useCallback(() => {
     stop();
@@ -187,11 +209,11 @@ export function SuperAudioPlayer() {
   const handleNext = useCallback(async () => {
     const next = getNextTrack(queue, currentQueueIndex);
     if (next) {
-      await hydrateAndPlay(next.index);
+      hydrateAndPlayRef.current?.(next.index);
     } else if (loopMode === 'playlist' && queue.length > 0) {
-      await hydrateAndPlay(0);
+      hydrateAndPlayRef.current?.(0);
     }
-  }, [queue, currentQueueIndex, getNextTrack, hydrateAndPlay, loopMode]);
+  }, [queue, currentQueueIndex, getNextTrack, loopMode]);
 
   const handlePrev = useCallback(async () => {
     if (currentTime > 3) {
@@ -201,11 +223,11 @@ export function SuperAudioPlayer() {
     
     const prev = getPrevTrack(queue, currentQueueIndex);
     if (prev) {
-      await hydrateAndPlay(prev.index);
+      hydrateAndPlayRef.current?.(prev.index);
     } else {
       seek(0);
     }
-  }, [currentTime, seek, queue, currentQueueIndex, getPrevTrack, hydrateAndPlay]);
+  }, [currentTime, seek, queue, currentQueueIndex, getPrevTrack]);
 
   const handleSeek = useCallback(async (e) => {
     const rect = e.currentTarget.getBoundingClientRect();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, Volume2, Disc, Music, X, ListMusic, Building, Calendar, Globe, Tag, Disc3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, Volume2, Disc, Music, X, ListMusic, Building, Calendar, Globe, Tag, Disc3, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { toast } from 'sonner';
@@ -12,7 +12,31 @@ const getImageProxyUrl = (discogsUrl) => {
   return `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
 };
 
-export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAdmin }) {
+const fetchProxiedImage = async (discogsUrl) => {
+  if (!discogsUrl) return null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || SUPABASE_ANON_KEY;
+    
+    const proxyUrl = `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
+    const response = await fetch(proxyUrl, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) {
+      console.warn('[IMAGE] Proxy failed, trying direct URL');
+      return discogsUrl;
+    }
+    
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.warn('[IMAGE] Proxy error:', e.message);
+    return discogsUrl;
+  }
+};
+
+export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAdmin, onAlbumDeleted }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
   const [showSuperCard, setShowSuperCard] = useState(false);
@@ -144,9 +168,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       const discogsCover = item.metadata?.grooveflix?.coverUrl;
 
       if (discogsCover) {
-        const proxiedUrl = getImageProxyUrl(discogsCover);
-        console.log('[COVER] Using proxied Discogs URL for:', item.title);
-        setCoverUrls(prev => ({ ...prev, [item.id]: proxiedUrl }));
+        console.log('[COVER] Fetching proxied image for:', item.title);
+        const blobUrl = await fetchProxiedImage(discogsCover);
+        setCoverUrls(prev => ({ ...prev, [item.id]: blobUrl || discogsCover }));
         return;
       }
 
@@ -247,6 +271,50 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     setShowSuperCard(false);
   };
 
+  const handleDeleteAlbum = useCallback(async (item) => {
+    if (!confirm(`Tem certeza que deseja deletar "${item.title}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/grooveflix-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ item_id: item.id }),
+      });
+
+      const result = await response.json();
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success('Álbum deletado com sucesso!');
+      handleCloseSuperCard();
+      
+      if (typeof onAlbumDeleted === 'function') {
+        onAlbumDeleted(item.id);
+      }
+    } catch (e) {
+      console.error('[DELETE] Error:', e);
+      toast.error('Erro ao deletar álbum');
+    }
+  }, [SUPABASE_URL, SUPABASE_ANON_KEY]);
+
+  const handleCardClick = useCallback((e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowSuperCard(true);
+  }, []);
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -279,24 +347,32 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative">
             {coverUrls[focusedItem?.id] ? (
-              <button
-                onClick={handleCoverClick}
-                className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              <div
+                onClick={handleCardClick}
+                onClickCapture={handleCardClick}
+                className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 cursor-pointer"
                 style={{
                   backgroundImage: `url(${coverUrls[focusedItem.id]})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}
+                role="button"
+                tabIndex={0}
                 aria-label="Ver detalhes do álbum"
+                onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
               />
             ) : (
-              <button
-                onClick={handleCoverClick}
-                className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-yellow-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              <div
+                onClick={handleCardClick}
+                onClickCapture={handleCardClick}
+                className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-yellow-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 cursor-pointer"
+                role="button"
+                tabIndex={0}
                 aria-label="Ver detalhes do álbum"
+                onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
               >
                 <Disc className="w-24 h-24 text-white/30" />
-              </button>
+              </div>
             )}
             {isCurrentAlbumPlaying && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -485,12 +561,23 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     <h2 className="text-2xl font-black text-white">{focusedItem?.title || 'Sem título'}</h2>
                     <p className="text-yellow-400 text-lg mt-1">{focusedItem?.artist || 'Desconhecido'}</p>
                   </div>
-                  <button 
-                    onClick={handleCloseSuperCard}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDeleteAlbum(focusedItem)}
+                        className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition"
+                        title="Deletar álbum"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCloseSuperCard}
+                      className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-3">

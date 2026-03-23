@@ -234,6 +234,9 @@ export default function Grooveflix() {
             onUpdateFocus={setFocusedItem}
             onOpenUploader={() => setShowUploader(true)}
             isAdmin={isAdmin}
+            onAlbumDeleted={(id) => {
+              setFilteredItems(prev => prev.filter(item => item.id !== id));
+            }}
           />
         )}
       </div>

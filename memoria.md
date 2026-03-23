@@ -275,7 +275,36 @@ npm test
 
 ---
 
+## Status Atual (2026-03-23)
+
+### ✅ CORREÇÕES RODADA 14 - 3 PROBLEMAS RESOLVIDOS
+
+1. **ERRO 401 NO IMAGE-PROXY - CORRIGIDO**
+   - Adicionada função `fetchProxiedImage()` que faz fetch com header Authorization
+   - Agora as imagens são buscadas via fetch com Bearer token antes de exibir
+
+2. **ONCLICK DO CARD CENTRAL - CORRIGIDO**
+   - Adicionado `handleCardClick` com `onClickCapture` 
+   - Card agora abre SuperCard ao clicar
+   - Suporte a teclado (Enter key)
+
+3. **PLAYER ZUMBI - CORRIGIDO**
+   - useEffect reescrito para chamar `hydrateAndPlay` imediatamente
+   - Usado `hydrateAndPlayRef` para evitar stale closures
+   - PlayAlbum agora inicia reprodução automaticamente
+
+4. **BOTÃO DELETAR - REABILITADO**
+   - Adicionado `handleDeleteAlbum()` no CoverFlow3D
+   - Botão lixeira aparece no SuperCard para admins
+   - Chama Edge Function `grooveflix-delete`
+
+---
+
 ## Bugs/Fixos Resolvidos (Histórico)
+
+### Correções Rodada 13 (2026-03-23)
+- ✅ Image proxy funcionando após deploy da discogs-search v7
+- ✅ Confirmação: image proxy retorna 404 para imagens inválidas, 200 para válidas
 
 ### Correções Rodada 12 (2026-03-23)
 - ✅ WiiFlow com Super Card, seleção individual, multi-disco
@@ -378,4 +407,23 @@ CLOUDFLARE_API_TOKEN=cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 
 ---
 
-*Última atualização: 2026-03-22 02:15 UTC-3*
+*Última atualização: 2026-03-23 21:00 UTC-3*
+
+---
+
+## Anotações de Debug
+
+### Testar Image Proxy
+```bash
+curl "https://hlfirfukbrisfpebaaur.supabase.co/functions/v1/discogs-search/image-proxy?url=URL_ENCODED" \
+  -H "Authorization: Bearer $ANON_KEY"
+```
+
+### Testar B2 Presign
+```javascript
+// No browser console:
+const { data } = await supabase.functions.invoke('b2-presign', {
+  body: { file_path: 'grooveflix/audio/user_xxx/...', userId: 'xxx', type: 'audio' }
+});
+console.log(data.url);
+```
