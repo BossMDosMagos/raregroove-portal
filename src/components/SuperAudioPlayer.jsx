@@ -269,16 +269,16 @@ export function SuperAudioPlayer() {
           isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        <div className="flex items-center gap-3 bg-gradient-to-r from-black via-fuchsia-950/80 to-black border border-fuchsia-500/40 rounded-2xl px-4 py-3 shadow-2xl shadow-fuchsia-500/20">
-          <div className="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center">
-            <Music className={`w-5 h-5 text-fuchsia-400 ${isPlaying ? 'animate-pulse' : ''}`} />
+        <div className="flex items-center gap-3 bg-black/60 backdrop-blur-xl border border-yellow-500/40 rounded-2xl px-4 py-3 shadow-2xl shadow-yellow-500/10">
+          <div className="w-10 h-10 rounded-xl bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+            <Music className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-pulse' : ''}`} />
           </div>
           
           <div className="min-w-0 max-w-[150px]">
             <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
             <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || (userId ? 'Pronto para tocar' : 'Aguardando...')}</p>
             {queue.length > 1 && (
-              <p className="text-fuchsia-400/70 text-[9px]">{currentQueueIndex + 1}/{queue.length}</p>
+              <p className="text-yellow-400/70 text-[9px]">{currentQueueIndex + 1}/{queue.length}</p>
             )}
             {!userId && (
               <p className="text-red-400/70 text-[9px]">Sem userId</p>
@@ -288,14 +288,14 @@ export function SuperAudioPlayer() {
           <div className="flex items-center gap-1">
             <button
               onClick={handlePlayPause}
-              className="w-8 h-8 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 transition"
+              className="w-8 h-8 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 flex items-center justify-center text-yellow-300 transition"
               title={isPlaying ? 'Pausar' : 'Reproduzir'}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
             <button
               onClick={() => setIsExpanded(true)}
-              className="w-8 h-8 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 transition"
+              className="w-8 h-8 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 flex items-center justify-center text-yellow-300 transition"
               title="Player Completo"
             >
               <ChevronUp className="w-4 h-4" />
@@ -305,10 +305,10 @@ export function SuperAudioPlayer() {
       </div>
 
       {isExpanded && (
-        <div className="fixed bottom-4 right-4 z-[99998] w-[420px] bg-gradient-to-br from-gray-950 via-purple-950/95 to-fuchsia-950/95 border border-fuchsia-500/30 rounded-2xl shadow-2xl shadow-fuchsia-500/20 overflow-hidden">
+        <div className="fixed bottom-4 right-4 z-[99998] w-[420px] bg-black/70 backdrop-blur-xl border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <Headphones className="w-4 h-4 text-fuchsia-400" />
+              <Headphones className="w-4 h-4 text-yellow-400" />
               <span className="text-white font-bold text-sm">GrooveGroove Player</span>
             </div>
             <button
@@ -324,7 +324,7 @@ export function SuperAudioPlayer() {
               onClick={() => setActivePanel('eq')}
               className={`flex-1 py-2 text-xs font-medium transition ${
                 activePanel === 'eq' 
-                  ? 'text-fuchsia-400 border-b-2 border-fuchsia-400 bg-fuchsia-500/10' 
+                  ? 'text-yellow-400 border-b-2 border-yellow-400 bg-yellow-500/10' 
                   : 'text-white/50 hover:text-white/70'
               }`}
             >
@@ -335,24 +335,14 @@ export function SuperAudioPlayer() {
               onClick={() => setActivePanel('visualizer')}
               className={`flex-1 py-2 text-xs font-medium transition ${
                 activePanel === 'visualizer' 
-                  ? 'text-fuchsia-400 border-b-2 border-fuchsia-400 bg-fuchsia-500/10' 
+                  ? 'text-yellow-400 border-b-2 border-yellow-400 bg-yellow-500/10' 
                   : 'text-white/50 hover:text-white/70'
               }`}
             >
               <BarChart3 className="w-4 h-4 mx-auto mb-1" />
               Visualizador
             </button>
-            <button
-              onClick={() => setActivePanel('queue')}
-              className={`flex-1 py-2 text-xs font-medium transition ${
-                activePanel === 'queue' 
-                  ? 'text-fuchsia-400 border-b-2 border-fuchsia-400 bg-fuchsia-500/10' 
-                  : 'text-white/50 hover:text-white/70'
-              }`}
-            >
-              <Disc3 className="w-4 h-4 mx-auto mb-1" />
-              Queue ({queue.length})
-            </button>
+
           </div>
 
           {activePanel === 'eq' && (
@@ -362,7 +352,7 @@ export function SuperAudioPlayer() {
                   onClick={() => setShowPresetMenu(!showPresetMenu)}
                   className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
                 >
-                  <span className="text-white font-medium">Preset: <span className="text-fuchsia-400">{selectedPreset}</span></span>
+                  <span className="text-white font-medium">Preset: <span className="text-yellow-400">{selectedPreset}</span></span>
                   <ChevronDownIcon className={`w-4 h-4 text-white/50 transition-transform ${showPresetMenu ? 'rotate-180' : ''}`} />
                 </button>
                 
@@ -372,8 +362,8 @@ export function SuperAudioPlayer() {
                       <button
                         key={presetName}
                         onClick={() => applyPreset(presetName)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-fuchsia-500/20 transition ${
-                          selectedPreset === presetName ? 'text-fuchsia-400 bg-fuchsia-500/10' : 'text-white/80'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-yellow-500/20 transition ${
+                          selectedPreset === presetName ? 'text-yellow-400 bg-yellow-500/10' : 'text-white/80'
                         }`}
                       >
                         {presetName}
@@ -394,7 +384,7 @@ export function SuperAudioPlayer() {
                 step="0.5"
                 value={preAmp}
                 onChange={handlePreAmpChange}
-                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-fuchsia-500"
+                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
               />
 
               <div className="grid grid-cols-10 gap-1">
@@ -410,7 +400,7 @@ export function SuperAudioPlayer() {
                       step="0.5"
                       value={eqBands[freq]}
                       onChange={(e) => handleEqChange(freq, e.target.value)}
-                      className="w-4 h-24 bg-white/10 rounded-full appearance-none cursor-pointer accent-fuchsia-500 writing-mode-vertical"
+                      className="w-4 h-24 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500 writing-mode-vertical"
                       style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
                     />
                     <span className="text-[8px] text-white/60 mt-1">
@@ -433,7 +423,7 @@ export function SuperAudioPlayer() {
                     step="0.01"
                     value={volume}
                     onChange={handleVolumeChange}
-                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-fuchsia-500"
+                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
                   />
                 </div>
                 <div className="flex-1">
@@ -448,7 +438,7 @@ export function SuperAudioPlayer() {
                     step="0.01"
                     value={pan}
                     onChange={handlePanChange}
-                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-fuchsia-500"
+                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
                   />
                 </div>
               </div>
@@ -457,14 +447,14 @@ export function SuperAudioPlayer() {
 
           {activePanel === 'visualizer' && (
             <div className="p-4">
-              <div className="h-32 bg-black/30 rounded-lg flex items-end justify-center gap-[2px] p-2">
-                {Array.from(analyserData).slice(0, 64).map((value, i) => (
+              <div className="h-32 bg-black/40 rounded-lg flex items-end justify-center gap-1 p-2">
+                {Array.from(analyserData).slice(0, 32).map((value, i) => (
                   <div
                     key={i}
-                    className="w-full bg-gradient-to-t from-fuchsia-600 to-fuchsia-400 rounded-sm transition-all duration-75"
+                    className="w-1.5 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-sm transition-all duration-75"
                     style={{ 
-                      height: `${Math.max(2, (value / 255) * 100)}%`,
-                      opacity: 0.6 + (value / 510)
+                      height: `${Math.max(4, (value / 255) * 100)}%`,
+                      opacity: 0.5 + (value / 510)
                     }}
                   />
                 ))}
@@ -474,7 +464,7 @@ export function SuperAudioPlayer() {
                   onClick={toggleShuffle}
                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition ${
                     shuffle 
-                      ? 'bg-fuchsia-500/30 text-fuchsia-300' 
+                      ? 'bg-yellow-500/30 text-yellow-300' 
                       : 'bg-white/10 text-white/50 hover:text-white'
                   }`}
                   title="Aleatório"
@@ -485,7 +475,7 @@ export function SuperAudioPlayer() {
                   onClick={toggleLoop}
                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition ${
                     loopMode !== 'none' 
-                      ? 'bg-fuchsia-500/30 text-fuchsia-300' 
+                      ? 'bg-yellow-500/30 text-yellow-300' 
                       : 'bg-white/10 text-white/50 hover:text-white'
                   }`}
                   title={`Loop: ${loopMode}`}
@@ -496,47 +486,13 @@ export function SuperAudioPlayer() {
             </div>
           )}
 
-          {activePanel === 'queue' && (
-            <div className="p-2 max-h-64 overflow-y-auto">
-              {queue.map((track, i) => (
-                <button
-                  key={track.id || i}
-                  onClick={() => hydrateAndPlay(i)}
-                  className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition ${
-                    i === currentQueueIndex
-                      ? 'bg-fuchsia-500/30 border border-fuchsia-500/50'
-                      : 'hover:bg-white/5'
-                  }`}
-                >
-                  <span className={`w-6 text-center text-sm ${
-                    i === currentQueueIndex ? 'text-fuchsia-300' : 'text-white/30'
-                  }`}>
-                    {i === currentQueueIndex && isPlaying ? (
-                      <span className="flex items-center justify-center">
-                        <span className="w-1 h-2 bg-fuchsia-400 rounded-sm animate-pulse" />
-                        <span className="w-1 h-3 bg-fuchsia-400 rounded-sm animate-pulse mx-px" />
-                        <span className="w-1 h-1.5 bg-fuchsia-400 rounded-sm animate-pulse" />
-                      </span>
-                    ) : i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${i === currentQueueIndex ? 'text-white' : 'text-white/80'}`}>
-                      {track.title}
-                    </p>
-                    <p className="text-xs text-white/40 truncate">{track.artist}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
           <div className="p-4 border-t border-white/10">
             <div 
               className="h-2 bg-white/10 rounded-full cursor-pointer mb-2"
               onClick={handleSeek}
             >
               <div 
-                className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 rounded-full transition-all"
+                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all"
                 style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
               />
             </div>
@@ -550,7 +506,7 @@ export function SuperAudioPlayer() {
                 onClick={toggleShuffle}
                 className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${
                   shuffle 
-                    ? 'bg-fuchsia-500/30 text-fuchsia-300' 
+                    ? 'bg-yellow-500/30 text-yellow-300' 
                     : 'bg-white/10 text-white/50 hover:text-white'
                 }`}
                 title="Aleatório"
@@ -566,7 +522,7 @@ export function SuperAudioPlayer() {
               </button>
               <button
                 onClick={handlePlayPause}
-                className="w-14 h-14 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-500 hover:from-fuchsia-400 hover:to-purple-400 flex items-center justify-center text-white shadow-lg shadow-fuchsia-500/30 transition"
+                className="w-14 h-14 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30 transition"
                 title={isPlaying ? 'Pausar' : 'Reproduzir'}
               >
                 {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
@@ -589,7 +545,7 @@ export function SuperAudioPlayer() {
                 onClick={toggleLoop}
                 className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${
                   loopMode !== 'none' 
-                    ? 'bg-fuchsia-500/30 text-fuchsia-300' 
+                    ? 'bg-yellow-500/30 text-yellow-300' 
                     : 'bg-white/10 text-white/50 hover:text-white'
                 }`}
                 title={`Loop: ${loopMode}`}
@@ -611,14 +567,14 @@ export function SuperAudioPlayer() {
                 step="0.01"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-fuchsia-500"
+                className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
               />
             </div>
           </div>
 
           {isLoading && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
             </div>
           )}
         </div>
