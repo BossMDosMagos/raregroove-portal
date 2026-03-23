@@ -25,6 +25,7 @@ export function SuperAudioPlayer() {
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [trackUrls, setTrackUrls] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [debug, setDebug] = useState('');
 
   const {
     isPlaying,
@@ -55,44 +56,72 @@ export function SuperAudioPlayer() {
     initAudioContext,
   } = useSuperPlayer();
 
-  const hasTrack = queue.length > 0 && currentTrack;
-
   useEffect(() => {
-    if (!hasTrack || queue.length === 0) return;
+    const ht = queue.length > 0 && currentTrack;
+    if (!ht || queue.length === 0) return;
     
     const idx = queue.findIndex(t => t.id === currentTrack?.id);
     if (idx >= 0) {
       setCurrentQueueIndex(idx);
     }
-  }, [currentTrack, queue, hasTrack]);
+  }, [currentTrack, queue]);
+
+  useEffect(() => {
+    const ht = queue.length > 0 && currentTrack;
+    if (!currentTrack || !globalIsPlaying || !ht) return;
+    
+    const playCurrentTrack = async () => {
+      const idx = queue.findIndex(t => t.id === currentTrack?.id);
+      if (idx >= 0 && idx !== currentQueueIndex) {
+        await hydrateAndPlay(idx);
+      } else if (idx >= 0 && idx === currentQueueIndex && !isPlaying) {
+        await play();
+      }
+    };
+    
+    playCurrentTrack();
+  }, [currentTrack, globalIsPlaying]);
 
   const hydrateAndPlay = useCallback(async (index) => {
     if (index < 0 || index >= queue.length) return;
     
     const track = queue[index];
-    if (!track?.audioPath) return;
+    if (!track?.audioPath) {
+      console.log('[SUPER PLAYER] No audioPath for track:', track?.title);
+      return;
+    }
 
+    console.log('[SUPER PLAYER] Hydrating track:', track.title, 'path:', track.audioPath);
     setIsLoading(true);
+    setDebug(`Loading: ${track.title}`);
     
     try {
       let url = trackUrls[track.audioPath];
       
       if (!url) {
+        console.log('[SUPER PLAYER] Fetching presigned URL...');
         url = await getPresignedUrl(track.audioPath);
+        console.log('[SUPER PLAYER] Presigned URL:', url ? 'received' : 'null');
         if (url) {
           setTrackUrls(prev => ({ ...prev, [track.audioPath]: url }));
         }
       }
       
       if (url) {
+        console.log('[SUPER PLAYER] Loading track with URL...');
         await loadTrack(url);
         await play();
         setCurrentTrack(track);
         setGlobalIsPlaying(true);
         setCurrentQueueIndex(index);
+        setDebug('');
+      } else {
+        setDebug('URL error');
+        toast.error('Erro ao obter URL do áudio');
       }
     } catch (e) {
       console.error('[SUPER PLAYER] Load error:', e);
+      setDebug('Error: ' + e.message);
       toast.error('Erro ao carregar faixa');
     } finally {
       setIsLoading(false);
@@ -181,8 +210,10 @@ export function SuperAudioPlayer() {
     }
   };
 
-  if (!userId) return null;
-  if (!hasTrack) return null;
+  const hasTrack = queue.length > 0 && currentTrack;
+
+  console.log('[SUPER PLAYER] Render:', { userId: !!userId, hasTrack, queueLength: queue.length, currentTrack: currentTrack?.title, debug });
+  console.log('[SUPER PLAYER] isPlaying:', isPlaying, 'globalIsPlaying:', globalIsPlaying);
 
   return (
     <>
@@ -197,10 +228,13 @@ export function SuperAudioPlayer() {
           </div>
           
           <div className="min-w-0 max-w-[150px]">
-            <p className="text-white text-xs font-bold truncate">{currentTrack?.title || 'Tocando...'}</p>
-            <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || ''}</p>
+            <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
+            <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || (userId ? 'Pronto para tocar' : 'Aguardando...')}</p>
             {queue.length > 1 && (
               <p className="text-fuchsia-400/70 text-[9px]">{currentQueueIndex + 1}/{queue.length}</p>
+            )}
+            {!userId && (
+              <p className="text-red-400/70 text-[9px]">Sem userId</p>
             )}
           </div>
 
