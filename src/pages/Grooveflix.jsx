@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Film, Sparkles, Plus, Music, RotateCw } from 'lucide-react';
+import { Film, Sparkles, Plus, Music, RotateCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import GrooveflixRow from '../components/GrooveflixRow';
 import GrooveflixUploader from '../components/GrooveflixUploader';
+import CoverFlow3D from '../components/CoverFlow3D';
+import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
@@ -43,11 +44,12 @@ export default function Grooveflix() {
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [selectedTrackId, setSelectedTrackId] = useState(null);
+  const [focusedItem, setFocusedItem] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => {
@@ -153,72 +155,16 @@ export default function Grooveflix() {
     return item.category === categoryFilter;
   });
 
-  const selectedTrack = items.find((item) => item.id === selectedTrackId);
-
-  const handleTrackPick = (track) => {
-    setSelectedTrackId(track.id);
-  };
-
-  const handlePlayTrack = () => {
-    console.log('[GROOVEFLIX] handlePlayTrack called, selectedTrack:', {
-      id: selectedTrack?.id,
-      title: selectedTrack?.title,
-      category: selectedTrack?.category,
-      audioPath: selectedTrack?.audioPath,
-      audioFiles: selectedTrack?.audioFiles,
-      audioFilesLength: selectedTrack?.audioFiles?.length,
-    });
-    
-    if (!selectedTrack?.audioPath && (!selectedTrack?.audioFiles || selectedTrack.audioFiles.length === 0)) {
-      toast.error(t('grooveflix.noAudio'), { description: t('grooveflix.error.noAudio') });
-      return;
-    }
-    
-    if (selectedTrack.category === 'album' && selectedTrack.audioFiles?.length > 0) {
-      toast.success(t('grooveflix.loadingAlbum'), {
-        description: `${selectedTrack.title} - ${selectedTrack.audioFiles.length} ${t('grooveflix.tracks') || 'faixas'}`,
-        duration: 2000,
-      });
-    } else {
-      toast.success(t('grooveflix.playing'), {
-        description: `${selectedTrack.title} - ${selectedTrack.artist}`,
-        duration: 2000,
-      });
-    }
-    
-    playTrack(selectedTrack);
-  };
-
-  const handleDelete = async (id) => {
-    toast.error(t('grooveflix.delete.confirm'), {
-      description: t('grooveflix.delete.irreversible'),
-      action: {
-        label: t('grooveflix.delete.action'),
-        onClick: async () => {
-          const { error } = await supabase.functions.invoke('grooveflix-delete', {
-            body: { itemId: id, userId },
-          });
-
-          if (error) {
-            toast.error(t('grooveflix.delete.error'));
-          } else {
-            toast.success(t('grooveflix.delete.success'));
-            loadItems();
-          }
-        },
-      },
-    });
-  };
-
   return (
     <div className="min-h-screen bg-black text-white pb-28">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <EqualizerBackground isPlaying={isPlaying} />
         <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-fuchsia-600/10 blur-[150px]" />
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
       </div>
 
-      <div className="relative max-w-[1600px] mx-auto px-4 md:px-6 pt-28 space-y-8">
+      <div className="relative max-w-[1200px] mx-auto px-4 md:px-6 pt-28 space-y-8">
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -259,21 +205,6 @@ export default function Grooveflix() {
           ))}
         </div>
 
-        {debugInfo && (
-          <div className="rounded-xl bg-white/5 border border-fuchsia-500/20 p-4 text-xs">
-            <p className="text-fuchsia-300 font-bold mb-2">DEBUG INFO:</p>
-            <p>Total itens DB: {debugInfo.totalItems}</p>
-            <p>Itens Grooveflix: {debugInfo.grooveflixItems}</p>
-            {debugInfo.sampleItem && (
-              <div className="mt-2 text-white/70">
-                <p>Sample ID: {debugInfo.sampleItem.id}</p>
-                <p>Audio: {debugInfo.sampleItem.audioPath || 'N/A'}</p>
-                <p>Cover: {debugInfo.sampleItem.coverPath || 'N/A'}</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {loading ? (
           <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
             <div className="w-12 h-12 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full animate-spin mx-auto mb-4" />
@@ -281,44 +212,30 @@ export default function Grooveflix() {
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
+            <Disc className="w-16 h-16 text-white/20 mx-auto mb-4" />
             <p className="text-xl font-bold mb-2">{t('grooveflix.empty.title')}</p>
-            <p className="text-white/60">
+            <p className="text-white/60 mb-6">
               {!userId ? t('grooveflix.empty.login') :
                debugInfo?.grooveflixItems === 0 ? t('grooveflix.empty.upload') :
                t('grooveflix.empty.filter')}
             </p>
+            {isAdmin && (
+              <button
+                onClick={() => setShowUploader(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold"
+              >
+                <Plus className="w-5 h-5" />
+                Adicionar Primeiro Álbum
+              </button>
+            )}
           </div>
         ) : (
-          <>
-            <GrooveflixRow
-              title={`Todos (${filteredItems.length})`}
-              items={filteredItems}
-              onPick={handleTrackPick}
-              onDelete={isAdmin ? handleDelete : undefined}
-              canDelete={isAdmin}
-            />
-          </>
-        )}
-
-        {selectedTrack && (
-          <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent p-4 border-t border-white/10">
-            <div className="max-w-[1600px] mx-auto flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-bold truncate">{selectedTrack.title}</p>
-                <p className="text-sm text-white/60 truncate">{selectedTrack.artist}</p>
-              </div>
-              {selectedTrack.audioPath ? (
-                <button
-                  onClick={handlePlayTrack}
-                  className="flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-bold uppercase tracking-wider hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
-                >
-                  <Music className="w-5 h-5" /> {t('grooveflix.play')}
-                </button>
-              ) : (
-                <span className="text-white/40 text-sm">{t('grooveflix.noAudio')}</span>
-              )}
-            </div>
-          </div>
+          <CoverFlow3D
+            items={filteredItems}
+            onUpdateFocus={setFocusedItem}
+            onOpenUploader={() => setShowUploader(true)}
+            isAdmin={isAdmin}
+          />
         )}
       </div>
 
