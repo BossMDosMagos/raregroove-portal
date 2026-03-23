@@ -82,9 +82,25 @@ export function AudioPlayerProvider({ children }) {
   const expandAlbumTracks = useCallback((item) => {
     const tracks = [];
     const audioFiles = item.audio_files || item.audioFiles || [];
+    const tracklist = item.tracklist || [];
     
     if (audioFiles.length > 0) {
-      for (const file of audioFiles) {
+      for (let i = 0; i < audioFiles.length; i++) {
+        const file = audioFiles[i];
+        let trackNumber = i + 1;
+        let discNumber = file.discNumber || 1;
+        
+        if (tracklist.length > 0) {
+          const positionMatch = file.name.match(/^(\d+)-(\d+)[._]/);
+          if (positionMatch) {
+            discNumber = parseInt(positionMatch[1], 10);
+            trackNumber = parseInt(positionMatch[2], 10);
+          } else if (tracklist[i]) {
+            discNumber = tracklist[i].discNumber || discNumber;
+            trackNumber = tracklist[i].trackNumber || trackNumber;
+          }
+        }
+        
         tracks.push({
           id: `${item.id}_${file.name}`,
           title: file.name.replace(/\.(mp3|flac|wav|ogg|m4a|aac)$/i, ''),
@@ -93,6 +109,8 @@ export function AudioPlayerProvider({ children }) {
           duration: undefined,
           albumId: item.id,
           albumTitle: item.title,
+          discNumber,
+          trackNumber,
         });
       }
     } else if (item.audioPath) {
@@ -104,6 +122,8 @@ export function AudioPlayerProvider({ children }) {
         duration: item.duration,
         albumId: item.category === 'album' ? item.id : null,
         albumTitle: item.category === 'album' ? item.title : null,
+        discNumber: 1,
+        trackNumber: 1,
       });
     }
     

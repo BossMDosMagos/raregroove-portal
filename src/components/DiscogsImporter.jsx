@@ -133,14 +133,39 @@ export function DiscogsImporter({ onClose }) {
     const catalogNumber = fullDetails.labels?.[0]?.catno;
     
     const parsePosition = (pos) => {
-      const match = String(pos).match(/^(\d+)-(\d+)$/);
+      const posStr = String(pos || '');
+      
+      const match = posStr.match(/^(\d+)-(\d+)$/);
       if (match) {
         return { discNumber: parseInt(match[1], 10), trackNumber: parseInt(match[2], 10) };
       }
-      const simpleMatch = String(pos).match(/^(\d+)$/);
+      
+      const cdMatch = posStr.match(/^(CD\d+)/i);
+      if (cdMatch) {
+        return { discNumber: cdMatch[1].toUpperCase(), trackNumber: 1 };
+      }
+      
+      const sideMatch = posStr.match(/^(A|B)(\d+)?/i);
+      if (sideMatch) {
+        return { discNumber: sideMatch[1].toUpperCase(), trackNumber: sideMatch[2] ? parseInt(sideMatch[2], 10) : 1 };
+      }
+      
+      const discMatch = posStr.match(/^([A-Za-z]+)\s*(\d+)?/);
+      if (discMatch) {
+        const discName = discMatch[1];
+        if (/^(DISK|DISC|CD|Vol|Volume|LP|SIDE)/i.test(discName)) {
+          return { 
+            discNumber: discMatch[2] ? parseInt(discMatch[2], 10) : 1, 
+            trackNumber: 1 
+          };
+        }
+      }
+      
+      const simpleMatch = posStr.match(/^(\d+)$/);
       if (simpleMatch) {
         return { discNumber: 1, trackNumber: parseInt(simpleMatch[1], 10) };
       }
+      
       return { discNumber: 1, trackNumber: 1 };
     };
     

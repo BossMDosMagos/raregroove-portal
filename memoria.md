@@ -13,6 +13,7 @@ Marketplace de CDs e Vinil raros com sistema de escrow + Grooveflix streaming Hi
 C:\PROJETO-RAREGROOVE-3.0\
 ├── src/
 │   ├── components/
+│   │   ├── CoverFlow3D.jsx         # WiiFlow - carrossel 3D com player
 │   │   ├── GrooveflixRow.jsx       # Cards de álbum com covers
 │   │   ├── GrooveflixUploader.jsx   # Upload de álbuns
 │   │   ├── GrooveflixPlayer.jsx     # Player de áudio
@@ -169,7 +170,9 @@ metadata: {
     labels: null,
     catalogNumber: null,
     formats: null,
-    tracklist: [],
+    tracklist: [           // Cada faixa: { position, title, duration, discNumber?, trackNumber? }
+      // { position: '1-1', title: 'Track 1', duration: '3:45', discNumber: 1, trackNumber: 1 }
+    ],
     description: null,
   }
 }
@@ -186,6 +189,71 @@ metadata: {
 | cleanup-grooveflix | `/functions/v1/cleanup-grooveflix` | Limpa registros órfãos |
 | grooveflix-delete | `/functions/v1/grooveflix-delete` | Delete seguro |
 | discogs-search | `/functions/v1/discogs-search` | API proxy Discogs |
+
+---
+
+---
+
+## WiiFlow - Player Visual (CoverFlow3D)
+
+### Visão Geral
+Carrossel 3D estilo Wii com player nativo integrado. Interface principal do Grooveflix com visual Premium e funcionalidades completas.
+
+### Arquivo
+- **Componente:** `src/components/CoverFlow3D.jsx`
+
+### Funcionalidades Implementadas
+
+#### 1. Super Card (Modal de Álbum)
+- Clique na capa do álbum abre modal completo
+- Exibe: título, artista, ano, país, labels, gênero, formato
+- Notas (description) do Discogs
+- Tracklist completa com scroll interno
+- Botão "Ouvir Álbum" para reprodução
+- z-index 100 para garantir abertura
+
+#### 2. Playlist com Seleção Individual
+- Cada faixa é botão clicável
+- Highlight da faixa ativa (borda roxa + bg fuchsia/30)
+- Ícone "playing" animado para faixa em reprodução
+- reprodução direta ao clicar na faixa
+
+#### 3. Álbuns Multi-Disco
+- Parse da posição Discogs: "1-1", "2-3" → discNumber + trackNumber
+- Agrupamento por disco com cabeçalhos "DISCO 1", "DISCO 2"
+- Numeração correta de faixas por CD
+- "(X discos)" exibido no header quando multi-disco
+- Ordenação: disco → número da faixa
+
+#### 4. Tracklist Completa
+- Removido limite de "+X faixas"
+- Todas as faixas visíveis com scroll interno (max-h-80)
+- Ordenação cronológica por disc_number + track_number
+
+#### 5. Tratamento de Erros
+- AbortController para cancelamento limpo de requests
+- Tratamento de AbortError no getPresignedUrl
+- Evita conflitos ao trocar de faixa rapidamente
+
+### Estrutura de Dados (Tracklist)
+```javascript
+tracklist: [
+  {
+    position: '1-1',        // Posição original Discogs
+    title: 'Come Together',
+    duration: '4:20',
+    discNumber: 1,          // Extraído automaticamente
+    trackNumber: 1,         // Extraído automaticamente
+  },
+  // ...
+]
+```
+
+### Fluxo de Reprodução
+1. Usuário clica no álbum no carrossel
+2. Playlist atualiza com todas as faixas (ordenadas por disco)
+3. Clique em qualquer faixa → playAlbum no AudioPlayerContext
+4. Transição automática entre CDs ao terminar disco
 
 ---
 
@@ -208,6 +276,17 @@ npm test
 ---
 
 ## Bugs/Fixos Resolvidos (Histórico)
+
+### Correções Rodada 12 (2026-03-23)
+- ✅ WiiFlow com Super Card, seleção individual, multi-disco
+- ✅ CoverFlow3D agrupa faixas por disco (DISCO 1, DISCO 2)
+- ✅ Tracklist completa sem limite de faixas
+- ✅ Highlight da faixa ativa com ícone playing animado
+
+### Correções Rodada 11 (2026-03-23)
+- ✅ WiiFlow Super Card abre ao clicar na capa
+- ✅ Playlist atualiza ao trocar de álbum
+- ✅ Autoplay integrado com playAlbum do AudioPlayerContext
 
 ### Correções Rodada 10 (2026-03-22)
 - ✅ Super Card não atualizava após import Discogs → useEffect com showDiscogsModal

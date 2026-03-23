@@ -825,7 +825,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const uploadToB2 = async (file, fileCategory, itemId) => {
+  const uploadToB2 = async (file, fileCategory, itemId, discNumber = null) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
@@ -839,6 +839,9 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     formData.append('userId', currentUserId);
     formData.append('itemId', itemId);
     formData.append('file', file);
+    if (discNumber !== null) {
+      formData.append('discNumber', String(discNumber));
+    }
     
     const response = await fetch(`${supabaseUrl}/functions/v1/b2-upload-url`, {
       method: 'POST',
@@ -994,11 +997,17 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
           
           setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
           try {
-            const result = await uploadToB2(file, 'audio', itemId);
+            let discNumber = 1;
+            const discMatch = file.name.match(/^(\d+)-/);
+            if (discMatch) {
+              discNumber = parseInt(discMatch[1], 10);
+            }
+            const result = await uploadToB2(file, 'audio', itemId, discNumber);
             audioFiles.push({
               name: file.name,
               path: result.filePath,
-              size: file.size
+              size: file.size,
+              discNumber
             });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done' }));
           } catch (e) {

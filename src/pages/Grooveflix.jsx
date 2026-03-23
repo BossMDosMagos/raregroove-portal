@@ -21,6 +21,7 @@ function normalizeTracks(items = []) {
     const coverPath = grooveflix.cover_path || null;
     const coverUrl = item.image_url || null;
     const audioFiles = grooveflix.audio_files || [];
+    const tracklist = grooveflix.tracklist || [];
 
     return {
       id: item.id,
@@ -31,6 +32,7 @@ function normalizeTracks(items = []) {
       category,
       audioPath,
       audioFiles,
+      tracklist,
       metadata,
       raw: item,
     };

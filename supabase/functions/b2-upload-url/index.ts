@@ -42,6 +42,7 @@ serve(async (req) => {
 
   try {
     let filename: string, category: string, userId: string, itemId: string, fileData: ArrayBuffer;
+    let discNumber: string | undefined;
     const contentType = req.headers.get('content-type') || '';
 
     if (contentType.includes('multipart/form-data')) {
@@ -50,6 +51,7 @@ serve(async (req) => {
       category = formData.get('category') as string;
       userId = formData.get('userId') as string;
       itemId = formData.get('itemId') as string;
+      discNumber = formData.get('discNumber') as string || undefined;
       const file = formData.get('file') as File;
       if (file) {
         fileData = await file.arrayBuffer();
@@ -120,7 +122,13 @@ serve(async (req) => {
     const safeCategory = category.replace(/[^a-zA-Z0-9]/g, '_');
     const safeUserId = userId.replace(/[^a-zA-Z0-9-]/g, '_');
     
-    const filePath = `user_${safeUserId}/${safeCategory}/${safeItemId}/${safeFilename}`;
+    let filePath: string;
+    if (category === 'audio' && discNumber) {
+      const safeDisc = `CD${discNumber}`;
+      filePath = `albums/${safeItemId}/${safeDisc}/${safeFilename}`;
+    } else {
+      filePath = `user_${safeUserId}/${safeCategory}/${safeItemId}/${safeFilename}`;
+    }
 
     if (!fileData) {
       return new Response(

@@ -25,22 +25,48 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const sortedTracklist = [...rawTracklist].sort((a, b) => {
     const discA = a.discNumber || 1;
     const discB = b.discNumber || 1;
-    if (discA !== discB) return discA - discB;
-    const trackA = a.trackNumber || parseInt(a.position) || 0;
-    const trackB = b.trackNumber || parseInt(b.position) || 0;
+    
+    const isNumericA = typeof discA === 'number';
+    const isNumericB = typeof discB === 'number';
+    
+    if (isNumericA && isNumericB) {
+      if (discA !== discB) return discA - discB;
+    } else if (isNumericA && !isNumericB) {
+      return -1;
+    } else if (!isNumericA && isNumericB) {
+      return 1;
+    } else {
+      const strA = String(discA).toLowerCase();
+      const strB = String(discB).toLowerCase();
+      if (strA !== strB) return strA.localeCompare(strB);
+    }
+    
+    const trackA = a.trackNumber || parseInt(a.position?.split('-')[1]) || 0;
+    const trackB = b.trackNumber || parseInt(b.position?.split('-')[1]) || 0;
     return trackA - trackB;
   });
 
   const groupedTracks = sortedTracklist.reduce((acc, track) => {
     const discKey = track.discNumber || 1;
-    if (!acc[discKey]) {
-      acc[discKey] = [];
+    const keyStr = String(discKey);
+    if (!acc[keyStr]) {
+      acc[keyStr] = {
+        label: keyStr,
+        tracks: []
+      };
     }
-    acc[discKey].push(track);
+    acc[keyStr].tracks.push(track);
     return acc;
   }, {});
 
-  const discKeys = Object.keys(groupedTracks).sort((a, b) => parseInt(a) - parseInt(b));
+  const discKeys = Object.keys(groupedTracks).sort((a, b) => {
+    const isNumericA = /^\d+$/.test(a);
+    const isNumericB = /^\d+$/.test(b);
+    if (isNumericA && isNumericB) return parseInt(a) - parseInt(b);
+    if (isNumericA && !isNumericB) return -1;
+    if (!isNumericA && isNumericB) return 1;
+    return a.localeCompare(b);
+  });
 
   useEffect(() => {
     if (focusedItem && onUpdateFocus) {
@@ -119,10 +145,14 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     if (!focusedItem || audioFiles.length === 0) return;
 
     if (playAlbum) {
-      playAlbum(focusedItem);
+      playAlbum({
+        ...focusedItem,
+        audio_files: audioFiles,
+        tracklist: rawTracklist,
+      });
       setActiveTrackIndex(0);
     }
-  }, [focusedItem, audioFiles, playAlbum]);
+  }, [focusedItem, audioFiles, playAlbum, rawTracklist]);
 
   const handlePlayTrack = useCallback(async (track, index) => {
     if (!focusedItem || audioFiles.length === 0) return;
@@ -149,6 +179,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         playAlbum({
           ...focusedItem,
           audio_files: audioFiles,
+          tracklist: rawTracklist,
         });
       }
 
@@ -281,11 +312,18 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           </div>
           <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
             {discKeys.map((discKey) => {
-              const discTracks = groupedTracks[discKey];
-              const discNum = parseInt(discKey);
-              const discLabel = discKeys.length > 1 
-                ? (discNum === 1 ? 'DISCO 1' : `DISCO ${discNum}`) 
-                : null;
+              const discData = groupedTracks[discKey];
+              const discTracks = discData.tracks;
+              
+              const isNumericDisc = /^\d+$/.test(discKey);
+              let discLabel;
+              if (discKeys.length === 1) {
+                discLabel = null;
+              } else if (isNumericDisc) {
+                discLabel = `DISCO ${parseInt(discKey)}`;
+              } else {
+                discLabel = discKey.toUpperCase();
+              }
               
               return (
                 <div key={discKey}>
@@ -445,9 +483,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
                       {discKeys.map((discKey) => {
                         const discTracks = groupedTracks[discKey];
-                        const discNum = parseInt(discKey);
-                        const discLabel = discKeys.length > 1 
-                          ? (discNum === 1 ? 'DISCO 1' : `DISCO ${discNum}`) 
+                        const isNumeric = /^\d+$/.test(discKey);
+                        const discNum = isNumeric ? parseInt(discKey, 10) : null;
+                        const discLabel = discKeys.length > 1
+                          ? (isNumeric 
+                              ? (discNum === 1 ? 'DISCO 1' : `DISCO ${discNum}`)
+                              : discKey.toUpperCase())
                           : null;
                         
                         return (
