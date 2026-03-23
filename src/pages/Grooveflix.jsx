@@ -133,16 +133,13 @@ export default function Grooveflix() {
 
       setItems(tracks);
       setLoading(false);
-      if (tracks.length > 0 && !selectedTrackId) {
-        setSelectedTrackId(tracks[0].id);
-      }
 
       } catch (e) {
       console.error('[GROOVEFLIX] Load error:', e);
       toast.error(t('grooveflix.error.load'), { description: e.message });
       setItems([]);
     }
-  }, [userId, selectedTrackId, t]);
+  }, [userId, t]);
 
   useEffect(() => {
     if (userId) {
