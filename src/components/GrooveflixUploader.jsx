@@ -135,7 +135,7 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
   );
 }
 
-function UploadFileItem({ file, index, status, onRemove }) {
+function UploadFileItem({ file, index, status, progress, onRemove }) {
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -145,7 +145,7 @@ function UploadFileItem({ file, index, status, onRemove }) {
   const getStatusIcon = () => {
     switch (status) {
       case 'uploading':
-        return <Loader2 className="w-4 h-4 text-fuchsia-400 animate-spin" />;
+        return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />;
       case 'done':
         return <CheckCircle className="w-4 h-4 text-emerald-400" />;
       case 'error':
@@ -158,7 +158,7 @@ function UploadFileItem({ file, index, status, onRemove }) {
   const getStatusColor = () => {
     switch (status) {
       case 'uploading':
-        return 'text-fuchsia-300';
+        return 'text-yellow-300';
       case 'done':
         return 'text-emerald-300';
       case 'error':
@@ -168,12 +168,14 @@ function UploadFileItem({ file, index, status, onRemove }) {
     }
   };
 
+  const isUploading = status === 'uploading';
+
   return (
     <div className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-xl border border-white/5">
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
         status === 'done' ? 'bg-emerald-500/20' :
         status === 'error' ? 'bg-red-500/20' :
-        status === 'uploading' ? 'bg-fuchsia-500/20' :
+        status === 'uploading' ? 'bg-yellow-500/20' :
         'bg-white/5'
       }`}>
         {getStatusIcon()}
@@ -182,7 +184,20 @@ function UploadFileItem({ file, index, status, onRemove }) {
         <p className={`text-sm truncate ${getStatusColor()}`} title={file.name}>
           {index + 1}. {file.name}
         </p>
-        <p className="text-white/30 text-xs">{formatSize(file.size)}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-white/30 text-xs">{formatSize(file.size)}</p>
+          {isUploading && progress !== undefined && (
+            <span className="text-yellow-400/70 text-xs font-mono">{progress}%</span>
+          )}
+        </div>
+        {isUploading && (
+          <div className="mt-1.5 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all duration-300"
+              style={{ width: `${progress || 0}%` }}
+            />
+          </div>
+        )}
       </div>
       {!status && (
         <button
@@ -196,7 +211,7 @@ function UploadFileItem({ file, index, status, onRemove }) {
   );
 }
 
-function FolderUploadZone({ files, onChange }) {
+function FolderUploadZone({ files, onChange, uploadProgress }) {
   const [dragOver, setDragOver] = useState(false);
   const [localFiles, setLocalFiles] = useState([]);
 
@@ -293,6 +308,8 @@ function FolderUploadZone({ files, onChange }) {
                   key={`${file.name}-${index}`}
                   file={file}
                   index={index}
+                  status={uploadProgress?.[`folder_${index}`]}
+                  progress={uploadProgress?.[`folder_${index}_progress`]}
                   onRemove={() => handleRemoveFile(index)}
                 />
               ))}
@@ -610,6 +627,7 @@ function SuperCard({
               <FolderUploadZone
                 files={files.folder}
                 onChange={(e) => handleFileSelect('folder', e)}
+                uploadProgress={uploadProgress}
               />
             ) : (
               <FileUploadZone
@@ -825,7 +843,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     setFiles(prev => ({ ...prev, [type]: file }));
   };
 
-  const uploadToB2 = async (file, fileCategory, itemId, discNumber = null) => {
+  const uploadToB2 = async (file, fileCategory, itemId, discNumber = null, onProgress = null) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     
@@ -869,29 +887,42 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     }
     
     if (data.uploadUrl) {
-      const uploadResponse = await fetch(data.uploadUrl, {
-        method: 'POST',
-        body: file,
-        headers: {
-          'Authorization': data.uploadAuthToken,
-          'X-Bz-File-Name': encodeURIComponent(data.filePath),
-          'Content-Type': file.type || 'b2/x-auto',
-          'X-Bz-Content-Sha1': 'do_not_verify'
-        }
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', data.uploadUrl, true);
+        xhr.setRequestHeader('Authorization', data.uploadAuthToken);
+        xhr.setRequestHeader('X-Bz-File-Name', encodeURIComponent(data.filePath));
+        xhr.setRequestHeader('Content-Type', file.type || 'b2/x-auto');
+        xhr.setRequestHeader('X-Bz-Content-Sha1', 'do_not_verify');
+        
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress(percent);
+          }
+        };
+        
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              resolve({
+                fileId: result.fileId,
+                fileName: result.fileName,
+                filePath: data.filePath,
+                size: file.size
+              });
+            } catch (e) {
+              reject(new Error('Erro ao parsear resposta'));
+            }
+          } else {
+            reject(new Error(`Upload falhou: ${xhr.status}`));
+          }
+        };
+        
+        xhr.onerror = () => reject(new Error('Erro de rede'));
+        xhr.send(file);
       });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Upload falhou: ${uploadResponse.status} - ${errorText}`);
-      }
-
-      const result = await uploadResponse.json();
-      return {
-        fileId: result.fileId,
-        fileName: result.fileName,
-        filePath: data.filePath,
-        size: file.size
-      };
     }
 
     throw new Error('Resposta inválida do servidor');
@@ -995,21 +1026,23 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             continue;
           }
           
-          setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading' }));
+          setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'uploading', [`folder_${i}_progress`]: 0 }));
           try {
             let discNumber = 1;
             const discMatch = file.name.match(/^(\d+)-/);
             if (discMatch) {
               discNumber = parseInt(discMatch[1], 10);
             }
-            const result = await uploadToB2(file, 'audio', itemId, discNumber);
+            const result = await uploadToB2(file, 'audio', itemId, discNumber, (progress) => {
+              setUploadProgress(p => ({ ...p, [`folder_${i}_progress`]: progress }));
+            });
             audioFiles.push({
               name: file.name,
               path: result.filePath,
               size: file.size,
               discNumber
             });
-            setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done' }));
+            setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'done', [`folder_${i}_progress`]: 100 }));
           } catch (e) {
             toast.error(`Erro no upload de ${file.name}`, { description: e.message });
             setUploadProgress(p => ({ ...p, [`folder_${i}`]: 'error' }));
@@ -1122,6 +1155,31 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
     setTracklist([...tracklist, newTrack]);
   };
 
+  const handleCloseAttempt = () => {
+    if (uploading) {
+      if (window.confirm('Upload em curso. Deseja cancelar o envio do acervo?')) {
+        setUploading(false);
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  const totalFiles = files.folder ? Array.from(files.folder).filter(f => 
+    f.type.startsWith('audio/') || f.name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)
+  ).length : (files.audio ? 1 : 0) + (files.preview ? 1 : 0) + (files.iso ? 1 : 0) + (files.booklet ? 1 : 0);
+  
+  const completedFiles = Object.entries(uploadProgress).filter(([key, val]) => 
+    key.includes('folder_') && !key.includes('_progress') && val === 'done'
+  ).length + (uploadProgress.audio === 'done' ? 1 : 0) + (uploadProgress.preview === 'done' ? 1 : 0) + (uploadProgress.iso === 'done' ? 1 : 0) + (uploadProgress.booklet === 'done' ? 1 : 0);
+  
+  const uploadingFiles = Object.entries(uploadProgress).filter(([key, val]) => 
+    key.includes('folder_') && !key.includes('_progress') && val === 'uploading'
+  ).length + (uploadProgress.audio === 'uploading' ? 1 : 0) + (uploadProgress.preview === 'uploading' ? 1 : 0) + (uploadProgress.iso === 'uploading' ? 1 : 0) + (uploadProgress.booklet === 'uploading' ? 1 : 0);
+  
+  const globalProgress = totalFiles > 0 ? Math.round((completedFiles / totalFiles) * 100) : 0;
+
   if (!isOpen) return null;
 
   return (
@@ -1134,7 +1192,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       />
       
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={handleCloseAttempt} />
         
         <div className="relative w-full max-w-5xl bg-gradient-to-br from-charcoal-deep via-charcoal-light to-charcoal-deep border border-fuchsia-500/20 rounded-3xl shadow-2xl shadow-fuchsia-500/10 overflow-hidden max-h-[95vh] flex flex-col">
           <div className="absolute inset-0 pointer-events-none">
@@ -1181,23 +1239,41 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             />
           </div>
 
+          {uploading && (
+            <div className="relative px-6 py-4 bg-black/50 border-t border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-white flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-yellow-400" />
+                  Enviando {completedFiles + uploadingFiles} de {totalFiles} arquivos...
+                </span>
+                <span className="text-sm font-mono text-yellow-400">{globalProgress}%</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all duration-300"
+                  style={{ width: `${globalProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+          
           <div className="relative p-6 border-t border-white/10 flex gap-4">
             <button
-              onClick={onClose}
+              onClick={handleCloseAttempt}
               disabled={uploading}
               className="flex-1 py-4 rounded-2xl border border-white/10 text-white/60 font-black uppercase tracking-widest text-xs hover:bg-white/5 hover:text-white transition disabled:opacity-50"
             >
-              Cancelar
+              {uploading ? 'Aguarde...' : 'Cancelar'}
             </button>
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-fuchsia-500/20 transition disabled:opacity-70 flex items-center justify-center gap-2"
+              className="flex-1 relative overflow-hidden py-4 rounded-2xl bg-gradient-to-r from-yellow-600 to-yellow-500 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-yellow-500/20 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {uploading ? (
                 <>
                   <Loader2 className="animate-spin w-4 h-4" />
-                  Processando arquivos...
+                  Enviando acervo...
                 </>
               ) : (
                 <>
