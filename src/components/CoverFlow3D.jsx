@@ -86,26 +86,50 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   }, [globalIsPlaying]);
 
   useEffect(() => {
+    const url = coverUrls[focusedItem?.id];
+    if (!url) {
+      setDominantColor('#0a0a0a');
+      return;
+    }
+    
+    let cancelled = false;
     const img = new Image();
     img.crossOrigin = 'Anonymous';
-    img.src = coverUrls[focusedItem?.id] || '';
+    img.src = url;
+    
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 50;
-      canvas.height = 50;
-      ctx.drawImage(img, 0, 0, 50, 50);
-      const imageData = ctx.getImageData(0, 0, 50, 50).data;
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < imageData.length; i += 16) {
-        r += imageData[i];
-        g += imageData[i + 1];
-        b += imageData[i + 2];
-        count++;
+      if (cancelled) return;
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 50;
+        canvas.height = 50;
+        ctx.drawImage(img, 0, 0, 50, 50);
+        const imageData = ctx.getImageData(0, 0, 50, 50).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < imageData.length; i += 16) {
+          r += imageData[i];
+          g += imageData[i + 1];
+          b += imageData[i + 2];
+          count++;
+        }
+        if (count > 0) {
+          setDominantColor(`rgb(${Math.floor((r/count)*0.15)}, ${Math.floor((g/count)*0.15)}, ${Math.floor((b/count)*0.15)})`);
+        }
+      } catch (e) {
+        setDominantColor('#0a0a0a');
       }
-      setDominantColor(`rgb(${Math.floor((r/count)*0.15)}, ${Math.floor((g/count)*0.15)}, ${Math.floor((b/count)*0.15)})`);
     };
-  }, [coverUrls[focusedItem?.id]]);
+    
+    img.onerror = () => {
+      if (cancelled) return;
+      setDominantColor('#0a0a0a');
+    };
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [focusedItem?.id, coverUrls[focusedItem?.id]]);
 
   useEffect(() => {
     if (items.length === 0) return;
