@@ -97,20 +97,20 @@ export function SuperAudioPlayer() {
 
   useEffect(() => {
     const ht = queue.length > 0 && currentTrack;
-    if (!currentTrack || !ht) return;
+    if (!currentTrack || !ht || !globalIsPlaying) return;
     
     const playCurrentTrack = async () => {
       const idx = queue.findIndex(t => t.id === currentTrack?.id);
-      console.log('[SUPER PLAYER] playCurrentTrack:', { idx, currentQueueIndex, globalIsPlaying, isPlaying });
-      
+      console.log('[SUPER PLAYER] Auto-playing:', currentTrack?.title);
       if (idx >= 0) {
         setCurrentQueueIndex(idx);
         await hydrateAndPlay(idx);
       }
     };
     
-    playCurrentTrack();
-  }, [currentTrack, queue]);
+    const timeoutId = setTimeout(playCurrentTrack, 100);
+    return () => clearTimeout(timeoutId);
+  }, [currentTrack?.id, globalIsPlaying]);
 
   const hydrateAndPlay = useCallback(async (index) => {
     if (index < 0 || index >= queue.length) return;
@@ -168,10 +168,16 @@ export function SuperAudioPlayer() {
       pause();
       setGlobalIsPlaying(false);
     } else {
+      if (queue.length > 0 && currentTrack) {
+        const idx = queue.findIndex(t => t.id === currentTrack?.id);
+        if (idx >= 0) {
+          await hydrateAndPlay(idx);
+        }
+      }
       await play();
       setGlobalIsPlaying(true);
     }
-  }, [isReady, isPlaying, initAudioContext, play, pause, setGlobalIsPlaying]);
+  }, [isReady, isPlaying, queue, currentTrack, initAudioContext, play, pause, setGlobalIsPlaying, hydrateAndPlay]);
 
   const handleStop = useCallback(() => {
     stop();
