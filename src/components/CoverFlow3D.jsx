@@ -1,55 +1,38 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, SkipBack, SkipForward, Volume2, Disc, Music, X, Clock, ListMusic, Building, Calendar, Globe, Tag, Disc3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, Volume2, Disc, Music, X, ListMusic, Building, Calendar, Globe, Tag, Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
+import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-async function getPresignedUrl(filePath, type = 'audio') {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
-
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/b2-presign`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ file_path: filePath, type }),
-  });
-
-  const data = await response.json();
-  if (data.error) throw new Error(data.error);
-  return data.url;
-}
-
 export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAdmin }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
-  const [loadingCovers, setLoadingCovers] = useState(new Set());
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
   const [showSuperCard, setShowSuperCard] = useState(false);
-  const audioRef = useRef(null);
-  const containerRef = useRef(null);
+  const [activeTrackIndex, setActiveTrackIndex] = useState(null);
   
-  const { playAlbum, setQueue, setCurrentTrack, currentTrack } = useAudioPlayer() || {};
+  const abortControllerRef = useRef(null);
+  
+  const { playAlbum, currentTrack, isPlaying: globalIsPlaying } = useAudioPlayer() || {};
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
-  const tracklist = grooveflixData.tracklist || [];
+  const rawTracklist = grooveflixData.tracklist || [];
   const audioFiles = grooveflixData.audio_files || [];
-  const currentAudioFile = audioFiles[0];
+
+  const sortedTracklist = [...rawTracklist].sort((a, b) => {
+    const posA = parseInt(a.position) || 0;
+    const posB = parseInt(b.position) || 0;
+    return posA - posB;
+  });
 
   useEffect(() => {
     if (focusedItem && onUpdateFocus) {
       onUpdateFocus(focusedItem);
     }
+    setActiveTrackIndex(null);
   }, [focusedIndex, focusedItem]);
 
   useEffect(() => {
@@ -61,40 +44,54 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
       if (discogsCover) {
         setCoverUrls(prev => ({ ...prev, [item.id]: discogsCover }));
-        setLoadingCovers(prev => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
         return;
       }
 
-      if (!coverPath) {
-        setLoadingCovers(prev => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
-        return;
-      }
+      if (!coverPath) return;
 
       try {
         const url = await getPresignedUrl(coverPath, 'cover');
         setCoverUrls(prev => ({ ...prev, [item.id]: url }));
       } catch (e) {
         console.error('[COVER] Error:', e);
-      } finally {
-        setLoadingCovers(prev => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
       }
     };
 
-    const itemsToLoad = items.slice(0, 7);
-    itemsToLoad.forEach(loadCover);
+    items.slice(0, 7).forEach(loadCover);
   }, [items.length]);
+
+  const getPresignedUrl = async (filePath, type = 'audio') => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/b2-presign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ file_path: filePath, type }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      return data.url;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('[PRESIGN] Request aborted');
+        return null;
+      }
+      throw e;
+    }
+  };
 
   const handlePrev = () => {
     setFocusedIndex(prev => Math.max(0, prev - 1));
@@ -104,124 +101,59 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     setFocusedIndex(prev => Math.min(items.length - 1, prev + 1));
   };
 
-  const playAudio = useCallback(async () => {
-    if (!focusedItem) return;
-    
+  const handlePlayAlbum = useCallback(async () => {
+    if (!focusedItem || audioFiles.length === 0) return;
+
     if (playAlbum) {
       playAlbum(focusedItem);
-      setIsPlaying(true);
+      setActiveTrackIndex(0);
     }
-  }, [focusedItem, playAlbum]);
+  }, [focusedItem, audioFiles, playAlbum]);
 
-  const togglePlay = () => {
-    if (!audioRef.current) {
-      playAudio();
-      return;
+  const handlePlayTrack = useCallback(async (track, index) => {
+    if (!focusedItem || audioFiles.length === 0) return;
+
+    setActiveTrackIndex(index);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+    abortControllerRef.current = new AbortController();
 
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
+    try {
+      const trackAudioFile = audioFiles[index];
+      if (!trackAudioFile?.path) {
+        toast.error('Faixa sem arquivo de áudio');
+        return;
+      }
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
+      const url = await getPresignedUrl(trackAudioFile.path, 'audio');
+      
+      if (!url) return;
 
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
+      if (playAlbum) {
+        playAlbum({
+          ...focusedItem,
+          audio_files: audioFiles,
+        });
+      }
 
-  const handleSeek = (e) => {
-    const time = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  };
-
-  const handleVolumeChange = (e) => {
-    const vol = parseFloat(e.target.value);
-    setVolume(vol);
-    if (audioRef.current) {
-      audioRef.current.volume = vol;
-    }
-    setIsMuted(vol === 0);
-  };
-
-  const toggleMute = () => {
-    if (audioRef.current) {
-      if (isMuted) {
-        audioRef.current.volume = volume || 0.8;
-        setIsMuted(false);
-      } else {
-        audioRef.current.volume = 0;
-        setIsMuted(true);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        console.error('[PLAY TRACK] Error:', e);
+        toast.error('Erro ao reproduzir faixa');
       }
     }
-  };
+  }, [focusedItem, audioFiles, playAlbum]);
 
-  const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleCoverClick = () => {
+  const handleCoverClick = (e) => {
+    e.stopPropagation();
     setShowSuperCard(true);
   };
 
   const handleCloseSuperCard = (e) => {
     if (e) e.stopPropagation();
     setShowSuperCard(false);
-  };
-
-  const getCardStyle = (index) => {
-    const diff = index - focusedIndex;
-    const absDiff = Math.abs(diff);
-
-    if (absDiff === 0) {
-      return {
-        transform: 'translateX(0) scale(1) rotateY(0deg)',
-        opacity: 1,
-        zIndex: 10,
-        filter: 'blur(0px)',
-      };
-    }
-
-    if (absDiff === 1) {
-      return {
-        transform: `translateX(${diff * 60}%) scale(0.85) rotateY(${diff * -15}deg)`,
-        opacity: 0.6,
-        zIndex: 5,
-        filter: 'blur(1px)',
-      };
-    }
-
-    if (absDiff === 2) {
-      return {
-        transform: `translateX(${diff * 80}%) scale(0.7) rotateY(${diff * -25}deg)`,
-        opacity: 0.3,
-        zIndex: 1,
-        filter: 'blur(3px)',
-      };
-    }
-
-    return {
-      transform: `translateX(${diff * 100}%) scale(0.5) rotateY(${diff * -35}deg)`,
-      opacity: 0,
-      zIndex: 0,
-      filter: 'blur(5px)',
-    };
   };
 
   if (items.length === 0) {
@@ -242,31 +174,28 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     );
   }
 
+  const isCurrentAlbumPlaying = currentTrack?.id === focusedItem?.id;
+
   return (
     <div className="relative w-full">
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => setIsPlaying(false)}
-      />
-
       <div className="relative h-[400px] overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           {coverUrls[focusedItem?.id] ? (
             <button
               onClick={handleCoverClick}
-              className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30"
+              className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30 focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
               style={{
                 backgroundImage: `url(${coverUrls[focusedItem.id]})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
+              aria-label="Ver detalhes do álbum"
             />
           ) : (
             <button
               onClick={handleCoverClick}
-              className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30"
+              className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30 focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
+              aria-label="Ver detalhes do álbum"
             >
               <Disc className="w-24 h-24 text-white/30" />
             </button>
@@ -320,20 +249,53 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         )}
       </div>
 
-      {tracklist.length > 0 && (
+      {sortedTracklist.length > 0 && (
         <div className="mt-6 bg-white/5 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-fuchsia-300 text-sm font-bold mb-3">
-            <ListMusic className="w-4 h-4" />
-            {tracklist.length} faixas
+          <div className="flex items-center justify-between text-fuchsia-300 text-sm font-bold mb-3">
+            <div className="flex items-center gap-2">
+              <ListMusic className="w-4 h-4" />
+              {sortedTracklist.length} faixas
+            </div>
+            {isCurrentAlbumPlaying && (
+              <span className="text-xs bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded-full">
+                Tocando agora
+              </span>
+            )}
           </div>
-          <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-            {tracklist.map((track, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm">
-                <span className="w-6 text-white/30 text-center">{track.position || i + 1}</span>
-                <span className="flex-1 text-white/80 truncate">{track.title}</span>
-                <span className="text-white/40">{track.duration}</span>
-              </div>
-            ))}
+          <div className="max-h-80 overflow-y-auto space-y-1 pr-2">
+            {sortedTracklist.map((track, i) => {
+              const isActive = activeTrackIndex === i;
+              const isPlaying = isActive && isCurrentAlbumPlaying && globalIsPlaying;
+              
+              return (
+                <button
+                  key={i}
+                  onClick={() => handlePlayTrack(track, i)}
+                  disabled={audioFiles.length === 0}
+                  className={`w-full flex items-center gap-3 text-sm p-2 rounded-lg transition-all text-left ${
+                    isActive 
+                      ? 'bg-fuchsia-500/30 border border-fuchsia-500/50' 
+                      : 'hover:bg-white/5 border border-transparent'
+                  } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span className={`w-6 text-center ${isActive ? 'text-fuchsia-300' : 'text-white/30'}`}>
+                    {isPlaying ? (
+                      <span className="flex items-center justify-center">
+                        <span className="w-1.5 h-3 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-4 bg-fuchsia-400 rounded-sm animate-pulse mx-0.5" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-2 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                      </span>
+                    ) : (
+                      track.position || i + 1
+                    )}
+                  </span>
+                  <span className={`flex-1 truncate ${isActive ? 'text-white' : 'text-white/80'}`}>
+                    {track.title}
+                  </span>
+                  <span className="text-white/40 text-xs">{track.duration}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -341,57 +303,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       {audioFiles.length > 0 && (
         <div className="mt-6 flex justify-center">
           <button
-            onClick={togglePlay}
+            onClick={handlePlayAlbum}
             className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
           >
-            {isPlaying ? (
-              <>
-                <Pause className="w-6 h-6" />
-                Pausar
-              </>
-            ) : (
-              <>
-                <Play className="w-6 h-6" />
-                Ouvir
-              </>
-            )}
+            <Play className="w-6 h-6" />
+            Ouvir Álbum
           </button>
-        </div>
-      )}
-
-      {isPlaying && (
-        <div className="mt-6 bg-white/5 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <button onClick={togglePlay} className="text-white/60 hover:text-white">
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-            </button>
-
-            <div className="flex-1 flex items-center gap-3">
-              <span className="text-xs text-white/40 w-10">{formatTime(currentTime)}</span>
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-fuchsia-400 [&::-webkit-slider-thumb]:rounded-full"
-              />
-              <span className="text-xs text-white/40 w-10">{formatTime(duration)}</span>
-            </div>
-
-            <button onClick={toggleMute} className="text-white/60 hover:text-white">
-              <Volume2 className="w-5 h-5" />
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange}
-              className="w-20 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-fuchsia-400 [&::-webkit-slider-thumb]:rounded-full"
-            />
-          </div>
         </div>
       )}
 
@@ -401,15 +318,15 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
       {showSuperCard && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           onClick={handleCloseSuperCard}
         >
           <div 
-            className="w-full max-w-2xl max-h-[90vh] bg-gradient-to-br from-gray-900 via-purple-900/90 to-fuchsia-900/90 rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
+            className="w-full max-w-3xl max-h-[90vh] bg-gradient-to-br from-gray-900 via-purple-900/95 to-fuchsia-900/95 rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex gap-6 p-6">
-              <div className="w-48 h-48 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden">
+            <div className="flex gap-6 p-6 overflow-y-auto max-h-[90vh]">
+              <div className="w-48 h-48 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden shadow-lg">
                 {coverUrls[focusedItem?.id] ? (
                   <img 
                     src={coverUrls[focusedItem.id]} 
@@ -423,7 +340,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                 )}
               </div>
 
-              <div className="flex-1 min-w-0 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-black text-white">{focusedItem?.title || 'Sem título'}</h2>
@@ -477,19 +394,31 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                   </div>
                 )}
 
-                {tracklist.length > 0 && (
+                {sortedTracklist.length > 0 && (
                   <div className="mt-4">
                     <div className="flex items-center gap-2 text-fuchsia-300 text-sm font-bold mb-3">
                       <ListMusic className="w-4 h-4" />
-                      Tracklist ({tracklist.length} faixas)
+                      Tracklist ({sortedTracklist.length} faixas)
                     </div>
-                    <div className="max-h-64 overflow-y-auto space-y-1.5 pr-2">
-                      {tracklist.map((track, i) => (
-                        <div key={i} className="flex items-center gap-3 text-sm p-1.5 rounded hover:bg-white/5">
+                    <div className="max-h-64 overflow-y-auto space-y-1 pr-2">
+                      {sortedTracklist.map((track, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            if (audioFiles.length > 0) {
+                              handlePlayTrack(track, i);
+                              handleCloseSuperCard();
+                            }
+                          }}
+                          disabled={audioFiles.length === 0}
+                          className={`w-full flex items-center gap-3 text-sm p-2 rounded hover:bg-white/5 text-left ${
+                            audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          }`}
+                        >
                           <span className="w-6 text-white/30 text-center">{track.position || i + 1}</span>
                           <span className="flex-1 text-white/80 truncate">{track.title}</span>
                           <span className="text-white/40 text-xs">{track.duration}</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -498,7 +427,10 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                 {audioFiles.length > 0 && (
                   <div className="mt-6 flex justify-center">
                     <button
-                      onClick={() => { playAudio(); handleCloseSuperCard(); }}
+                      onClick={() => {
+                        handlePlayAlbum();
+                        handleCloseSuperCard();
+                      }}
                       className="flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
                     >
                       <Play className="w-5 h-5" />
