@@ -9,7 +9,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 const getImageProxyUrl = (discogsUrl) => {
   if (!discogsUrl) return null;
-  return `${SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
+  return `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
 };
 
 export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAdmin }) {

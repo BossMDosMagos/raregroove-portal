@@ -11,7 +11,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisf
 const getImageProxyUrl = (url) => {
   if (!url) return null;
   if (url.includes('discogs.com') || url.includes('i.discogs.com')) {
-    return `${SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(url)}`;
+    return `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(url)}`;
   }
   return url;
 };
