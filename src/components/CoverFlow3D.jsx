@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, SkipBack, SkipForward, Volume2, Disc, Music, X, Clock, ListMusic } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, SkipBack, SkipForward, Volume2, Disc, Music, X, Clock, ListMusic, Building, Calendar, Globe, Tag, Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 
@@ -34,8 +34,11 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
+  const [showSuperCard, setShowSuperCard] = useState(false);
   const audioRef = useRef(null);
   const containerRef = useRef(null);
+  
+  const { playAlbum, setQueue, setCurrentTrack, currentTrack } = useAudioPlayer() || {};
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
@@ -102,19 +105,13 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   };
 
   const playAudio = useCallback(async () => {
-    if (!currentAudioFile?.path) return;
-
-    try {
-      const url = await getPresignedUrl(currentAudioFile.path, 'audio');
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
-    } catch (e) {
-      console.error('[AUDIO] Error:', e);
+    if (!focusedItem) return;
+    
+    if (playAlbum) {
+      playAlbum(focusedItem);
+      setIsPlaying(true);
     }
-  }, [currentAudioFile]);
+  }, [focusedItem, playAlbum]);
 
   const togglePlay = () => {
     if (!audioRef.current) {
@@ -177,6 +174,15 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleCoverClick = () => {
+    setShowSuperCard(true);
+  };
+
+  const handleCloseSuperCard = (e) => {
+    if (e) e.stopPropagation();
+    setShowSuperCard(false);
   };
 
   const getCardStyle = (index) => {
@@ -248,8 +254,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       <div className="relative h-[400px] overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           {coverUrls[focusedItem?.id] ? (
-            <div
-              className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl"
+            <button
+              onClick={handleCoverClick}
+              className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30"
               style={{
                 backgroundImage: `url(${coverUrls[focusedItem.id]})`,
                 backgroundSize: 'cover',
@@ -257,9 +264,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
               }}
             />
           ) : (
-            <div className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-black flex items-center justify-center">
+            <button
+              onClick={handleCoverClick}
+              className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-fuchsia-500/30 via-purple-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-fuchsia-500/30"
+            >
               <Disc className="w-24 h-24 text-white/30" />
-            </div>
+            </button>
           )}
         </div>
 
@@ -311,22 +321,19 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       </div>
 
       {tracklist.length > 0 && (
-        <div className="mt-6 max-h-48 overflow-y-auto bg-white/5 rounded-xl p-4">
+        <div className="mt-6 bg-white/5 rounded-xl p-4">
           <div className="flex items-center gap-2 text-fuchsia-300 text-sm font-bold mb-3">
             <ListMusic className="w-4 h-4" />
             {tracklist.length} faixas
           </div>
-          <div className="space-y-2">
-            {tracklist.slice(0, 10).map((track, i) => (
+          <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+            {tracklist.map((track, i) => (
               <div key={i} className="flex items-center gap-3 text-sm">
                 <span className="w-6 text-white/30 text-center">{track.position || i + 1}</span>
                 <span className="flex-1 text-white/80 truncate">{track.title}</span>
                 <span className="text-white/40">{track.duration}</span>
               </div>
             ))}
-            {tracklist.length > 10 && (
-              <p className="text-white/30 text-xs text-center">+ {tracklist.length - 10} faixas</p>
-            )}
           </div>
         </div>
       )}
@@ -391,6 +398,119 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       <div className="mt-8 text-center text-white/30 text-sm">
         {focusedIndex + 1} de {items.length} álbuns
       </div>
+
+      {showSuperCard && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={handleCloseSuperCard}
+        >
+          <div 
+            className="w-full max-w-2xl max-h-[90vh] bg-gradient-to-br from-gray-900 via-purple-900/90 to-fuchsia-900/90 rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-6 p-6">
+              <div className="w-48 h-48 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden">
+                {coverUrls[focusedItem?.id] ? (
+                  <img 
+                    src={coverUrls[focusedItem.id]} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Disc3 className="w-16 h-16 text-white/20" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-white">{focusedItem?.title || 'Sem título'}</h2>
+                    <p className="text-fuchsia-300 text-lg mt-1">{focusedItem?.artist || 'Desconhecido'}</p>
+                  </div>
+                  <button 
+                    onClick={handleCloseSuperCard}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {grooveflixData.year && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
+                      <Calendar className="w-3 h-3" />
+                      {grooveflixData.year}
+                    </span>
+                  )}
+                  {grooveflixData.country && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
+                      <Globe className="w-3 h-3" />
+                      {grooveflixData.country}
+                    </span>
+                  )}
+                  {grooveflixData.labels && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
+                      <Building className="w-3 h-3" />
+                      {grooveflixData.labels}
+                    </span>
+                  )}
+                  {grooveflixData.genre && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-fuchsia-500/20 border border-fuchsia-500/30 rounded-full text-xs text-fuchsia-300">
+                      <Tag className="w-3 h-3" />
+                      {grooveflixData.genre}
+                    </span>
+                  )}
+                </div>
+
+                {grooveflixData.formats && (
+                  <p className="text-xs text-white/40 mt-2">
+                    Formato: {grooveflixData.formats}
+                  </p>
+                )}
+
+                {grooveflixData.description && (
+                  <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                    <p className="text-xs text-white/50 font-medium uppercase tracking-wider mb-1">Notas</p>
+                    <p className="text-sm text-white/70 whitespace-pre-wrap">{grooveflixData.description}</p>
+                  </div>
+                )}
+
+                {tracklist.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 text-fuchsia-300 text-sm font-bold mb-3">
+                      <ListMusic className="w-4 h-4" />
+                      Tracklist ({tracklist.length} faixas)
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-1.5 pr-2">
+                      {tracklist.map((track, i) => (
+                        <div key={i} className="flex items-center gap-3 text-sm p-1.5 rounded hover:bg-white/5">
+                          <span className="w-6 text-white/30 text-center">{track.position || i + 1}</span>
+                          <span className="flex-1 text-white/80 truncate">{track.title}</span>
+                          <span className="text-white/40 text-xs">{track.duration}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {audioFiles.length > 0 && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      onClick={() => { playAudio(); handleCloseSuperCard(); }}
+                      className="flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-fuchsia-500/30 transition"
+                    >
+                      <Play className="w-5 h-5" />
+                      Ouvir Álbum
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
