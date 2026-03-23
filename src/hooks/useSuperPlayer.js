@@ -147,6 +147,13 @@ export function useSuperPlayer() {
   }, [isPlaying, updateAnalyser]);
 
   const loadTrack = useCallback(async (url) => {
+    console.log('[AUDIO DEBUG] Loading track with URL:', url);
+    
+    if (!url) {
+      console.error('[AUDIO DEBUG] ERROR: URL is null or undefined!');
+      return;
+    }
+    
     const ctx = initAudioContext();
     
     if (ctx.state === 'suspended') {
@@ -157,14 +164,21 @@ export function useSuperPlayer() {
     connectSource(audio);
     
     audio.src = url;
+    console.log('[AUDIO DEBUG] Audio src set, loading...');
     audio.load();
     
     setCurrentTime(0);
     setDuration(0);
     
     return new Promise((resolve, reject) => {
-      audio.addEventListener('canplay', () => resolve(audio), { once: true });
-      audio.addEventListener('error', reject, { once: true });
+      audio.addEventListener('canplay', () => {
+        console.log('[AUDIO DEBUG] canplay event fired - ready to play');
+        resolve(audio);
+      }, { once: true });
+      audio.addEventListener('error', (e) => {
+        console.error('[AUDIO DEBUG] Audio error:', audio.error);
+        reject(audio.error);
+      }, { once: true });
     });
   }, [initAudioContext, createAudioElement, connectSource]);
 

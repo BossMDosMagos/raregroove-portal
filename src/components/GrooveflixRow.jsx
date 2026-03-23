@@ -6,6 +6,16 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import { supabase } from '../lib/supabase';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+
+const getImageProxyUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('discogs.com') || url.includes('i.discogs.com')) {
+    return `${SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const GrooveflixCard = memo(function GrooveflixCard({ item, onPick, onDelete, canDelete, coverUrl, loading, failed }) {
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -41,7 +51,7 @@ const GrooveflixCard = memo(function GrooveflixCard({ item, onPick, onDelete, ca
             </div>
           ) : coverUrl && !failed ? (
             <img 
-              src={coverUrl} 
+              src={getImageProxyUrl(coverUrl)} 
               alt={item.title || 'cover'} 
               className="w-full h-full object-cover"
               loading="lazy"

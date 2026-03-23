@@ -7,6 +7,11 @@ import { toast } from 'sonner';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+const getImageProxyUrl = (discogsUrl) => {
+  if (!discogsUrl) return null;
+  return `${SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
+};
+
 export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAdmin }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
@@ -139,7 +144,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       const discogsCover = item.metadata?.grooveflix?.coverUrl;
 
       if (discogsCover) {
-        setCoverUrls(prev => ({ ...prev, [item.id]: discogsCover }));
+        const proxiedUrl = getImageProxyUrl(discogsCover);
+        console.log('[COVER] Using proxied Discogs URL for:', item.title);
+        setCoverUrls(prev => ({ ...prev, [item.id]: proxiedUrl }));
         return;
       }
 
