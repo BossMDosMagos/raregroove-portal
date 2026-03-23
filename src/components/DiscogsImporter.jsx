@@ -131,11 +131,29 @@ export function DiscogsImporter({ onClose }) {
     const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
     const labels = fullDetails.labels?.map(l => l.name).filter(Boolean).join(', ');
     const catalogNumber = fullDetails.labels?.[0]?.catno;
-    const tracklist = fullDetails.tracklist?.map((t, i) => ({
-      position: t.position || String(i + 1),
-      title: t.title,
-      duration: t.duration,
-    })) || [];
+    
+    const parsePosition = (pos) => {
+      const match = String(pos).match(/^(\d+)-(\d+)$/);
+      if (match) {
+        return { discNumber: parseInt(match[1], 10), trackNumber: parseInt(match[2], 10) };
+      }
+      const simpleMatch = String(pos).match(/^(\d+)$/);
+      if (simpleMatch) {
+        return { discNumber: 1, trackNumber: parseInt(simpleMatch[1], 10) };
+      }
+      return { discNumber: 1, trackNumber: 1 };
+    };
+    
+    const tracklist = fullDetails.tracklist?.map((t, i) => {
+      const parsed = parsePosition(t.position);
+      return {
+        position: t.position || String(i + 1),
+        title: t.title,
+        duration: t.duration,
+        discNumber: parsed.discNumber,
+        trackNumber: parsed.trackNumber,
+      };
+    }) || [];
 
     importFromDiscogs({
       title: albumTitle,

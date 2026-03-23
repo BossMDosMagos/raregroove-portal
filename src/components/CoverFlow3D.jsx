@@ -23,10 +23,24 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const audioFiles = grooveflixData.audio_files || [];
 
   const sortedTracklist = [...rawTracklist].sort((a, b) => {
-    const posA = parseInt(a.position) || 0;
-    const posB = parseInt(b.position) || 0;
-    return posA - posB;
+    const discA = a.discNumber || 1;
+    const discB = b.discNumber || 1;
+    if (discA !== discB) return discA - discB;
+    const trackA = a.trackNumber || parseInt(a.position) || 0;
+    const trackB = b.trackNumber || parseInt(b.position) || 0;
+    return trackA - trackB;
   });
+
+  const groupedTracks = sortedTracklist.reduce((acc, track) => {
+    const discKey = track.discNumber || 1;
+    if (!acc[discKey]) {
+      acc[discKey] = [];
+    }
+    acc[discKey].push(track);
+    return acc;
+  }, {});
+
+  const discKeys = Object.keys(groupedTracks).sort((a, b) => parseInt(a) - parseInt(b));
 
   useEffect(() => {
     if (focusedItem && onUpdateFocus) {
@@ -255,6 +269,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
             <div className="flex items-center gap-2">
               <ListMusic className="w-4 h-4" />
               {sortedTracklist.length} faixas
+              {discKeys.length > 1 && (
+                <span className="text-xs text-white/40 ml-2">({discKeys.length} discos)</span>
+              )}
             </div>
             {isCurrentAlbumPlaying && (
               <span className="text-xs bg-fuchsia-500/20 text-fuchsia-300 px-2 py-1 rounded-full">
@@ -262,38 +279,60 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
               </span>
             )}
           </div>
-          <div className="max-h-80 overflow-y-auto space-y-1 pr-2">
-            {sortedTracklist.map((track, i) => {
-              const isActive = activeTrackIndex === i;
-              const isPlaying = isActive && isCurrentAlbumPlaying && globalIsPlaying;
+          <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
+            {discKeys.map((discKey) => {
+              const discTracks = groupedTracks[discKey];
+              const discNum = parseInt(discKey);
+              const discLabel = discKeys.length > 1 
+                ? (discNum === 1 ? 'DISCO 1' : `DISCO ${discNum}`) 
+                : null;
               
               return (
-                <button
-                  key={i}
-                  onClick={() => handlePlayTrack(track, i)}
-                  disabled={audioFiles.length === 0}
-                  className={`w-full flex items-center gap-3 text-sm p-2 rounded-lg transition-all text-left ${
-                    isActive 
-                      ? 'bg-fuchsia-500/30 border border-fuchsia-500/50' 
-                      : 'hover:bg-white/5 border border-transparent'
-                  } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span className={`w-6 text-center ${isActive ? 'text-fuchsia-300' : 'text-white/30'}`}>
-                    {isPlaying ? (
-                      <span className="flex items-center justify-center">
-                        <span className="w-1.5 h-3 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                        <span className="w-1.5 h-4 bg-fuchsia-400 rounded-sm animate-pulse mx-0.5" style={{ animationDelay: '150ms' }}></span>
-                        <span className="w-1.5 h-2 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '300ms' }}></span>
-                      </span>
-                    ) : (
-                      track.position || i + 1
-                    )}
-                  </span>
-                  <span className={`flex-1 truncate ${isActive ? 'text-white' : 'text-white/80'}`}>
-                    {track.title}
-                  </span>
-                  <span className="text-white/40 text-xs">{track.duration}</span>
-                </button>
+                <div key={discKey}>
+                  {discLabel && (
+                    <div className="flex items-center gap-2 py-2 border-b border-white/10 mb-2">
+                      <Disc3 className="w-4 h-4 text-fuchsia-400" />
+                      <span className="text-fuchsia-300 font-bold text-sm">{discLabel}</span>
+                      <span className="text-white/40 text-xs">({discTracks.length} faixas)</span>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {discTracks.map((track, i) => {
+                      const globalIndex = sortedTracklist.indexOf(track);
+                      const isActive = activeTrackIndex === globalIndex;
+                      const isPlaying = isActive && isCurrentAlbumPlaying && globalIsPlaying;
+                      
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => handlePlayTrack(track, globalIndex)}
+                          disabled={audioFiles.length === 0}
+                          className={`w-full flex items-center gap-3 text-sm p-2 rounded-lg transition-all text-left ${
+                            isActive 
+                              ? 'bg-fuchsia-500/30 border border-fuchsia-500/50' 
+                              : 'hover:bg-white/5 border border-transparent'
+                          } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          <span className={`w-6 text-center ${isActive ? 'text-fuchsia-300' : 'text-white/30'}`}>
+                            {isPlaying ? (
+                              <span className="flex items-center justify-center">
+                                <span className="w-1.5 h-3 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-1.5 h-4 bg-fuchsia-400 rounded-sm animate-pulse mx-0.5" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-1.5 h-2 bg-fuchsia-400 rounded-sm animate-pulse" style={{ animationDelay: '300ms' }}></span>
+                              </span>
+                            ) : (
+                              track.trackNumber || track.position || i + 1
+                            )}
+                          </span>
+                          <span className={`flex-1 truncate ${isActive ? 'text-white' : 'text-white/80'}`}>
+                            {track.title}
+                          </span>
+                          <span className="text-white/40 text-xs">{track.duration}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -399,27 +438,52 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     <div className="flex items-center gap-2 text-fuchsia-300 text-sm font-bold mb-3">
                       <ListMusic className="w-4 h-4" />
                       Tracklist ({sortedTracklist.length} faixas)
+                      {discKeys.length > 1 && (
+                        <span className="text-xs text-white/40 ml-2">({discKeys.length} discos)</span>
+                      )}
                     </div>
-                    <div className="max-h-64 overflow-y-auto space-y-1 pr-2">
-                      {sortedTracklist.map((track, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            if (audioFiles.length > 0) {
-                              handlePlayTrack(track, i);
-                              handleCloseSuperCard();
-                            }
-                          }}
-                          disabled={audioFiles.length === 0}
-                          className={`w-full flex items-center gap-3 text-sm p-2 rounded hover:bg-white/5 text-left ${
-                            audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                          }`}
-                        >
-                          <span className="w-6 text-white/30 text-center">{track.position || i + 1}</span>
-                          <span className="flex-1 text-white/80 truncate">{track.title}</span>
-                          <span className="text-white/40 text-xs">{track.duration}</span>
-                        </button>
-                      ))}
+                    <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
+                      {discKeys.map((discKey) => {
+                        const discTracks = groupedTracks[discKey];
+                        const discNum = parseInt(discKey);
+                        const discLabel = discKeys.length > 1 
+                          ? (discNum === 1 ? 'DISCO 1' : `DISCO ${discNum}`) 
+                          : null;
+                        
+                        return (
+                          <div key={discKey}>
+                            {discLabel && (
+                              <div className="flex items-center gap-2 py-1.5 border-b border-white/10 mb-1">
+                                <Disc3 className="w-3.5 h-3.5 text-fuchsia-400" />
+                                <span className="text-fuchsia-300 font-bold text-xs">{discLabel}</span>
+                                <span className="text-white/30 text-xs">({discTracks.length} faixas)</span>
+                              </div>
+                            )}
+                            {discTracks.map((track, i) => {
+                              const globalIndex = sortedTracklist.indexOf(track);
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => {
+                                    if (audioFiles.length > 0) {
+                                      handlePlayTrack(track, globalIndex);
+                                      handleCloseSuperCard();
+                                    }
+                                  }}
+                                  disabled={audioFiles.length === 0}
+                                  className={`w-full flex items-center gap-3 text-sm p-1.5 rounded hover:bg-white/5 text-left ${
+                                    audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                                  }`}
+                                >
+                                  <span className="w-6 text-white/30 text-center">{track.trackNumber || track.position || i + 1}</span>
+                                  <span className="flex-1 text-white/80 truncate">{track.title}</span>
+                                  <span className="text-white/40 text-xs">{track.duration}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
