@@ -157,28 +157,35 @@ export function SuperAudioPlayer() {
   }, [currentTrack, queue]);
 
   useEffect(() => {
-    if (!currentTrack || queue.length === 0) return;
-    if (!globalIsPlaying) return;
+    if (!currentTrack || queue.length === 0) {
+      console.log('[SUPER PLAYER] Skipping: no track or empty queue');
+      return;
+    }
     
     const idx = queue.findIndex(t => t.id === currentTrack?.id);
-    if (idx < 0) return;
+    if (idx < 0) {
+      console.log('[SUPER PLAYER] Track not found in queue:', currentTrack?.id);
+      return;
+    }
     
-    console.log('[SUPER PLAYER] Auto-playing track:', currentTrack?.title, 'at index:', idx);
+    console.log('[SUPER PLAYER] Track changed:', currentTrack?.title, '| index:', idx, '| playing:', globalIsPlaying);
     setCurrentQueueIndex(idx);
     
-    const playCurrentTrack = async () => {
-      try {
-        if (hydrateAndPlayRef.current) {
-          await hydrateAndPlayRef.current(idx);
+    if (globalIsPlaying) {
+      const playCurrentTrack = async () => {
+        try {
+          if (hydrateAndPlayRef.current) {
+            console.log('[SUPER PLAYER] Calling hydrateAndPlay...');
+            await hydrateAndPlayRef.current(idx);
+          }
+        } catch (e) {
+          console.error('[SUPER PLAYER] Play error:', e);
+          toast.error('Erro ao reproduzir');
         }
-      } catch (e) {
-        console.error('[SUPER PLAYER] Play error:', e);
-        toast.error('Erro ao reproduzir');
-      }
-    };
-    
-    playCurrentTrack();
-  }, [currentTrack, globalIsPlaying, queue]);
+      };
+      playCurrentTrack();
+    }
+  }, [currentTrack?.id, queue]);
 
   const handlePlayPause = useCallback(async () => {
     if (!isReady) {

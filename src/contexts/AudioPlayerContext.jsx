@@ -140,9 +140,9 @@ export function AudioPlayerProvider({ children }) {
     setIsPlaying(true);
   }, [expandAlbumTracks]);
 
-  const playAlbum = useCallback((albumItem) => {
+  const playAlbum = useCallback((albumItem, startIndex = 0) => {
     if (!albumItem) return;
-    console.log('[AUDIO CONTEXT] playAlbum:', albumItem.title);
+    console.log('[AUDIO CONTEXT] playAlbum:', albumItem.title, 'starting at index:', startIndex);
     
     const albumTracks = expandAlbumTracks(albumItem);
     if (albumTracks.length === 0) {
@@ -150,9 +150,10 @@ export function AudioPlayerProvider({ children }) {
       return;
     }
     
+    const safeIndex = Math.min(startIndex, albumTracks.length - 1);
     currentQueueRef.current = albumTracks;
     setQueue(albumTracks);
-    setCurrentTrack(albumItem);
+    setCurrentTrack(albumTracks[safeIndex]);
     setIsPlaying(true);
   }, [expandAlbumTracks]);
 

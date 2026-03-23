@@ -234,21 +234,27 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     setFocusedIndex(prev => Math.min(items.length - 1, prev + 1));
   };
 
-  const handlePlayAlbum = useCallback(async () => {
-    if (!focusedItem || audioFiles.length === 0) return;
+  const handlePlayAlbum = useCallback(() => {
+    if (!focusedItem || audioFiles.length === 0) {
+      toast.error('Este álbum não tem arquivos de áudio');
+      return;
+    }
 
     if (playAlbum) {
       playAlbum({
         ...focusedItem,
         audio_files: audioFiles,
         tracklist: rawTracklist,
-      });
+      }, 0);
       setActiveTrackIndex(0);
     }
   }, [focusedItem, audioFiles, playAlbum, rawTracklist]);
 
-  const handlePlayTrack = useCallback(async (track, index) => {
-    if (!focusedItem || audioFiles.length === 0) return;
+  const handlePlayTrack = useCallback((track, index) => {
+    if (!focusedItem || audioFiles.length === 0) {
+      toast.error('Este álbum não tem arquivos de áudio');
+      return;
+    }
 
     setActiveTrackIndex(index);
 
@@ -257,7 +263,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         ...focusedItem,
         audio_files: audioFiles,
         tracklist: rawTracklist,
-      });
+      }, index);
     }
   }, [focusedItem, audioFiles, playAlbum]);
 
@@ -333,7 +339,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     );
   }
 
-  const isCurrentAlbumPlaying = currentTrack?.id === focusedItem?.id;
+  const isCurrentAlbumPlaying = currentTrack?.albumId === focusedItem?.id;
 
   return (
     <div className="relative w-full" style={{ background: `radial-gradient(ellipse at center, ${dominantColor} 0%, #0a0a0a 70%)` }}>
