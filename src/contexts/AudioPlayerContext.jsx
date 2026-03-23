@@ -1,12 +1,10 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
-import { getSkinFromLocalStorage } from '../utils/webampSkins';
 
 const AudioPlayerContext = createContext(null);
 
 export function AudioPlayerProvider({ children }) {
-  const [webampRef, setWebampRef] = useState(null);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -14,14 +12,9 @@ export function AudioPlayerProvider({ children }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [userId, setUserId] = useState(null);
-  const [preparing, setPreparing] = useState(false);
-  const [webampTracks, setWebampTracks] = useState([]);
-  const [selectedSkin, setSelectedSkin] = useState(null);
   const [loadingTrackId, setLoadingTrackId] = useState(null);
 
-  const listenersRef = useRef({});
   const urlCacheRef = useRef(new Map());
-  const loadingRef = useRef(false);
   const currentQueueRef = useRef([]);
 
   useEffect(() => {
@@ -29,10 +22,6 @@ export function AudioPlayerProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('[AUDIO CONTEXT] Session:', session?.user?.id);
       setUserId(session?.user?.id || null);
-      
-      const savedSkin = getSkinFromLocalStorage();
-      setSelectedSkin(savedSkin.url);
-      console.log('[AUDIO CONTEXT] Loaded skin:', savedSkin.name, savedSkin.url);
     };
     
     init();
@@ -130,65 +119,6 @@ export function AudioPlayerProvider({ children }) {
     return tracks;
   }, []);
 
-  const prepareJITTracks = useCallback((tracks) => {
-    currentQueueRef.current = tracks;
-    
-    const jitTracks = tracks.map((track, index) => ({
-      url: '',
-      duration: track.duration,
-      metaData: {
-        artist: track.artist,
-        title: track.title,
-        album: track.albumTitle || undefined,
-      },
-      _trackId: track.id,
-      _index: index,
-      _hasAudio: !!track.audioPath,
-    }));
-
-    console.log('[AUDIO CONTEXT] JIT Playlist ready:', jitTracks.length, 'tracks (no URLs)');
-    setWebampTracks(jitTracks);
-    setPreparing(false);
-    return jitTracks;
-  }, []);
-
-  const hydrateTrack = useCallback(async (index) => {
-    if (loadingRef.current) {
-      console.log('[AUDIO CONTEXT] Already loading, skipping');
-      return;
-    }
-
-    const track = currentQueueRef.current[index];
-    if (!track) return;
-
-    if (urlCacheRef.current.has(track.audioPath)) {
-      console.log('[AUDIO CONTEXT] Track already cached:', track.title);
-      return urlCacheRef.current.get(track.audioPath);
-    }
-
-    loadingRef.current = true;
-    setLoadingTrackId(track.id);
-
-    console.log('[AUDIO CONTEXT] Hydrating track:', track.title);
-    const url = await getPresignedUrl(track.audioPath);
-
-    loadingRef.current = false;
-    setLoadingTrackId(null);
-
-    if (url) {
-      setWebampTracks(prev => {
-        const updated = [...prev];
-        if (updated[index]) {
-          updated[index] = { ...updated[index], url };
-        }
-        return updated;
-      });
-      console.log('[AUDIO CONTEXT] Track hydrated:', track.title);
-    }
-
-    return url;
-  }, [getPresignedUrl]);
-
   const playTrack = useCallback((track) => {
     if (!track) return;
     console.log('[AUDIO CONTEXT] playTrack:', track.title);
@@ -204,6 +134,7 @@ export function AudioPlayerProvider({ children }) {
     }
     
     console.log('[AUDIO CONTEXT] Queue set:', queueTracks.length, 'tracks');
+    currentQueueRef.current = queueTracks;
     setQueue(queueTracks);
     setCurrentTrack(track);
     setIsPlaying(true);
@@ -219,6 +150,7 @@ export function AudioPlayerProvider({ children }) {
       return;
     }
     
+    currentQueueRef.current = albumTracks;
     setQueue(albumTracks);
     setCurrentTrack(albumItem);
     setIsPlaying(true);
@@ -235,41 +167,13 @@ export function AudioPlayerProvider({ children }) {
   const clearQueue = useCallback(() => {
     setQueue([]);
     setCurrentTrack(null);
-    setWebampTracks([]);
     setIsPlaying(false);
     currentQueueRef.current = [];
   }, []);
 
   const closePlayer = useCallback(() => {
     clearQueue();
-    if (webampRef) {
-      try {
-        if (listenersRef.current.onClose) listenersRef.current.onClose();
-        if (listenersRef.current.onTrackDidChange) listenersRef.current.onTrackDidChange();
-        webampRef.dispose?.();
-      } catch (e) {
-        console.error('[AUDIO CONTEXT] Dispose error:', e);
-      }
-    }
-  }, [webampRef, clearQueue]);
-
-  const saveSkin = useCallback((skinUrl) => {
-    localStorage.setItem('grooveflix_skin_url', skinUrl);
-    setSelectedSkin(skinUrl);
-  }, []);
-
-  const clearSkin = useCallback(() => {
-    localStorage.removeItem('grooveflix_skin_url');
-    setSelectedSkin(null);
-  }, []);
-
-  useEffect(() => {
-    if (queue.length === 0) {
-      setWebampTracks([]);
-      return;
-    }
-    prepareJITTracks(queue);
-  }, [queue, prepareJITTracks]);
+  }, [clearQueue]);
 
   const value = useMemo(() => ({
     currentTrack,
@@ -279,10 +183,6 @@ export function AudioPlayerProvider({ children }) {
     currentTime,
     duration,
     userId,
-    webampRef,
-    preparing,
-    webampTracks,
-    selectedSkin,
     loadingTrackId,
 
     setCurrentTrack,
@@ -291,7 +191,6 @@ export function AudioPlayerProvider({ children }) {
     setVolume,
     setCurrentTime,
     setDuration,
-    setWebampRef,
     playTrack,
     playAlbum,
     pauseTrack,
@@ -299,13 +198,7 @@ export function AudioPlayerProvider({ children }) {
     clearQueue,
     closePlayer,
     getPresignedUrl,
-    setPreparing,
-    setWebampTracks,
-    listenersRef,
-    saveSkin,
-    clearSkin,
     expandAlbumTracks,
-    hydrateTrack,
     urlCache: urlCacheRef.current,
   }), [
     currentTrack,
@@ -315,10 +208,6 @@ export function AudioPlayerProvider({ children }) {
     currentTime,
     duration,
     userId,
-    webampRef,
-    preparing,
-    webampTracks,
-    selectedSkin,
     loadingTrackId,
     playTrack,
     playAlbum,
@@ -327,10 +216,7 @@ export function AudioPlayerProvider({ children }) {
     clearQueue,
     closePlayer,
     getPresignedUrl,
-    saveSkin,
-    clearSkin,
     expandAlbumTracks,
-    hydrateTrack,
   ]);
 
   return (
