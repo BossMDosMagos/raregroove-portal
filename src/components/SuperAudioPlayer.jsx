@@ -2,11 +2,23 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Square, Volume2, VolumeX,
   Repeat, Repeat1, Shuffle, ChevronUp, ChevronDown, X,
-  Music, Disc3, Headphones, Sliders, BarChart3
+  Music, Disc3, Headphones, Sliders, BarChart3, ChevronDown as ChevronDownIcon
 } from 'lucide-react';
 import { useSuperPlayer } from '../hooks/useSuperPlayer';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
+import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+
+const EQ_PRESETS = {
+  Flat: { preAmp: 0, bands: { 32: 0, 64: 0, 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
+  Rock: { preAmp: 2, bands: { 32: 5, 64: 4, 125: 3, 250: 1, 500: -1, 1000: 0, 2000: 2, 4000: 4, 8000: 5, 16000: 5 } },
+  Jazz: { preAmp: 1, bands: { 32: 3, 64: 2, 125: 1, 250: 0, 500: 0, 1000: 1, 2000: 2, 4000: 3, 8000: 2, 16000: 3 } },
+  Electronic: { preAmp: 3, bands: { 32: 6, 64: 5, 125: 4, 250: 2, 500: 0, 1000: -1, 2000: 1, 4000: 3, 8000: 5, 16000: 6 } },
+  Pop: { preAmp: 2, bands: { 32: -1, 64: 0, 125: 2, 250: 4, 500: 5, 1000: 4, 2000: 2, 4000: 1, 8000: 2, 16000: 3 } },
+  Classical: { preAmp: 1, bands: { 32: 3, 64: 2, 125: 2, 250: 1, 500: 0, 1000: 0, 2000: 1, 4000: 2, 8000: 3, 16000: 4 } },
+  BassBoost: { preAmp: 4, bands: { 32: 8, 64: 7, 125: 6, 250: 4, 500: 2, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
+  Acoustic: { preAmp: 1, bands: { 32: 3, 64: 2, 125: 1, 250: 1, 500: 0, 1000: 1, 2000: 2, 4000: 3, 8000: 3, 16000: 2 } },
+};
 
 export function SuperAudioPlayer() {
   const {
@@ -26,6 +38,9 @@ export function SuperAudioPlayer() {
   const [trackUrls, setTrackUrls] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [debug, setDebug] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState('Flat');
+  const [showPresetMenu, setShowPresetMenu] = useState(false);
 
   const {
     isPlaying,
@@ -55,6 +70,20 @@ export function SuperAudioPlayer() {
     getPrevTrack,
     initAudioContext,
   } = useSuperPlayer();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const ht = queue.length > 0 && currentTrack;
@@ -194,7 +223,23 @@ export function SuperAudioPlayer() {
 
   const handleEqChange = useCallback((freq, value) => {
     setEqBand(freq, parseFloat(value));
+    setSelectedPreset('Custom');
   }, [setEqBand]);
+
+  const applyPreset = useCallback((presetName) => {
+    const preset = EQ_PRESETS[presetName];
+    if (!preset) return;
+    
+    setSelectedPreset(presetName);
+    setPreAmp(preset.preAmp);
+    
+    Object.entries(preset.bands).forEach(([freq, gain]) => {
+      setEqBand(parseInt(freq), gain);
+    });
+    
+    setShowPresetMenu(false);
+    toast.success(`Preset "${presetName}" aplicado`, { duration: 1500 });
+  }, [setPreAmp, setEqBand]);
 
   const formatTime = (t) => {
     if (!t || isNaN(t)) return '0:00';
@@ -213,8 +258,9 @@ export function SuperAudioPlayer() {
 
   const hasTrack = queue.length > 0 && currentTrack;
 
-  console.log('[SUPER PLAYER] Render:', { userId: !!userId, hasTrack, queueLength: queue.length, currentTrack: currentTrack?.title, debug });
-  console.log('[SUPER PLAYER] isPlaying:', isPlaying, 'globalIsPlaying:', globalIsPlaying);
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
@@ -311,6 +357,32 @@ export function SuperAudioPlayer() {
 
           {activePanel === 'eq' && (
             <div className="p-4 space-y-4">
+              <div className="relative">
+                <button
+                  onClick={() => setShowPresetMenu(!showPresetMenu)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
+                >
+                  <span className="text-white font-medium">Preset: <span className="text-fuchsia-400">{selectedPreset}</span></span>
+                  <ChevronDownIcon className={`w-4 h-4 text-white/50 transition-transform ${showPresetMenu ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showPresetMenu && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg overflow-hidden z-50 shadow-xl">
+                    {Object.keys(EQ_PRESETS).map((presetName) => (
+                      <button
+                        key={presetName}
+                        onClick={() => applyPreset(presetName)}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-fuchsia-500/20 transition ${
+                          selectedPreset === presetName ? 'text-fuchsia-400 bg-fuchsia-500/10' : 'text-white/80'
+                        }`}
+                      >
+                        {presetName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between text-xs text-white/50">
                 <span>Pré-Amp</span>
                 <span>{preAmp > 0 ? '+' : ''}{preAmp.toFixed(1)} dB</span>
