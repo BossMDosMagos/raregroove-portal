@@ -318,8 +318,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const handleCardClick = useCallback((e) => {
     e.stopPropagation();
     e.preventDefault();
+    console.log('[SUPERCARD] Click! focusedItem:', focusedItem?.title, 'items:', items.length);
     setShowSuperCard(true);
-  }, []);
+  }, [focusedItem]);
 
   if (items.length === 0) {
     return (
@@ -342,7 +343,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const isCurrentAlbumPlaying = currentTrack?.albumId === focusedItem?.id;
 
   return (
-    <div className="relative w-full" style={{ background: `radial-gradient(ellipse at center, ${dominantColor} 0%, #0a0a0a 70%)` }}>
+    <div className="relative w-full" style={{ background: `radial-gradient(ellipse at center, ${dominantColor} 0%, #0a0a0a 70%)`, zIndex: 1 }}>
       <style>{`
         @keyframes cdRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .cd-disc { animation: cdRotate 3s linear infinite; }
@@ -539,13 +540,14 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
       {showSuperCard && (
         <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 flex items-center justify-center p-4 bg-black/95"
           onClick={handleCloseSuperCard}
           style={{ zIndex: 99999 }}
         >
           <div 
-            className="super-card-animate w-full max-w-3xl max-h-[90vh] bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-yellow-500/30 shadow-2xl shadow-yellow-500/20"
+            className="w-full max-w-3xl max-h-[90vh] bg-gray-900 rounded-2xl overflow-hidden border-2 border-yellow-500 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            style={{ zIndex: 100000 }}
           >
             <div className="flex gap-6 p-6 overflow-y-auto max-h-[90vh]">
               <div className="w-48 h-48 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden shadow-lg shadow-yellow-500/10">
