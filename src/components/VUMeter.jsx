@@ -7,6 +7,7 @@ const defaults = {
   inputGain: 0,
   damping: 0.18,
   needleBase: 0,
+  amplitudeRange: 1.0,
 };
 
 export function VUMeter({ analyserData, isPlaying }) {
@@ -24,9 +25,7 @@ export function VUMeter({ analyserData, isPlaying }) {
   };
 
   const MIN_DB = -60;
-  const MAX_DB = 3 + calibration.inputGain;
-  const MIN_ANGLE = calibration.zeroOffset;
-  const MAX_ANGLE = calibration.zeroOffset + 110;
+  const MAX_DB = -20;
   const DAMPING = calibration.damping;
   const PICO_DAMPING = 0.03;
   const NEEDLE_BASE = 5 + calibration.needleBase;
@@ -67,15 +66,19 @@ export function VUMeter({ analyserData, isPlaying }) {
   const peakHoldR = useRef(0);
 
   const dbToAngle = useCallback((db) => {
+    const zeroOffset = calibration.zeroOffset;
+    const arcRange = 110 * calibration.amplitudeRange;
     const clampedDb = Math.max(MIN_DB, Math.min(MAX_DB, db));
     const normalized = (clampedDb - MIN_DB) / (MAX_DB - MIN_DB);
-    return MIN_ANGLE + normalized * (MAX_ANGLE - MIN_ANGLE);
-  }, []);
+    return zeroOffset + normalized * arcRange;
+  }, [calibration.zeroOffset, calibration.amplitudeRange]);
 
   const amplitudeToDb = useCallback((amplitude) => {
     if (amplitude <= 0) return MIN_DB;
-    return 20 * Math.log10(amplitude / 255) + calibration.inputGain;
-  }, []);
+    const db = 20 * Math.log10(amplitude / 255);
+    const gainMultiplier = Math.pow(10, calibration.inputGain / 20);
+    return db * gainMultiplier;
+  }, [calibration.inputGain]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -252,7 +255,7 @@ export function VUMeter({ analyserData, isPlaying }) {
 
       {showCalibration && (
         <div className="mt-2 p-3 bg-black/80 rounded-lg border border-yellow-600/30">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] text-yellow-500 block mb-1">Zero Offset</label>
               <input
@@ -289,6 +292,19 @@ export function VUMeter({ analyserData, isPlaying }) {
                 className="w-full h-1 accent-yellow-500"
               />
               <span className="text-[8px] text-white/50">{calibration.damping.toFixed(2)}</span>
+            </div>
+            <div>
+              <label className="text-[9px] text-yellow-500 block mb-1">Range</label>
+              <input
+                type="range"
+                min="0.3"
+                max="1.5"
+                step="0.05"
+                value={calibration.amplitudeRange}
+                onChange={(e) => saveCalibration({ ...calibration, amplitudeRange: Number(e.target.value) })}
+                className="w-full h-1 accent-yellow-500"
+              />
+              <span className="text-[8px] text-white/50">{(calibration.amplitudeRange * 100).toFixed(0)}%</span>
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-white/10">
