@@ -124,23 +124,28 @@ export function VUMeter({ analyserData, isPlaying }) {
       const angleRad = (angle - 90) * (Math.PI / 180);
       const needleLength = arcRadius - 14;
       
+      const baseX = arcCenterX + Math.cos(angleRad) * 6;
+      const baseY = arcCenterY + Math.sin(angleRad) * 6;
       const tipX = arcCenterX + Math.cos(angleRad) * needleLength;
       const tipY = arcCenterY + Math.sin(angleRad) * needleLength;
+
+      const perpRad = angleRad + Math.PI / 2;
+      const baseWidth = 2;
 
       ctx.save();
       ctx.shadowColor = 'rgba(180, 20, 20, 0.6)';
       ctx.shadowBlur = 4;
 
-      const needleGrad = ctx.createLinearGradient(arcCenterX, arcCenterY, tipX, tipY);
-      needleGrad.addColorStop(0, '#aa0000');
-      needleGrad.addColorStop(0.4, '#cc1100');
+      const needleGrad = ctx.createLinearGradient(baseX, baseY, tipX, tipY);
+      needleGrad.addColorStop(0, '#880000');
+      needleGrad.addColorStop(0.3, '#cc1100');
       needleGrad.addColorStop(0.7, '#dd2200');
-      needleGrad.addColorStop(1, '#ee3322');
+      needleGrad.addColorStop(1, '#ff3322');
 
       ctx.beginPath();
-      ctx.moveTo(arcCenterX, arcCenterY);
-      ctx.lineTo(tipX - 0.5, tipY);
-      ctx.lineTo(tipX + 0.5, tipY);
+      ctx.moveTo(baseX + Math.cos(perpRad) * baseWidth, baseY + Math.sin(perpRad) * baseWidth);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(baseX - Math.cos(perpRad) * baseWidth, baseY - Math.sin(perpRad) * baseWidth);
       ctx.closePath();
       ctx.fillStyle = needleGrad;
       ctx.fill();
@@ -148,15 +153,15 @@ export function VUMeter({ analyserData, isPlaying }) {
       ctx.restore();
 
       ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, 4, 0, Math.PI * 2);
+      ctx.arc(arcCenterX, arcCenterY, 5, 0, Math.PI * 2);
       ctx.fillStyle = '#0a0a0a';
       ctx.fill();
 
-      const knobGrad = ctx.createRadialGradient(arcCenterX - 1, arcCenterY - 1, 0, arcCenterX, arcCenterY, 3);
+      const knobGrad = ctx.createRadialGradient(arcCenterX - 1, arcCenterY - 1, 0, arcCenterX, arcCenterY, 4);
       knobGrad.addColorStop(0, '#ee2211');
       knobGrad.addColorStop(1, '#880000');
       ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, 2.5, 0, Math.PI * 2);
+      ctx.arc(arcCenterX, arcCenterY, 3, 0, Math.PI * 2);
       ctx.fillStyle = knobGrad;
       ctx.fill();
     };
