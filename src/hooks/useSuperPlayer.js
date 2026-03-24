@@ -4,7 +4,6 @@ const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
 export function useSuperPlayer() {
   const audioContextRef = useRef(null);
-  const sourceNodeRef = useRef(null);
   const preAmpRef = useRef(null);
   const eqFiltersRef = useRef([]);
   const masterGainRef = useRef(null);
@@ -26,6 +25,7 @@ export function useSuperPlayer() {
   const [shuffle, setShuffleState] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [analyserData, setAnalyserData] = useState(new Uint8Array(128));
+  const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
 
   const initAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
@@ -120,7 +120,9 @@ export function useSuperPlayer() {
     if (mediaSourceRef.current) {
       try {
         mediaSourceRef.current.disconnect();
-      } catch (e) {}
+      } catch (e) {
+        // Ignore disconnect errors
+      }
     }
 
     const mediaSource = audioContextRef.current.createMediaElementSource(audio);
@@ -128,23 +130,49 @@ export function useSuperPlayer() {
     mediaSourceRef.current = mediaSource;
   }, []);
 
-  const updateAnalyser = useCallback(() => {
-    if (!analyserRef.current) return;
-    
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    setAnalyserData(new Uint8Array(dataArray));
-    
-    if (isPlaying) {
-      requestAnimationFrame(updateAnalyser);
-    }
+  const analyserRafRef = useRef(null);
+  const isPlayingRef = useRef(isPlaying);
+  const runAnalyserLoopRef = useRef(null);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
   useEffect(() => {
+    runAnalyserLoopRef.current = () => {
+      if (!analyserRef.current) return;
+      
+      const freqData = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(freqData);
+      setAnalyserData(new Uint8Array(freqData));
+      
+      const timeData = new Float32Array(analyserRef.current.fftSize);
+      analyserRef.current.getFloatTimeDomainData(timeData);
+      setTimeDomainData(new Float32Array(timeData));
+      
+      if (isPlayingRef.current) {
+        analyserRafRef.current = requestAnimationFrame(runAnalyserLoopRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (isPlaying) {
-      updateAnalyser();
+      analyserRafRef.current = requestAnimationFrame(runAnalyserLoopRef.current);
+    } else {
+      if (analyserRafRef.current) {
+        cancelAnimationFrame(analyserRafRef.current);
+        analyserRafRef.current = null;
+      }
     }
-  }, [isPlaying, updateAnalyser]);
+    
+    return () => {
+      if (analyserRafRef.current) {
+        cancelAnimationFrame(analyserRafRef.current);
+        analyserRafRef.current = null;
+      }
+    };
+  }, [isPlaying]);
 
   const loadTrack = useCallback(async (url) => {
     console.log('[AUDIO DEBUG] Loading track with URL:', url);
@@ -326,7 +354,9 @@ export function useSuperPlayer() {
     if (mediaSourceRef.current) {
       try {
         mediaSourceRef.current.disconnect();
-      } catch (e) {}
+      } catch (e) {
+        // Ignore disconnect errors
+      }
     }
     
     if (audioContextRef.current) {
@@ -358,6 +388,7 @@ export function useSuperPlayer() {
     shuffle,
     isReady,
     analyserData,
+    timeDomainData,
     eqFrequencies: EQ_FREQUENCIES,
     loadTrack,
     play,

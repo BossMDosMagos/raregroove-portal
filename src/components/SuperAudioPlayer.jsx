@@ -52,6 +52,7 @@ export function SuperAudioPlayer() {
     shuffle,
     isReady,
     analyserData,
+    timeDomainData,
     eqFrequencies,
     loadTrack,
     play,
@@ -322,7 +323,7 @@ export function SuperAudioPlayer() {
       </div>
 
       <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/80 to-transparent">
-        <VUMeter analyserData={analyserData} isPlaying={isPlaying} />
+        <VUMeter timeDomainData={timeDomainData} isPlaying={isPlaying} />
       </div>
 
       <div className="px-3 py-1.5 border-t border-white/5">
