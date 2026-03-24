@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 
 const MIN_DB = -60;
 const MAX_DB = 3;
@@ -8,6 +8,33 @@ const DAMPING = 0.15;
 const PICO_DAMPING = 0.05;
 
 export function VUMeter({ analyserData, isPlaying }) {
+  const [vuBgL, setVuBgL] = useState(null);
+  const [vuBgR, setVuBgR] = useState(null);
+  
+  useEffect(() => {
+    const loadBg = async () => {
+      try {
+        const bgL = new Image();
+        bgL.src = '/images/vu/vu-l.png';
+        await new Promise((resolve, reject) => {
+          bgL.onload = resolve;
+          bgL.onerror = reject;
+        });
+        setVuBgL(bgL);
+        
+        const bgR = new Image();
+        bgR.src = '/images/vu/vu-r.png';
+        await new Promise((resolve, reject) => {
+          bgR.onload = resolve;
+          bgR.onerror = reject;
+        });
+        setVuBgR(bgR);
+      } catch (e) {
+        console.warn('[VU] Background image not loaded:', e);
+      }
+    };
+    loadBg();
+  }, []);
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const currentAngleL = useRef(MIN_ANGLE);
@@ -45,22 +72,26 @@ export function VUMeter({ analyserData, isPlaying }) {
     const w = rect.width;
     const h = rect.height;
 
-    const drawVU = (cx) => {
+    const drawVU = (cx, bgImage) => {
       const arcCenterX = cx;
       const arcCenterY = h - 18;
       const arcRadius = h - 38;
 
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, '#e8e0d0');
-      bgGrad.addColorStop(0.3, '#f5f0e5');
-      bgGrad.addColorStop(0.7, '#ddd5c5');
-      bgGrad.addColorStop(1, '#ccc4b4');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(cx - 82, 2, 164, h - 4);
+      if (bgImage) {
+        ctx.drawImage(bgImage, cx - 82, 2, 164, h - 4);
+      } else {
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#e8e0d0');
+        bgGrad.addColorStop(0.3, '#f5f0e5');
+        bgGrad.addColorStop(0.7, '#ddd5c5');
+        bgGrad.addColorStop(1, '#ccc4b4');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(cx - 82, 2, 164, h - 4);
 
-      ctx.strokeStyle = '#8b7355';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cx - 82, 2, 164, h - 4);
+        ctx.strokeStyle = '#8b7355';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cx - 82, 2, 164, h - 4);
+      }
 
       ctx.beginPath();
       ctx.arc(arcCenterX, arcCenterY, arcRadius + 3, Math.PI, 0, false);
@@ -183,8 +214,8 @@ export function VUMeter({ analyserData, isPlaying }) {
     const animate = () => {
       ctx.clearRect(0, 0, w, h);
 
-      const vu1 = drawVU(w * 0.25);
-      const vu2 = drawVU(w * 0.75);
+      const vu1 = drawVU(w * 0.25, vuBgL);
+      const vu2 = drawVU(w * 0.75, vuBgR);
 
       if (analyserData && analyserData.length >= 32 && isPlaying) {
         const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
@@ -240,7 +271,7 @@ export function VUMeter({ analyserData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [analyserData, isPlaying, dbToAngle, amplitudeToDb]);
+  }, [analyserData, isPlaying, dbToAngle, amplitudeToDb, vuBgL, vuBgR]);
 
   return (
     <div className="w-full" style={{ height: '88px' }}>
