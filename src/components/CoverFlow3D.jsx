@@ -75,9 +75,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const [dominantColor, setDominantColor] = useState('#0a0a0a');
   
   const abortControllerRef = useRef(null);
-  const cdRotateRef = useRef(null);
   
-  const { playAlbum, currentTrack, isPlaying: globalIsPlaying } = useAudioPlayer() || {};
+  const { playAlbum, currentTrack, isPlaying } = useAudioPlayer() || {};
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
@@ -136,14 +135,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     }
     setActiveTrackIndex(null);
   }, [focusedIndex, focusedItem]);
-
-  useEffect(() => {
-    if (globalIsPlaying && cdRotateRef.current) {
-      cdRotateRef.current.style.animationPlayState = 'running';
-    } else if (cdRotateRef.current) {
-      cdRotateRef.current.style.animationPlayState = 'paused';
-    }
-  }, [globalIsPlaying]);
 
   useEffect(() => {
     const url = coverUrls[focusedItem?.id];
@@ -381,13 +372,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     );
   }
 
-  const isCurrentAlbumPlaying = currentTrack?.albumId === focusedItem?.id;
-
   return (
     <div className="relative w-full" style={{ background: `radial-gradient(ellipse at center, ${dominantColor} 0%, #0a0a0a 70%)`, zIndex: 1 }}>
       <style>{`
-        @keyframes cdRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .cd-disc { animation: cdRotate 3s linear infinite; }
         @keyframes flipIn { 0% { transform: perspective(1000px) rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: perspective(1000px) rotateY(0deg) scale(1); opacity: 1; } }
         .super-card-animate { animation: flipIn 0.4s ease-out forwards; }
       `}</style>
@@ -420,14 +407,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                 onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
               >
                 <Disc className="w-24 h-24 text-white/30" />
-              </div>
-            )}
-            {isCurrentAlbumPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div ref={cdRotateRef} className="cd-disc w-[360px] h-[360px] rounded-full border-4 border-white/10 shadow-2xl" style={{ background: `radial-gradient(circle at center, transparent 35%, rgba(212,175,55,0.1) 36%, rgba(212,175,55,0.05) 70%, transparent 71%)`, boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.2)' }}>
-                  <div className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle at center, transparent 48%, rgba(212,175,55,0.3) 49%, rgba(212,175,55,0.1) 60%, transparent 61%)` }} />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black border-2 border-yellow-500/50" />
-                </div>
               </div>
             )}
           </div>
@@ -490,11 +469,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                 <span className="text-xs text-white/40 ml-2">({discKeys.length} discos)</span>
               )}
             </div>
-            {isCurrentAlbumPlaying && (
-              <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full">
-                Tocando agora
-              </span>
-            )}
           </div>
           <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
             {discKeys.map((discKey) => {
@@ -524,7 +498,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     {discTracks.map((track, i) => {
                       const globalIndex = sortedTracklist.indexOf(track);
                       const isActive = activeTrackIndex === globalIndex;
-                      const isPlaying = isActive && isCurrentAlbumPlaying && globalIsPlaying;
+                      const isTrackPlaying = isActive && isPlaying;
                       
                       return (
                         <button
@@ -538,7 +512,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                           } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
                           <span className={`w-6 text-center ${isActive ? 'text-yellow-300' : 'text-white/30'}`}>
-                            {isPlaying ? (
+                            {isTrackPlaying ? (
                               <span className="flex items-center justify-center">
                                 <span className="w-1.5 h-3 bg-yellow-400 rounded-sm animate-pulse" style={{ animationDelay: '0ms' }}></span>
                                 <span className="w-1.5 h-4 bg-yellow-400 rounded-sm animate-pulse mx-0.5" style={{ animationDelay: '150ms' }}></span>
