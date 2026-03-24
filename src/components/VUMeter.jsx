@@ -68,23 +68,21 @@ export function VUMeter({ analyserData, isPlaying }) {
   const peakHoldR = useRef(0);
 
   const dbToAngle = useCallback((db) => {
-    if (!isFinite(db)) return calibration.zeroOffset;
-    const zeroOffset = calibration.zeroOffset;
-    const arcRange = 110 * calibration.amplitudeRange;
-    const clampedDb = Math.max(MIN_DB, Math.min(MAX_DB, db));
-    const normalized = (clampedDb - MIN_DB) / (MAX_DB - MIN_DB);
-    const result = zeroOffset + normalized * arcRange;
-    return isFinite(result) ? result : calibration.zeroOffset;
+    const zeroOffset = calibration.zeroOffset || -55;
+    const arcRange = 110 * (calibration.amplitudeRange || 1);
+    const dbMin = MIN_DB;
+    const dbMax = MAX_DB;
+    const clampedDb = Math.max(dbMin, Math.min(dbMax, db));
+    const normalized = (clampedDb - dbMin) / (dbMax - dbMin);
+    return zeroOffset + normalized * arcRange;
   }, [calibration.zeroOffset, calibration.amplitudeRange]);
 
   const amplitudeToDb = useCallback((amplitude) => {
-    if (!isFinite(amplitude) || amplitude <= 0) return MIN_DB;
-    const db = 20 * Math.log10(amplitude / 255);
-    if (!isFinite(db)) return MIN_DB;
-    const gainMultiplier = Math.pow(10, calibration.inputGain / 20);
-    const result = db * gainMultiplier;
-    return isFinite(result) ? result : MIN_DB;
-  }, [calibration.inputGain, MIN_DB]);
+    const gainDb = calibration.inputGain || 0;
+    if (amplitude <= 0) return MIN_DB;
+    const db = 20 * Math.log10(amplitude / 255) + gainDb;
+    return Math.max(MIN_DB, Math.min(MAX_DB, db));
+  }, [calibration.inputGain]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -186,27 +184,19 @@ export function VUMeter({ analyserData, isPlaying }) {
     };
 
     const animate = () => {
-      if (!w || !h || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
-      
       ctx.clearRect(0, 0, w, h);
 
       const vu1 = drawVU(w * 0.25, vuBgL);
       const vu2 = drawVU(w * 0.75, vuBgR);
 
+      const currentDamping = calibration.damping || 0.18;
+
       if (analyserData && analyserData.length >= 32 && isPlaying) {
         const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
         const rightAvg = Array.from(analyserData).slice(16, 32).reduce((a, v) => a + v, 0) / 16;
         
-        const leftDb = amplitudeToDb(leftAvg);
-        const rightDb = amplitudeToDb(rightAvg);
-        
-        if (isFinite(leftDb) && isFinite(rightDb)) {
-          targetAngleL.current = dbToAngle(leftDb);
-          targetAngleR.current = dbToAngle(rightDb);
-        }
+        targetAngleL.current = dbToAngle(amplitudeToDb(leftAvg));
+        targetAngleR.current = dbToAngle(amplitudeToDb(rightAvg));
 
         if (targetAngleL.current > peakL.current) {
           peakL.current = targetAngleL.current;
@@ -221,16 +211,18 @@ export function VUMeter({ analyserData, isPlaying }) {
         else peakL.current += (targetAngleL.current - peakL.current) * PICO_DAMPING;
         
         if (peakHoldR.current > 0) peakHoldR.current--;
-        else peakR.current += (targetAngleR.current - targetAngleR.current) * PICO_DAMPING;
+        else peakR.current += (targetAngleR.current - peakR.current) * PICO_DAMPING;
       } else {
-        targetAngleL.current = MIN_ANGLE;
-        targetAngleR.current = MIN_ANGLE;
-        peakL.current += (MIN_ANGLE - peakL.current) * PICO_DAMPING;
-        peakR.current += (MIN_ANGLE - peakR.current) * PICO_DAMPING;
+        const restAngle = calibration.zeroOffset || -55;
+        targetAngleL.current = restAngle;
+        targetAngleR.current = restAngle;
+        peakL.current += (restAngle - peakL.current) * PICO_DAMPING;
+        peakR.current += (restAngle - peakR.current) * PICO_DAMPING;
       }
 
-      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * DAMPING;
-      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * DAMPING;
+      const currentDamping = calibration.damping || 0.18;
+      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * currentDamping;
+      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * currentDamping;
 
       drawNeedle(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, currentAngleL.current);
       drawNeedle(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, currentAngleR.current);
