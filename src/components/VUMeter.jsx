@@ -84,6 +84,8 @@ export function VUMeter({ timeDomainData, isPlaying }) {
   const ledBrightnessR = useRef(0);
   const vuBgLRef = useRef(null);
   const vuBgRRef = useRef(null);
+  const currentLevelL = useRef(0);
+  const currentLevelR = useRef(0);
 
   useEffect(() => {
     vuBgLRef.current = vuBgL;
@@ -239,6 +241,11 @@ export function VUMeter({ timeDomainData, isPlaying }) {
       return Math.sqrt(sumSquares / data.length);
     };
 
+    const applyLogCurve = (rms, curve = 2.5) => {
+      if (rms <= 0) return 0;
+      return Math.pow(rms, 1 / curve);
+    };
+
     const animate = () => {
       ctx.clearRect(0, 0, w, h);
 
@@ -246,7 +253,8 @@ export function VUMeter({ timeDomainData, isPlaying }) {
       const vu2 = drawVU(w * 0.75, vuBgRRef.current);
 
       const cal = calibrationRef.current;
-      const sliderDamping = cal.damping || 0.18;
+      const ATTACK_FACTOR = 0.25;
+      const DECAY_FACTOR = 0.06;
       const sliderGain = cal.inputGain || 1;
       const MIN_ANGLE = cal.zeroOffset || -55;
       const ARC_RANGE = 110 * (cal.amplitudeRange || 1);
@@ -272,11 +280,17 @@ export function VUMeter({ timeDomainData, isPlaying }) {
           if (Math.abs(rightData[i]) > rightPeak) rightPeak = Math.abs(rightData[i]);
         }
         
-        const calibratedLevelL = leftRms * sliderGain * 100;
-        const calibratedLevelR = rightRms * sliderGain * 100;
+        const targetLevelL = applyLogCurve(leftRms, 2.5) * sliderGain * 100;
+        const targetLevelR = applyLogCurve(rightRms, 2.5) * sliderGain * 100;
         
-        targetAngleL.current = MIN_ANGLE + (calibratedLevelL * ARC_RANGE);
-        targetAngleR.current = MIN_ANGLE + (calibratedLevelR * ARC_RANGE);
+        const factorL = targetLevelL > currentLevelL.current ? ATTACK_FACTOR : DECAY_FACTOR;
+        const factorR = targetLevelR > currentLevelR.current ? ATTACK_FACTOR : DECAY_FACTOR;
+        
+        currentLevelL.current += (targetLevelL - currentLevelL.current) * factorL;
+        currentLevelR.current += (targetLevelR - currentLevelR.current) * factorR;
+        
+        targetAngleL.current = MIN_ANGLE + (currentLevelL.current * ARC_RANGE / 100);
+        targetAngleR.current = MIN_ANGLE + (currentLevelR.current * ARC_RANGE / 100);
         
         targetAngleL.current = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, targetAngleL.current));
         targetAngleR.current = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, targetAngleR.current));
@@ -294,15 +308,19 @@ export function VUMeter({ timeDomainData, isPlaying }) {
         ledBrightnessR.current += (rightLedBrightness - ledBrightnessR.current) * 0.3;
 
       } else {
-        targetAngleL.current = MIN_ANGLE;
-        targetAngleR.current = MIN_ANGLE;
+        const decayFactor = 0.92;
+        currentLevelL.current *= decayFactor;
+        currentLevelR.current *= decayFactor;
+        
+        targetAngleL.current = MIN_ANGLE + (currentLevelL.current * ARC_RANGE / 100);
+        targetAngleR.current = MIN_ANGLE + (currentLevelR.current * ARC_RANGE / 100);
         
         ledBrightnessL.current *= 0.8;
         ledBrightnessR.current *= 0.8;
       }
 
-      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * sliderDamping;
-      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * sliderDamping;
+      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * 0.35;
+      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * 0.35;
 
       drawNeedle(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, currentAngleL.current);
       drawNeedle(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, currentAngleR.current);
