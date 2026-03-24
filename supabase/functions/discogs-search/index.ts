@@ -40,12 +40,18 @@ serve(async (req) => {
         });
       } catch (fetchError) {
         console.error('[Discogs] Image fetch error:', fetchError.message);
-        return new Response('Failed to fetch image', { status: 502 });
+        return new Response(JSON.stringify({ error: 'Image fetch failed' }), { 
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       if (!imageResponse.ok) {
         console.error('[Discogs] Image fetch failed:', imageResponse.status);
-        return new Response('Image not found', { status: 404 });
+        return new Response(JSON.stringify({ error: 'Image not available' }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       let imageBuffer;
@@ -53,7 +59,10 @@ serve(async (req) => {
         imageBuffer = await imageResponse.arrayBuffer();
       } catch (bufferError) {
         console.error('[Discogs] Buffer error:', bufferError.message);
-        return new Response('Failed to read image', { status: 502 });
+        return new Response(JSON.stringify({ error: 'Failed to read image' }), { 
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
       
       const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
@@ -64,7 +73,7 @@ serve(async (req) => {
           'Cache-Control': 'public, max-age=86400',
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       });
     }

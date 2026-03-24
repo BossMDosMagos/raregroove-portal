@@ -12,27 +12,58 @@ const getImageProxyUrl = (discogsUrl) => {
   return `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
 };
 
+const PLACEHOLDER_SVG = `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <linearGradient id="vinyl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:%231a1a1a"/>
+      <stop offset="50%" style="stop-color:%23262626"/>
+      <stop offset="100%" style="stop-color:%231a1a1a"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="30%" cy="30%" r="50%">
+      <stop offset="0%" style="stop-color:%23444;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:%23222;stop-opacity:1"/>
+    </radialGradient>
+  </defs>
+  <rect width="500" height="500" fill="#0a0a0a"/>
+  <circle cx="250" cy="250" r="200" fill="url(#vinyl)" stroke="#333" stroke-width="2"/>
+  <circle cx="250" cy="250" r="160" fill="none" stroke="#222" stroke-width="1"/>
+  <circle cx="250" cy="250" r="120" fill="none" stroke="#222" stroke-width="1"/>
+  <circle cx="250" cy="250" r="80" fill="none" stroke="#222" stroke-width="1"/>
+  <circle cx="250" cy="250" r="60" fill="#1a1a1a" stroke="#d4af37" stroke-width="2"/>
+  <circle cx="250" cy="250" r="15" fill="#d4af37"/>
+  <text x="250" y="440" text-anchor="middle" font-family="Arial Black" font-size="24" fill="#d4af37">RARE GROOVE</text>
+</svg>
+`)}`;
+
 const fetchProxiedImage = async (discogsUrl) => {
-  if (!discogsUrl) return null;
+  if (!discogsUrl) return PLACEHOLDER_SVG;
+  
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || SUPABASE_ANON_KEY;
-    
     const proxyUrl = `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
     const response = await fetch(proxyUrl, {
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
     });
     
     if (!response.ok) {
-      console.warn('[IMAGE] Proxy failed, trying direct URL');
-      return discogsUrl;
+      console.warn('[IMAGE] Proxy failed with status:', response.status);
+      return PLACEHOLDER_SVG;
+    }
+    
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      console.warn('[IMAGE] Proxy returned non-image:', contentType);
+      return PLACEHOLDER_SVG;
     }
     
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (e) {
     console.warn('[IMAGE] Proxy error:', e.message);
-    return discogsUrl;
+    return PLACEHOLDER_SVG;
   }
 };
 
@@ -164,24 +195,33 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     if (items.length === 0) return;
 
     const loadCover = async (item) => {
+      if (coverUrls[item.id]) return;
+      
       const coverPath = item.metadata?.grooveflix?.cover_path;
       const discogsCover = item.metadata?.grooveflix?.coverUrl;
 
       if (discogsCover) {
         console.log('[COVER] Fetching proxied image for:', item.title);
         const blobUrl = await fetchProxiedImage(discogsCover);
-        setCoverUrls(prev => ({ ...prev, [item.id]: blobUrl || discogsCover }));
+        if (blobUrl !== PLACEHOLDER_SVG) {
+          setCoverUrls(prev => ({ ...prev, [item.id]: blobUrl }));
+        } else {
+          setCoverUrls(prev => ({ ...prev, [item.id]: PLACEHOLDER_SVG }));
+        }
         return;
       }
 
-      if (!coverPath) return;
-
-      try {
-        const url = await getPresignedUrl(coverPath, 'cover');
-        setCoverUrls(prev => ({ ...prev, [item.id]: url }));
-      } catch (e) {
-        console.error('[COVER] Error:', e);
+      if (coverPath) {
+        try {
+          const url = await getPresignedUrl(coverPath, 'cover');
+          setCoverUrls(prev => ({ ...prev, [item.id]: url }));
+          return;
+        } catch (e) {
+          console.error('[COVER] Presign error:', e);
+        }
       }
+      
+      setCoverUrls(prev => ({ ...prev, [item.id]: PLACEHOLDER_SVG }));
     };
 
     items.slice(0, 7).forEach(loadCover);
