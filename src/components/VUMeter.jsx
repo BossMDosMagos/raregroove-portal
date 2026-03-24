@@ -26,6 +26,8 @@ export function VUMeter({ analyserData, isPlaying }) {
 
   const MIN_DB = -60;
   const MAX_DB = -20;
+  const MIN_ANGLE = calibration.zeroOffset;
+  const MAX_ANGLE = calibration.zeroOffset + 110;
   const DAMPING = calibration.damping;
   const PICO_DAMPING = 0.03;
   const NEEDLE_BASE = 5 + calibration.needleBase;
@@ -71,7 +73,7 @@ export function VUMeter({ analyserData, isPlaying }) {
     const clampedDb = Math.max(MIN_DB, Math.min(MAX_DB, db));
     const normalized = (clampedDb - MIN_DB) / (MAX_DB - MIN_DB);
     return zeroOffset + normalized * arcRange;
-  }, [calibration.zeroOffset, calibration.amplitudeRange]);
+  }, [calibration.zeroOffset, calibration.amplitudeRange, MIN_DB, MAX_DB]);
 
   const amplitudeToDb = useCallback((amplitude) => {
     if (amplitude <= 0) return MIN_DB;
