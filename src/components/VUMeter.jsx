@@ -47,46 +47,31 @@ export function VUMeter({ analyserData, isPlaying }) {
 
     const drawVU = (cx) => {
       const arcCenterX = cx;
-      const arcCenterY = h - 20;
-      const arcRadius = h - 42;
+      const arcCenterY = h - 18;
+      const arcRadius = h - 38;
 
       const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, '#ddd8c8');
-      bgGrad.addColorStop(0.4, '#f0ebe0');
-      bgGrad.addColorStop(1, '#c8c0b0');
+      bgGrad.addColorStop(0, '#e8e0d0');
+      bgGrad.addColorStop(0.3, '#f5f0e5');
+      bgGrad.addColorStop(0.7, '#ddd5c5');
+      bgGrad.addColorStop(1, '#ccc4b4');
       ctx.fillStyle = bgGrad;
-      ctx.fillRect(cx - 80, 0, 160, h);
+      ctx.fillRect(cx - 82, 2, 164, h - 4);
 
       ctx.strokeStyle = '#8b7355';
       ctx.lineWidth = 2;
-      ctx.strokeRect(cx - 80, 0, 160, h);
+      ctx.strokeRect(cx - 82, 2, 164, h - 4);
 
-      ctx.strokeStyle = '#4a3a2a';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(cx - 77, 3, 154, h - 6);
-
-      const lightEffect = ctx.createRadialGradient(arcCenterX, arcCenterY - arcRadius/2, 0, arcCenterX, arcCenterY, arcRadius + 30);
-      lightEffect.addColorStop(0, 'rgba(255, 250, 235, 0.25)');
-      lightEffect.addColorStop(0.5, 'rgba(255, 245, 220, 0.1)');
-      lightEffect.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = lightEffect;
-      ctx.fillRect(cx - 77, 3, 154, h - 6);
-
-      ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, arcRadius + 5, Math.PI, 0, false);
-      ctx.fillStyle = '#1a1510';
-      ctx.fill();
-
-      ctx.strokeStyle = '#3a3025';
-      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(arcCenterX, arcCenterY, arcRadius + 3, Math.PI, 0, false);
+      ctx.strokeStyle = '#8b7355';
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      ctx.strokeStyle = '#2a2015';
-      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = '#2a2520';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, arcRadius - 3, Math.PI, 0, false);
+      ctx.arc(arcCenterX, arcCenterY, arcRadius - 2, Math.PI, 0, false);
       ctx.stroke();
 
       const dbMarks = [
@@ -104,8 +89,8 @@ export function VUMeter({ analyserData, isPlaying }) {
         const angle = dbToAngle(db);
         const angleRad = (angle - 90) * (Math.PI / 180);
         
-        const innerR = arcRadius - 6;
-        const outerR = arcRadius + (major ? 8 : 4);
+        const innerR = arcRadius - 4;
+        const outerR = arcRadius + (major ? 10 : 6);
         
         const x1 = arcCenterX + Math.cos(angleRad) * innerR;
         const y1 = arcCenterY + Math.sin(angleRad) * innerR;
@@ -115,17 +100,17 @@ export function VUMeter({ analyserData, isPlaying }) {
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
-        ctx.strokeStyle = major ? '#1a1a1a' : '#4a4a4a';
-        ctx.lineWidth = major ? 1.5 : 0.8;
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = major ? 2 : 1;
         ctx.stroke();
         
         if (major) {
-          const textR = arcRadius - 16;
+          const textR = arcRadius - 18;
           const textX = arcCenterX + Math.cos(angleRad) * textR;
           const textY = arcCenterY + Math.sin(angleRad) * textR;
           
           ctx.fillStyle = '#1a1a1a';
-          ctx.font = 'bold 5.5px Arial, sans-serif';
+          ctx.font = 'bold 6px Arial, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(label, textX, textY);
@@ -137,25 +122,25 @@ export function VUMeter({ analyserData, isPlaying }) {
 
     const drawNeedle = (arcCenterX, arcCenterY, arcRadius, angle) => {
       const angleRad = (angle - 90) * (Math.PI / 180);
-      const needleLength = arcRadius - 12;
+      const needleLength = arcRadius - 14;
       
       const tipX = arcCenterX + Math.cos(angleRad) * needleLength;
       const tipY = arcCenterY + Math.sin(angleRad) * needleLength;
 
       ctx.save();
-      ctx.shadowColor = 'rgba(200, 30, 30, 0.8)';
-      ctx.shadowBlur = 5;
+      ctx.shadowColor = 'rgba(180, 20, 20, 0.6)';
+      ctx.shadowBlur = 4;
 
       const needleGrad = ctx.createLinearGradient(arcCenterX, arcCenterY, tipX, tipY);
       needleGrad.addColorStop(0, '#aa0000');
-      needleGrad.addColorStop(0.3, '#cc1100');
-      needleGrad.addColorStop(0.6, '#dd2200');
-      needleGrad.addColorStop(1, '#ff3322');
+      needleGrad.addColorStop(0.4, '#cc1100');
+      needleGrad.addColorStop(0.7, '#dd2200');
+      needleGrad.addColorStop(1, '#ee3322');
 
       ctx.beginPath();
       ctx.moveTo(arcCenterX, arcCenterY);
-      ctx.lineTo(tipX - 0.3, tipY);
-      ctx.lineTo(tipX + 0.3, tipY);
+      ctx.lineTo(tipX - 0.5, tipY);
+      ctx.lineTo(tipX + 0.5, tipY);
       ctx.closePath();
       ctx.fillStyle = needleGrad;
       ctx.fill();
@@ -168,7 +153,7 @@ export function VUMeter({ analyserData, isPlaying }) {
       ctx.fill();
 
       const knobGrad = ctx.createRadialGradient(arcCenterX - 1, arcCenterY - 1, 0, arcCenterX, arcCenterY, 3);
-      knobGrad.addColorStop(0, '#ff2211');
+      knobGrad.addColorStop(0, '#ee2211');
       knobGrad.addColorStop(1, '#880000');
       ctx.beginPath();
       ctx.arc(arcCenterX, arcCenterY, 2.5, 0, Math.PI * 2);
@@ -177,14 +162,14 @@ export function VUMeter({ analyserData, isPlaying }) {
     };
 
     const drawPeak = (arcCenterX, arcCenterY, arcRadius, peakAngle) => {
-      if (peakAngle <= MIN_ANGLE + 2) return;
+      if (peakAngle <= MIN_ANGLE + 3) return;
       
       const angleRad = (peakAngle - 90) * (Math.PI / 180);
-      const markerR = arcRadius - 10;
+      const markerR = arcRadius - 12;
       const markerX = arcCenterX + Math.cos(angleRad) * markerR;
       const markerY = arcCenterY + Math.sin(angleRad) * markerR;
       
-      ctx.fillStyle = '#ff0000';
+      ctx.fillStyle = '#dd0000';
       ctx.beginPath();
       ctx.arc(markerX, markerY, 1.5, 0, Math.PI * 2);
       ctx.fill();
@@ -233,12 +218,12 @@ export function VUMeter({ analyserData, isPlaying }) {
       drawPeak(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, peakL.current);
       drawPeak(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, peakR.current);
 
-      ctx.fillStyle = '#2a2520';
-      ctx.font = 'bold 9px Arial, sans-serif';
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = 'bold 10px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('L', w * 0.25, h - 2);
-      ctx.fillText('R', w * 0.75, h - 2);
+      ctx.fillText('L', w * 0.25, h - 3);
+      ctx.fillText('R', w * 0.75, h - 3);
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -253,11 +238,8 @@ export function VUMeter({ analyserData, isPlaying }) {
   }, [analyserData, isPlaying, dbToAngle, amplitudeToDb]);
 
   return (
-    <div className="relative w-full" style={{ height: '90px' }}>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      <div className="absolute top-0.5 left-0 right-0 flex justify-center">
-        <span className="text-[6px] text-yellow-800 font-bold tracking-widest uppercase">VU Stereo</span>
-      </div>
+    <div className="w-full" style={{ height: '88px' }}>
+      <canvas ref={canvasRef} className="w-full h-full" />
     </div>
   );
 }
