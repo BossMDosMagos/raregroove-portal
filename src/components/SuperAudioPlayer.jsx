@@ -320,14 +320,62 @@ export function SuperAudioPlayer() {
         </div>
       </div>
 
-      <div className="h-14 px-3 py-1.5 flex items-end justify-center gap-[3px] bg-black/40">
-        {Array.from(analyserData).slice(0, 32).map((value, i) => (
-          <div
-            key={i}
-            className="w-2 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-t transition-all duration-75"
-            style={{ height: `${Math.max(3, (value / 255) * 50)}px` }}
-          />
-        ))}
+      <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/60 to-transparent">
+        <div className="flex items-center justify-center gap-4">
+          <div className="relative w-[130px] h-[50px]">
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-[#2a2520] to-[#1a1510] border border-yellow-900/50 shadow-inner" />
+            <div className="absolute inset-x-2 top-1 flex justify-between text-[6px] text-yellow-600/70 font-bold">
+              <span>0</span>
+              <span>-3</span>
+              <span>-6</span>
+              <span>-12</span>
+              <span>-20</span>
+            </div>
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 130 50">
+              <defs>
+                <linearGradient id="needleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#d4af37"/>
+                  <stop offset="100%" stopColor="#8b6914"/>
+                </linearGradient>
+              </defs>
+              <path d="M 15 45 Q 65 5 115 45" fill="none" stroke="#3a3530" strokeWidth="1"/>
+              <path d="M 15 45 Q 65 8 115 45" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3"/>
+              <line x1="65" y1="45" x2="65" y2="45" stroke="#8b6914" strokeWidth="2" className="origin-bottom" style={{
+                transform: `rotate(${-45 + (Array.from(analyserData).slice(0, 16).reduce((a, v) => a + (v / 255), 0) / 16) * 90}deg)`,
+                transformOrigin: '65px 45px',
+                transition: 'transform 0.05s ease-out'
+              }}/>
+              <circle cx="65" cy="45" r="3" fill="#d4af37"/>
+            </svg>
+            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-yellow-500/80">L</div>
+          </div>
+
+          <div className="relative w-[130px] h-[50px]">
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-[#2a2520] to-[#1a1510] border border-yellow-900/50 shadow-inner" />
+            <div className="absolute inset-x-2 top-1 flex justify-between text-[6px] text-yellow-600/70 font-bold">
+              <span>0</span>
+              <span>-3</span>
+              <span>-6</span>
+              <span>-12</span>
+              <span>-20</span>
+            </div>
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 130 50">
+              <path d="M 15 45 Q 65 5 115 45" fill="none" stroke="#3a3530" strokeWidth="1"/>
+              <path d="M 15 45 Q 65 8 115 45" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3"/>
+              <line x1="65" y1="45" x2="65" y2="45" stroke="#8b6914" strokeWidth="2" className="origin-bottom" style={{
+                transform: `rotate(${-45 + (Array.from(analyserData).slice(16, 32).reduce((a, v) => a + (v / 255), 0) / 16) * 90}deg)`,
+                transformOrigin: '65px 45px',
+                transition: 'transform 0.05s ease-out'
+              }}/>
+              <circle cx="65" cy="45" r="3" fill="#d4af37"/>
+            </svg>
+            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-yellow-500/80">R</div>
+          </div>
+        </div>
+        <div className="flex justify-center gap-8 mt-1">
+          <span className="text-[7px] text-yellow-600/50 font-bold">VU</span>
+          <span className="text-[7px] text-yellow-600/50 font-bold">STEREO</span>
+        </div>
       </div>
 
       <div className="px-3 py-1.5 border-t border-white/5">
