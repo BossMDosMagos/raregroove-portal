@@ -7,6 +7,7 @@ import { useSuperPlayer } from '../hooks/useSuperPlayer';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { VUMeter } from './VUMeter';
 
 const EQ_PRESETS = {
   Flat: { preAmp: 0, bands: { 32: 0, 64: 0, 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
@@ -38,13 +39,6 @@ export function SuperAudioPlayer() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('Flat');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
-  const [vuLeft, setVuLeft] = useState(-45);
-  const [vuRight, setVuRight] = useState(-45);
-  
-  const vuLeftLineRef = useRef(null);
-  const vuRightLineRef = useRef(null);
-  const vuLeftSvgRef = useRef(null);
-  const vuRightSvgRef = useRef(null);
 
   const {
     isPlaying,
@@ -88,37 +82,6 @@ export function SuperAudioPlayer() {
     
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!analyserData || analyserData.length === 0) {
-      setVuLeft(-45);
-      setVuRight(-45);
-      
-      if (vuLeftLineRef.current) {
-        vuLeftLineRef.current.setAttribute('transform', 'rotate(-45 72 68)');
-      }
-      if (vuRightLineRef.current) {
-        vuRightLineRef.current.setAttribute('transform', 'rotate(-45 72 68)');
-      }
-      return;
-    }
-    
-    const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
-    const rightAvg = Array.from(analyserData).slice(16, 32).reduce((a, v) => a + v, 0) / 16;
-    
-    const leftDeg = -45 + (leftAvg / 255) * 90;
-    const rightDeg = -45 + (rightAvg / 255) * 90;
-    
-    setVuLeft(leftDeg);
-    setVuRight(rightDeg);
-    
-    if (vuLeftLineRef.current) {
-      vuLeftLineRef.current.setAttribute('transform', `rotate(${leftDeg} 72 68)`);
-    }
-    if (vuRightLineRef.current) {
-      vuRightLineRef.current.setAttribute('transform', `rotate(${rightDeg} 72 68)`);
-    }
-  }, [analyserData]);
 
   const hydrateAndPlayRef = useRef(null);
 
@@ -359,83 +322,7 @@ export function SuperAudioPlayer() {
       </div>
 
       <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center justify-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-red-600 tracking-widest">L</span>
-            <div className="relative w-[140px] h-[70px] rounded-lg overflow-hidden shadow-lg" style={{
-              background: 'linear-gradient(180deg, #f8f8e8 0%, #e8e8d8 50%, #d4d4c0 100%)',
-              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(255,100,100,0.15)'
-            }}>
-              <div className="absolute inset-x-2 top-1.5 flex justify-between text-[6px] text-black font-bold">
-                <span>+3</span>
-                <span>0</span>
-                <span>-3</span>
-                <span>-6</span>
-                <span>-12</span>
-                <span>-20</span>
-              </div>
-              <svg ref={vuLeftSvgRef} className="absolute inset-0 w-full h-full" viewBox="0 0 140 70">
-                <defs>
-                  <filter id="needleGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="1" result="blur"/>
-                    <feMerge>
-                      <feMergeNode in="blur"/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                </defs>
-                <path d="M 15 65 Q 70 5 125 65" fill="none" stroke="#1a1a1a" strokeWidth="0.6" opacity="0.5"/>
-                <path d="M 15 65 Q 70 10 125 65" fill="none" stroke="#333" strokeWidth="0.3" opacity="0.3"/>
-                <line 
-                  ref={vuLeftLineRef}
-                  x1="70" y1="65" x2="70" y2="12" 
-                  stroke="#ff1111" 
-                  strokeWidth="2" 
-                  strokeLinecap="round"
-                  filter="url(#needleGlow)"
-                  transform="rotate(-45 70 65)"
-                />
-                <circle cx="70" cy="65" r="3.5" fill="#cc0000"/>
-                <circle cx="70" cy="65" r="1.5" fill="#ff3333"/>
-              </svg>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative w-[140px] h-[70px] rounded-lg overflow-hidden shadow-lg" style={{
-              background: 'linear-gradient(180deg, #f8f8e8 0%, #e8e8d8 50%, #d4d4c0 100%)',
-              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(255,100,100,0.15)'
-            }}>
-              <div className="absolute inset-x-2 top-1.5 flex justify-between text-[6px] text-black font-bold">
-                <span>+3</span>
-                <span>0</span>
-                <span>-3</span>
-                <span>-6</span>
-                <span>-12</span>
-                <span>-20</span>
-              </div>
-              <svg ref={vuRightSvgRef} className="absolute inset-0 w-full h-full" viewBox="0 0 140 70">
-                <path d="M 15 65 Q 70 5 125 65" fill="none" stroke="#1a1a1a" strokeWidth="0.6" opacity="0.5"/>
-                <path d="M 15 65 Q 70 10 125 65" fill="none" stroke="#333" strokeWidth="0.3" opacity="0.3"/>
-                <line 
-                  ref={vuRightLineRef}
-                  x1="70" y1="65" x2="70" y2="12" 
-                  stroke="#ff1111" 
-                  strokeWidth="2" 
-                  strokeLinecap="round"
-                  filter="url(#needleGlow)"
-                  transform="rotate(-45 70 65)"
-                />
-                <circle cx="70" cy="65" r="3.5" fill="#cc0000"/>
-                <circle cx="70" cy="65" r="1.5" fill="#ff3333"/>
-              </svg>
-            </div>
-            <span className="text-[10px] font-black text-red-600 tracking-widest">R</span>
-          </div>
-        </div>
-        <div className="flex justify-center mt-1">
-          <span className="text-[8px] text-yellow-500/70 font-bold tracking-widest">◉ VU STEREO ◉</span>
-        </div>
+        <VUMeter analyserData={analyserData} isPlaying={isPlaying} />
       </div>
 
       <div className="px-3 py-1.5 border-t border-white/5">
