@@ -47,10 +47,6 @@ export function VUMeter({ timeDomainData, isPlaying }) {
   const currentAngleR = useRef(initialAngle);
   const targetAngleL = useRef(initialAngle);
   const targetAngleR = useRef(initialAngle);
-  const peakValueL = useRef(0);
-  const peakValueR = useRef(0);
-  const peakHoldL = useRef(0);
-  const peakHoldR = useRef(0);
   const ledBrightnessL = useRef(0);
   const ledBrightnessR = useRef(0);
 
@@ -68,8 +64,6 @@ export function VUMeter({ timeDomainData, isPlaying }) {
 
     const w = rect.width;
     const h = rect.height;
-    const MIN_DB = -60;
-    const MAX_DB = 0;
 
     const drawVU = (cx) => {
       const arcCenterX = cx;
@@ -88,25 +82,26 @@ export function VUMeter({ timeDomainData, isPlaying }) {
     };
 
     const drawScale = (ctx, cx, arcCenterX, arcCenterY, arcRadius) => {
-      const zeroOffset = calibrationRef.current.zeroOffset || -55;
-      const arcRange = 110 * (calibrationRef.current.amplitudeRange || 1);
+      const MIN_ANGLE = calibrationRef.current.zeroOffset || -55;
+      const ARC_RANGE = 110 * (calibrationRef.current.amplitudeRange || 1);
+      const MAX_ANGLE = MIN_ANGLE + ARC_RANGE;
       
-      const dbMarks = [0, -3, -6, -10, -20, -30, -40, -50];
+      const levelMarks = [0, 20, 40, 60, 80, 100];
       
       ctx.save();
-      ctx.font = '6px monospace';
+      ctx.font = '5px monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#d4af37';
       
-      dbMarks.forEach(db => {
-        const normalized = (db - MIN_DB) / (MAX_DB - MIN_DB);
-        const angle = zeroOffset + normalized * arcRange;
+      levelMarks.forEach(level => {
+        const normalized = level / 100;
+        const angle = MIN_ANGLE + (normalized * ARC_RANGE);
         const angleRad = (angle - 90) * (Math.PI / 180);
         const labelR = arcRadius + 8;
         const labelX = arcCenterX + Math.cos(angleRad) * labelR;
         const labelY = arcCenterY + Math.sin(angleRad) * labelR;
         
-        ctx.fillText(db.toString(), labelX, labelY);
+        ctx.fillText(level.toString(), labelX, labelY);
       });
       
       ctx.restore();
@@ -197,33 +192,11 @@ export function VUMeter({ timeDomainData, isPlaying }) {
 
     const calculateRMS = (data) => {
       if (!data || data.length === 0) return 0;
-      let sumSquares = 0;
+      let sumSquares = 0.0;
       for (let i = 0; i < data.length; i++) {
         sumSquares += data[i] * data[i];
       }
       return Math.sqrt(sumSquares / data.length);
-    };
-
-    const calculatePeak = (data) => {
-      if (!data || data.length === 0) return 0;
-      let peak = 0;
-      for (let i = 0; i < data.length; i++) {
-        const absVal = Math.abs(data[i]);
-        if (absVal > peak) peak = absVal;
-      }
-      return peak;
-    };
-
-    const rmsToDb = (rms, gainDb) => {
-      if (rms <= 0) return MIN_DB;
-      const db = 20 * Math.log10(rms) + gainDb;
-      return Math.max(MIN_DB, Math.min(MAX_DB, db));
-    };
-
-    const peakToDb = (peak) => {
-      if (peak <= 0) return MIN_DB;
-      const db = 20 * Math.log10(peak);
-      return Math.max(MIN_DB, Math.min(MAX_DB, db));
     };
 
     const animate = () => {
@@ -236,10 +209,11 @@ export function VUMeter({ timeDomainData, isPlaying }) {
       drawScale(ctx, w * 0.75, vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius);
 
       const cal = calibrationRef.current;
-      const currentDamping = cal.damping || 0.18;
-      const inputGain = cal.inputGain || 0;
-      const zeroOffset = cal.zeroOffset || -55;
-      const arcRange = 110 * (cal.amplitudeRange || 1);
+      const sliderDamping = cal.damping || 0.18;
+      const sliderGain = cal.inputGain || 1;
+      const MIN_ANGLE = cal.zeroOffset || -55;
+      const ARC_RANGE = 110 * (cal.amplitudeRange || 1);
+      const MAX_ANGLE = MIN_ANGLE + ARC_RANGE;
       const td = timeDomainDataRef.current;
       const playing = isPlayingRef.current;
 
@@ -252,71 +226,46 @@ export function VUMeter({ timeDomainData, isPlaying }) {
         const leftRms = calculateRMS(leftData);
         const rightRms = calculateRMS(rightData);
         
-        const leftPeak = calculatePeak(leftData);
-        const rightPeak = calculatePeak(rightData);
-        
-        const gainMultiplier = Math.pow(10, inputGain / 20);
-        const leftRmsGain = leftRms * gainMultiplier;
-        const rightRmsGain = rightRms * gainMultiplier;
-        
-        const leftDb = rmsToDb(leftRmsGain, 0);
-        const rightDb = rmsToDb(rightRmsGain, 0);
-        
-        const leftPeakDb = peakToDb(leftPeak * gainMultiplier);
-        const rightPeakDb = peakToDb(rightPeak * gainMultiplier);
-
-        const dbToAngle = (db) => {
-          const clampedDb = Math.max(MIN_DB, Math.min(MAX_DB, db));
-          return zeroOffset + ((clampedDb - MIN_DB) / (MAX_DB - MIN_DB)) * arcRange;
-        };
-        
-        targetAngleL.current = dbToAngle(leftDb);
-        targetAngleR.current = dbToAngle(rightDb);
-
-        if (leftPeakDb > peakValueL.current) {
-          peakValueL.current = leftPeakDb;
-          peakHoldL.current = cal.peakHoldFrames || 30;
+        let leftPeak = 0;
+        let rightPeak = 0;
+        for (let i = 0; i < leftData.length; i++) {
+          if (Math.abs(leftData[i]) > leftPeak) leftPeak = Math.abs(leftData[i]);
         }
-        if (rightPeakDb > peakValueR.current) {
-          peakValueR.current = rightPeakDb;
-          peakHoldR.current = cal.peakHoldFrames || 30;
-        }
-
-        if (peakHoldL.current > 0) {
-          peakHoldL.current--;
-        } else {
-          peakValueL.current *= (cal.peakDecay || 0.95);
+        for (let i = 0; i < rightData.length; i++) {
+          if (Math.abs(rightData[i]) > rightPeak) rightPeak = Math.abs(rightData[i]);
         }
         
-        if (peakHoldR.current > 0) {
-          peakHoldR.current--;
-        } else {
-          peakValueR.current *= (cal.peakDecay || 0.95);
-        }
+        const calibratedLevelL = leftRms * sliderGain * 100;
+        const calibratedLevelR = rightRms * sliderGain * 100;
+        
+        targetAngleL.current = MIN_ANGLE + (calibratedLevelL * ARC_RANGE);
+        targetAngleR.current = MIN_ANGLE + (calibratedLevelR * ARC_RANGE);
+        
+        targetAngleL.current = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, targetAngleL.current));
+        targetAngleR.current = Math.max(MIN_ANGLE, Math.min(MAX_ANGLE, targetAngleR.current));
 
-        const peakThreshold = -3;
-        const leftLedBrightness = leftPeakDb > peakThreshold ? 
-          Math.min(1, (leftPeakDb - peakThreshold) / 10) : 0;
-        const rightLedBrightness = rightPeakDb > peakThreshold ? 
-          Math.min(1, (rightPeakDb - peakThreshold) / 10) : 0;
+        const leftPeakNorm = leftPeak * sliderGain;
+        const rightPeakNorm = rightPeak * sliderGain;
+        
+        const peakThreshold = 0.7;
+        const leftLedBrightness = leftPeakNorm > peakThreshold ? 
+          Math.min(1, (leftPeakNorm - peakThreshold) / 0.3) : 0;
+        const rightLedBrightness = rightPeakNorm > peakThreshold ? 
+          Math.min(1, (rightPeakNorm - peakThreshold) / 0.3) : 0;
         
         ledBrightnessL.current += (leftLedBrightness - ledBrightnessL.current) * 0.3;
         ledBrightnessR.current += (rightLedBrightness - ledBrightnessR.current) * 0.3;
 
       } else {
-        const restAngle = zeroOffset;
-        targetAngleL.current = restAngle;
-        targetAngleR.current = restAngle;
-        
-        peakValueL.current *= 0.9;
-        peakValueR.current *= 0.9;
+        targetAngleL.current = MIN_ANGLE;
+        targetAngleR.current = MIN_ANGLE;
         
         ledBrightnessL.current *= 0.8;
         ledBrightnessR.current *= 0.8;
       }
 
-      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * currentDamping;
-      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * currentDamping;
+      currentAngleL.current += (targetAngleL.current - currentAngleL.current) * sliderDamping;
+      currentAngleR.current += (targetAngleR.current - currentAngleR.current) * sliderDamping;
 
       drawNeedle(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, currentAngleL.current);
       drawNeedle(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, currentAngleR.current);
