@@ -539,8 +539,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
       {showSuperCard && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           onClick={handleCloseSuperCard}
+          style={{ zIndex: 99999 }}
         >
           <div 
             className="super-card-animate w-full max-w-3xl max-h-[90vh] bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-yellow-500/30 shadow-2xl shadow-yellow-500/20"
