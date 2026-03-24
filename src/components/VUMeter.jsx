@@ -4,19 +4,26 @@ const STORAGE_KEY = 'raregroove_vu_calibration';
 
 const defaults = {
   zeroOffset: -55,
-  inputGain: 0,
+  inputGain: 1,
   damping: 0.18,
   needleBase: 0,
   amplitudeRange: 1.0,
-  peakDecay: 0.95,
-  peakHoldFrames: 30,
 };
 
 export function VUMeter({ timeDomainData, isPlaying }) {
+  const [vuBgL, setVuBgL] = useState(null);
+  const [vuBgR, setVuBgR] = useState(null);
   const [showCalibration, setShowCalibration] = useState(false);
   const [calibration, setCalibration] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : defaults;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return defaults;
+      }
+    }
+    return defaults;
   });
   
   const timeDomainDataRef = useRef(timeDomainData);
@@ -38,17 +45,53 @@ export function VUMeter({ timeDomainData, isPlaying }) {
   const saveCalibration = (newCal) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newCal));
     setCalibration(newCal);
+    calibrationRef.current = newCal;
   };
+
+  useEffect(() => {
+    const loadBg = async () => {
+      try {
+        const bgL = new Image();
+        bgL.src = '/images/vu/vu-l.png';
+        await new Promise((resolve, reject) => {
+          bgL.onload = resolve;
+          bgL.onerror = reject;
+        });
+        setVuBgL(bgL);
+        
+        const bgR = new Image();
+        bgR.src = '/images/vu/vu-r.png';
+        await new Promise((resolve, reject) => {
+          bgR.onload = resolve;
+          bgR.onerror = reject;
+        });
+        setVuBgR(bgR);
+      } catch (e) {
+        console.warn('[VU] Background images not loaded:', e);
+      }
+    };
+    loadBg();
+  }, []);
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
-  const initialAngle = calibration.zeroOffset || -55;
+  const initialAngle = defaults.zeroOffset;
   const currentAngleL = useRef(initialAngle);
   const currentAngleR = useRef(initialAngle);
   const targetAngleL = useRef(initialAngle);
   const targetAngleR = useRef(initialAngle);
   const ledBrightnessL = useRef(0);
   const ledBrightnessR = useRef(0);
+  const vuBgLRef = useRef(null);
+  const vuBgRRef = useRef(null);
+
+  useEffect(() => {
+    vuBgLRef.current = vuBgL;
+  }, [vuBgL]);
+
+  useEffect(() => {
+    vuBgRRef.current = vuBgR;
+  }, [vuBgR]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -65,46 +108,43 @@ export function VUMeter({ timeDomainData, isPlaying }) {
     const w = rect.width;
     const h = rect.height;
 
-    const drawVU = (cx) => {
+    const drawVU = (cx, bgImage) => {
       const arcCenterX = cx;
-      const needleBase = 5 + (calibrationRef.current.needleBase || 0);
+      const cal = calibrationRef.current;
+      const needleBase = 5 + (cal.needleBase || 0);
       const arcCenterY = h - 15 + needleBase;
       const arcRadius = h - 35;
 
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - 82, 2, 164, h - 4);
+      if (bgImage && bgImage.complete) {
+        ctx.drawImage(bgImage, cx - 82, 2, 164, h - 4);
+      } else {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(cx - 82, 2, 164, h - 4);
+        
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx - 82, 2, 164, h - 4);
+        
+        const levelMarks = [0, 20, 40, 60, 80, 100];
+        const MIN_ANGLE = cal.zeroOffset || -55;
+        const ARC_RANGE = 110 * (cal.amplitudeRange || 1);
+        
+        ctx.font = '5px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#d4af37';
+        
+        levelMarks.forEach(level => {
+          const normalized = level / 100;
+          const angle = MIN_ANGLE + (normalized * ARC_RANGE);
+          const angleRad = (angle - 90) * (Math.PI / 180);
+          const labelR = arcRadius + 8;
+          const labelX = arcCenterX + Math.cos(angleRad) * labelR;
+          const labelY = arcCenterY + Math.sin(angleRad) * labelR;
+          ctx.fillText(level.toString(), labelX, labelY);
+        });
+      }
 
       return { arcCenterX, arcCenterY, arcRadius };
-    };
-
-    const drawScale = (ctx, cx, arcCenterX, arcCenterY, arcRadius) => {
-      const MIN_ANGLE = calibrationRef.current.zeroOffset || -55;
-      const ARC_RANGE = 110 * (calibrationRef.current.amplitudeRange || 1);
-      const MAX_ANGLE = MIN_ANGLE + ARC_RANGE;
-      
-      const levelMarks = [0, 20, 40, 60, 80, 100];
-      
-      ctx.save();
-      ctx.font = '5px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#d4af37';
-      
-      levelMarks.forEach(level => {
-        const normalized = level / 100;
-        const angle = MIN_ANGLE + (normalized * ARC_RANGE);
-        const angleRad = (angle - 90) * (Math.PI / 180);
-        const labelR = arcRadius + 8;
-        const labelX = arcCenterX + Math.cos(angleRad) * labelR;
-        const labelY = arcCenterY + Math.sin(angleRad) * labelR;
-        
-        ctx.fillText(level.toString(), labelX, labelY);
-      });
-      
-      ctx.restore();
     };
 
     const drawNeedle = (arcCenterX, arcCenterY, arcRadius, angle) => {
@@ -157,7 +197,7 @@ export function VUMeter({ timeDomainData, isPlaying }) {
     const drawLedPeak = (cx, brightness) => {
       const ledX = cx + 70;
       const ledY = 12;
-      const ledSize = 6;
+      const ledSize = 5;
       
       if (brightness > 0.1) {
         ctx.save();
@@ -177,17 +217,17 @@ export function VUMeter({ timeDomainData, isPlaying }) {
       } else {
         ctx.beginPath();
         ctx.arc(ledX, ledY, ledSize, 0, Math.PI * 2);
-        ctx.fillStyle = '#330000';
+        ctx.fillStyle = '#220000';
         ctx.fill();
         ctx.strokeStyle = '#440000';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
 
-      ctx.font = '5px monospace';
+      ctx.font = '4px monospace';
       ctx.fillStyle = '#666';
       ctx.textAlign = 'center';
-      ctx.fillText('PK', ledX, ledY + ledSize + 6);
+      ctx.fillText('PK', ledX, ledY + ledSize + 5);
     };
 
     const calculateRMS = (data) => {
@@ -202,11 +242,8 @@ export function VUMeter({ timeDomainData, isPlaying }) {
     const animate = () => {
       ctx.clearRect(0, 0, w, h);
 
-      const vu1 = drawVU(w * 0.25);
-      const vu2 = drawVU(w * 0.75);
-
-      drawScale(ctx, w * 0.25, vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius);
-      drawScale(ctx, w * 0.75, vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius);
+      const vu1 = drawVU(w * 0.25, vuBgLRef.current);
+      const vu2 = drawVU(w * 0.75, vuBgRRef.current);
 
       const cal = calibrationRef.current;
       const sliderDamping = cal.damping || 0.18;
@@ -303,47 +340,49 @@ export function VUMeter({ timeDomainData, isPlaying }) {
       </div>
 
       {showCalibration && (
-        <div className="mt-2 p-3 bg-black/80 rounded-lg border border-yellow-600/30">
+        <div className="mt-2 p-3 bg-black/90 rounded-lg border border-yellow-600/40">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Zero Offset</label>
+              <label className="text-[9px] text-yellow-500 block mb-1">Zero Offset (°) - Posição zero</label>
               <input
                 type="range"
                 min="-65"
                 max="-45"
+                step="1"
                 value={calibration.zeroOffset}
                 onChange={(e) => saveCalibration({ ...calibration, zeroOffset: Number(e.target.value) })}
-                className="w-full h-1 accent-yellow-500"
+                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
               />
-              <span className="text-[8px] text-white/50">{calibration.zeroOffset}°</span>
+              <span className="text-[8px] text-yellow-400">{calibration.zeroOffset}°</span>
             </div>
             <div>
               <label className="text-[9px] text-yellow-500 block mb-1">Input Gain (×RMS)</label>
               <input
                 type="range"
-                min="-12"
-                max="12"
+                min="0.1"
+                max="5"
+                step="0.1"
                 value={calibration.inputGain}
                 onChange={(e) => saveCalibration({ ...calibration, inputGain: Number(e.target.value) })}
-                className="w-full h-1 accent-yellow-500"
+                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
               />
-              <span className="text-[8px] text-white/50">{calibration.inputGain > 0 ? '+' : ''}{calibration.inputGain}dB</span>
+              <span className="text-[8px] text-yellow-400">{calibration.inputGain.toFixed(1)}×</span>
             </div>
             <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Damping (Needle)</label>
+              <label className="text-[9px] text-yellow-500 block mb-1">Damping (Needle) - Suavidade</label>
               <input
                 type="range"
                 min="0.05"
-                max="0.35"
+                max="0.5"
                 step="0.01"
                 value={calibration.damping}
                 onChange={(e) => saveCalibration({ ...calibration, damping: Number(e.target.value) })}
-                className="w-full h-1 accent-yellow-500"
+                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
               />
-              <span className="text-[8px] text-white/50">{calibration.damping.toFixed(2)}</span>
+              <span className="text-[8px] text-yellow-400">{calibration.damping.toFixed(2)}</span>
             </div>
             <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Range (Arc)</label>
+              <label className="text-[9px] text-yellow-500 block mb-1">Range (Arc) - Amplitude</label>
               <input
                 type="range"
                 min="0.3"
@@ -351,48 +390,36 @@ export function VUMeter({ timeDomainData, isPlaying }) {
                 step="0.05"
                 value={calibration.amplitudeRange}
                 onChange={(e) => saveCalibration({ ...calibration, amplitudeRange: Number(e.target.value) })}
-                className="w-full h-1 accent-yellow-500"
+                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
               />
-              <span className="text-[8px] text-white/50">{(calibration.amplitudeRange * 100).toFixed(0)}%</span>
+              <span className="text-[8px] text-yellow-400">{(calibration.amplitudeRange * 100).toFixed(0)}%</span>
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-white/10">
-            <label className="text-[9px] text-yellow-500 block mb-1">Base Position</label>
+            <label className="text-[9px] text-yellow-500 block mb-1">Base Position (px) - Ajuste vertical</label>
             <input
               type="range"
               min="-5"
               max="10"
+              step="1"
               value={calibration.needleBase}
               onChange={(e) => saveCalibration({ ...calibration, needleBase: Number(e.target.value) })}
-              className="w-full h-1 accent-yellow-500"
+              className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
             />
-            <span className="text-[8px] text-white/50">{calibration.needleBase}px</span>
+            <span className="text-[8px] text-yellow-400">{calibration.needleBase}px</span>
           </div>
-          <div className="mt-2 pt-2 border-t border-white/10">
-            <label className="text-[9px] text-yellow-500 block mb-1">Peak Decay</label>
-            <input
-              type="range"
-              min="0.90"
-              max="0.99"
-              step="0.01"
-              value={calibration.peakDecay}
-              onChange={(e) => saveCalibration({ ...calibration, peakDecay: Number(e.target.value) })}
-              className="w-full h-1 accent-yellow-500"
-            />
-            <span className="text-[8px] text-white/50">{(calibration.peakDecay * 100).toFixed(0)}%</span>
-          </div>
-          <div className="mt-2 flex justify-between items-center">
+          <div className="mt-3 flex justify-between items-center">
             <button
               onClick={() => saveCalibration(defaults)}
-              className="text-[8px] text-red-400 hover:text-red-300"
+              className="text-[9px] text-red-400 hover:text-red-300 px-2 py-1"
             >
-              Resetar
+              Resetar Padrão
             </button>
             <button
               onClick={() => setShowCalibration(false)}
-              className="px-3 py-1 text-[8px] bg-yellow-600 hover:bg-yellow-500 text-black rounded font-bold"
+              className="px-4 py-1 text-[9px] bg-yellow-600 hover:bg-yellow-500 text-black rounded font-bold"
             >
-              Salvar
+              Fechar
             </button>
           </div>
         </div>
