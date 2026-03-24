@@ -1,16 +1,34 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 
-const MIN_DB = -60;
-const MAX_DB = 0;
-const GAIN_OFFSET = -6;
-const MIN_ANGLE = -55;
-const MAX_ANGLE = 55;
-const DAMPING = 0.18;
-const PICO_DAMPING = 0.03;
+const STORAGE_KEY = 'raregroove_vu_calibration';
+
+const defaults = {
+  zeroOffset: -55,
+  inputGain: 0,
+  damping: 0.18,
+  needleBase: 0,
+};
 
 export function VUMeter({ analyserData, isPlaying }) {
   const [vuBgL, setVuBgL] = useState(null);
   const [vuBgR, setVuBgR] = useState(null);
+  const [showCalibration, setShowCalibration] = useState(false);
+  const [calibration, setCalibration] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : defaults;
+  });
+
+  const saveCalibration = (newCal) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newCal));
+    setCalibration(newCal);
+  };
+
+  const MIN_DB = -60;
+  const MAX_DB = 3 + calibration.inputGain;
+  const MIN_ANGLE = calibration.zeroOffset;
+  const MAX_ANGLE = calibration.zeroOffset + 110;
+  const DAMPING = calibration.damping;
+  const PICO_DAMPING = 0.03;
   
   useEffect(() => {
     const loadBg = async () => {
@@ -75,8 +93,8 @@ export function VUMeter({ analyserData, isPlaying }) {
 
     const drawVU = (cx, bgImage) => {
       const arcCenterX = cx;
-      const arcCenterY = h - 18;
-      const arcRadius = h - 38;
+      const arcCenterY = h - 15 + calibration.needleBase;
+      const arcRadius = h - 35;
 
       if (bgImage) {
         ctx.drawImage(bgImage, cx - 82, 2, 164, h - 4);
@@ -200,12 +218,7 @@ export function VUMeter({ analyserData, isPlaying }) {
       drawPeak(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, peakL.current);
       drawPeak(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, peakR.current);
 
-      ctx.fillStyle = '#1a1a1a';
-      ctx.font = 'bold 10px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('L', w * 0.25, h - 3);
-      ctx.fillText('R', w * 0.75, h - 3);
+
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -217,11 +230,86 @@ export function VUMeter({ analyserData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [analyserData, isPlaying, dbToAngle, amplitudeToDb, vuBgL, vuBgR]);
+  }, [analyserData, isPlaying, dbToAngle, amplitudeToDb, vuBgL, vuBgR, calibration]);
 
   return (
-    <div className="w-full" style={{ height: '88px' }}>
-      <canvas ref={canvasRef} className="w-full h-full" />
+    <div className="w-full">
+      <div className="flex items-end justify-center gap-2 mb-1">
+        <span className="text-[12px] font-black text-yellow-600 tracking-wider">L</span>
+        <canvas ref={canvasRef} className="w-[328px] h-[88px]" />
+        <span className="text-[12px] font-black text-yellow-600 tracking-wider">R</span>
+      </div>
+      
+      <div className="flex justify-center">
+        <button
+          onClick={() => setShowCalibration(!showCalibration)}
+          className="text-[8px] text-yellow-700/50 hover:text-yellow-600 transition"
+        >
+          ⚙ Calibrar VU
+        </button>
+      </div>
+
+      {showCalibration && (
+        <div className="mt-2 p-3 bg-black/80 rounded-lg border border-yellow-600/30">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-[9px] text-yellow-500 block mb-1">Zero Offset</label>
+              <input
+                type="range"
+                min="-65"
+                max="-45"
+                value={calibration.zeroOffset}
+                onChange={(e) => saveCalibration({ ...calibration, zeroOffset: Number(e.target.value) })}
+                className="w-full h-1 accent-yellow-500"
+              />
+              <span className="text-[8px] text-white/50">{calibration.zeroOffset}°</span>
+            </div>
+            <div>
+              <label className="text-[9px] text-yellow-500 block mb-1">Input Gain</label>
+              <input
+                type="range"
+                min="-12"
+                max="12"
+                value={calibration.inputGain}
+                onChange={(e) => saveCalibration({ ...calibration, inputGain: Number(e.target.value) })}
+                className="w-full h-1 accent-yellow-500"
+              />
+              <span className="text-[8px] text-white/50">{calibration.inputGain > 0 ? '+' : ''}{calibration.inputGain}dB</span>
+            </div>
+            <div>
+              <label className="text-[9px] text-yellow-500 block mb-1">Damping</label>
+              <input
+                type="range"
+                min="0.05"
+                max="0.35"
+                step="0.01"
+                value={calibration.damping}
+                onChange={(e) => saveCalibration({ ...calibration, damping: Number(e.target.value) })}
+                className="w-full h-1 accent-yellow-500"
+              />
+              <span className="text-[8px] text-white/50">{calibration.damping.toFixed(2)}</span>
+            </div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <label className="text-[9px] text-yellow-500 block mb-1">Base Position</label>
+            <input
+              type="range"
+              min="-5"
+              max="10"
+              value={calibration.needleBase}
+              onChange={(e) => saveCalibration({ ...calibration, needleBase: Number(e.target.value) })}
+              className="w-full h-1 accent-yellow-500"
+            />
+            <span className="text-[8px] text-white/50">{calibration.needleBase}px</span>
+          </div>
+          <button
+            onClick={() => saveCalibration(defaults)}
+            className="mt-2 text-[8px] text-red-400 hover:text-red-300"
+          >
+            Resetar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
