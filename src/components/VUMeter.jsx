@@ -93,61 +93,6 @@ export function VUMeter({ analyserData, isPlaying }) {
         ctx.strokeRect(cx - 82, 2, 164, h - 4);
       }
 
-      ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, arcRadius + 3, Math.PI, 0, false);
-      ctx.strokeStyle = '#8b7355';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.strokeStyle = '#2a2520';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(arcCenterX, arcCenterY, arcRadius - 2, Math.PI, 0, false);
-      ctx.stroke();
-
-      const dbMarks = [
-        { db: 3, label: '+3', major: true },
-        { db: 0, label: '0', major: true },
-        { db: -3, label: '-3', major: true },
-        { db: -6, label: '-6', major: false },
-        { db: -12, label: '-12', major: true },
-        { db: -20, label: '-20', major: false },
-        { db: -40, label: '-40', major: false },
-        { db: -60, label: '-60', major: true },
-      ];
-
-      dbMarks.forEach(({ db, label, major }) => {
-        const angle = dbToAngle(db);
-        const angleRad = (angle - 90) * (Math.PI / 180);
-        
-        const innerR = arcRadius - 4;
-        const outerR = arcRadius + (major ? 10 : 6);
-        
-        const x1 = arcCenterX + Math.cos(angleRad) * innerR;
-        const y1 = arcCenterY + Math.sin(angleRad) * innerR;
-        const x2 = arcCenterX + Math.cos(angleRad) * outerR;
-        const y2 = arcCenterY + Math.sin(angleRad) * outerR;
-        
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = '#1a1a1a';
-        ctx.lineWidth = major ? 2 : 1;
-        ctx.stroke();
-        
-        if (major) {
-          const textR = arcRadius - 18;
-          const textX = arcCenterX + Math.cos(angleRad) * textR;
-          const textY = arcCenterY + Math.sin(angleRad) * textR;
-          
-          ctx.fillStyle = '#1a1a1a';
-          ctx.font = 'bold 6px Arial, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(label, textX, textY);
-        }
-      });
-
       return { arcCenterX, arcCenterY, arcRadius };
     };
 
