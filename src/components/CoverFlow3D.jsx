@@ -360,6 +360,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     e.preventDefault();
     console.log('[SUPERCARD] Click! focusedItem:', focusedItem?.title, 'items:', items.length);
     setShowSuperCard(true);
+    toast.info(`Abrindo: ${focusedItem?.title}`);
   }, [focusedItem]);
 
   if (items.length === 0) {
