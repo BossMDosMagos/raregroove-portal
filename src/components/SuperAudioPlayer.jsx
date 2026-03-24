@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Play, Pause, SkipBack, SkipForward, 
-  Volume2, VolumeX, Repeat, Repeat1, Shuffle, Disc3
+  Play, Pause, SkipBack, SkipForward, Square, Volume2, VolumeX,
+  Repeat, Repeat1, Shuffle, Disc3
 } from 'lucide-react';
 import { useSuperPlayer } from '../hooks/useSuperPlayer';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
@@ -295,52 +295,74 @@ export function SuperAudioPlayer() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[99999] w-[340px] bg-black/80 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
-        <div className="w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
-          <Disc3 className={`w-4 h-4 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
+    <div className="fixed bottom-4 right-4 z-[99999] w-[380px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
+        <div className="w-9 h-9 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+          <Disc3 className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
-          <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || (userId ? 'Pronto' : 'Aguardando...')}</p>
+          <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || 'Pronto'}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={handlePlayPause}
-            className="w-8 h-8 rounded-lg bg-yellow-500 hover:bg-yellow-400 flex items-center justify-center text-black transition"
-            title={isPlaying ? 'Pausar' : 'Reproduzir'}
-          >
+          <button onClick={handlePrev} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70">
+            <SkipBack className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={handlePlayPause} className="w-9 h-9 rounded-lg bg-yellow-500 hover:bg-yellow-400 flex items-center justify-center text-black transition">
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
-          <button
-            onClick={handleNext}
-            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 transition"
-          >
+          <button onClick={handleNext} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70">
             <SkipForward className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={handleStop} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/50">
+            <Square className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <div 
-        className="h-12 px-3 py-1.5 flex items-end justify-center gap-[2px]"
-        onClick={handleSeek}
-      >
-        {Array.from(analyserData).slice(0, 24).map((value, i) => (
+      <div className="h-14 px-3 py-1.5 flex items-end justify-center gap-[3px] bg-black/40">
+        {Array.from(analyserData).slice(0, 32).map((value, i) => (
           <div
             key={i}
-            className="w-1.5 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-t-sm transition-all duration-75"
-            style={{ 
-              height: `${Math.max(3, (value / 255) * 40)}px`,
-            }}
+            className="w-2 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-t transition-all duration-75"
+            style={{ height: `${Math.max(3, (value / 255) * 50)}px` }}
           />
         ))}
       </div>
 
-      <div className="px-3 py-1">
-        <div className="flex items-center justify-between text-[9px] text-white/40">
+      <div className="px-3 py-1.5 border-t border-white/5">
+        <div className="flex items-center justify-between text-[10px] text-white/40">
           <span>{formatTime(currentTime)}</span>
-          <span className="text-yellow-400/70">{currentQueueIndex + 1}/{queue.length}</span>
+          <span className="text-yellow-400 font-bold">{currentQueueIndex + 1}/{queue.length}</span>
           <span>{formatTime(duration)}</span>
+        </div>
+        <div 
+          className="h-1.5 bg-white/10 rounded-full cursor-pointer mt-1"
+          onClick={handleSeek}
+        >
+          <div 
+            className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full"
+            style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="px-3 py-2 border-t border-white/5">
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={toggleShuffle} className={`w-6 h-6 rounded flex items-center justify-center transition ${shuffle ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'}`}>
+            <Shuffle className="w-3 h-3" />
+          </button>
+          {volume === 0 ? <VolumeX className="w-4 h-4 text-white/40" /> : <Volume2 className="w-4 h-4 text-white/40" />}
+          <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500" />
+          <button onClick={toggleLoop} className={`w-6 h-6 rounded flex items-center justify-center transition ${loopMode !== 'none' ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'}`}>
+            {getLoopIcon()}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-[9px] text-white/40">
+          <span>Pré:</span>
+          <input type="range" min="-12" max="12" step="0.5" value={preAmp} onChange={handlePreAmpChange} className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500" />
+          <span className="w-8 text-right">{preAmp > 0 ? '+' : ''}{preAmp.toFixed(1)}</span>
         </div>
       </div>
 
@@ -348,6 +370,7 @@ export function SuperAudioPlayer() {
         <div className="grid grid-cols-10 gap-[2px]">
           {eqFrequencies.map((freq) => (
             <div key={freq} className="flex flex-col items-center">
+              <span className="text-[7px] text-white/30 mb-0.5">{freq >= 1000 ? `${freq/1000}k` : freq}</span>
               <input
                 type="range"
                 min="-12"
@@ -355,53 +378,19 @@ export function SuperAudioPlayer() {
                 step="1"
                 value={eqBands[freq]}
                 onChange={(e) => handleEqChange(freq, parseInt(e.target.value))}
-                className="w-3 h-14 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
+                className="w-3 h-12 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
                 style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
               />
+              <span className="text-[7px] text-white/40 mt-0.5">{eqBands[freq] > 0 ? '+' : ''}{eqBands[freq]}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="px-3 pb-2 flex items-center gap-2">
-        <button
-          onClick={toggleShuffle}
-          className={`w-6 h-6 rounded flex items-center justify-center transition ${
-            shuffle ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'
-          }`}
-        >
-          <Shuffle className="w-3 h-3" />
-        </button>
-        
-        {volume === 0 ? (
-          <VolumeX className="w-3.5 h-3.5 text-white/40" />
-        ) : (
-          <Volume2 className="w-3.5 h-3.5 text-white/40" />
-        )}
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={volume}
-          onChange={handleVolumeChange}
-          className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-        />
-        
-        <button
-          onClick={toggleLoop}
-          className={`w-6 h-6 rounded flex items-center justify-center transition ${
-            loopMode !== 'none' ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'
-          }`}
-        >
-          {getLoopIcon()}
-        </button>
-      </div>
-
-      <div className="relative">
+      <div className="relative border-t border-white/5">
         <button
           onClick={() => setShowPresetMenu(!showPresetMenu)}
-          className="w-full px-3 py-1.5 text-center text-[10px] bg-white/5 hover:bg-white/10 text-yellow-400 border-t border-white/5 transition"
+          className="w-full px-3 py-2 text-center text-[10px] bg-white/5 hover:bg-white/10 text-yellow-400 transition"
         >
           EQ: {selectedPreset}
         </button>
@@ -427,7 +416,7 @@ export function SuperAudioPlayer() {
       </div>
 
       {isLoading && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
         </div>
       )}
