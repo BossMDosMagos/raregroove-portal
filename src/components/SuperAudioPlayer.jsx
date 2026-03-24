@@ -38,11 +38,13 @@ export function SuperAudioPlayer() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('Flat');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
-  const [vuLeft, setVuLeft] = useState(-50);
-  const [vuRight, setVuRight] = useState(-50);
+  const [vuLeft, setVuLeft] = useState(-45);
+  const [vuRight, setVuRight] = useState(-45);
   
-  const vuLeftRef = useRef(null);
-  const vuRightRef = useRef(null);
+  const vuLeftLineRef = useRef(null);
+  const vuRightLineRef = useRef(null);
+  const vuLeftSvgRef = useRef(null);
+  const vuRightSvgRef = useRef(null);
 
   const {
     isPlaying,
@@ -89,25 +91,32 @@ export function SuperAudioPlayer() {
 
   useEffect(() => {
     if (!analyserData || analyserData.length === 0) {
-      setVuLeft(-50);
-      setVuRight(-50);
+      setVuLeft(-45);
+      setVuRight(-45);
+      
+      if (vuLeftLineRef.current) {
+        vuLeftLineRef.current.setAttribute('transform', 'rotate(-45 72 68)');
+      }
+      if (vuRightLineRef.current) {
+        vuRightLineRef.current.setAttribute('transform', 'rotate(-45 72 68)');
+      }
       return;
     }
     
     const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
     const rightAvg = Array.from(analyserData).slice(16, 32).reduce((a, v) => a + v, 0) / 16;
     
-    const leftDeg = -50 + (leftAvg / 255) * 100;
-    const rightDeg = -50 + (rightAvg / 255) * 100;
+    const leftDeg = -45 + (leftAvg / 255) * 90;
+    const rightDeg = -45 + (rightAvg / 255) * 90;
     
     setVuLeft(leftDeg);
     setVuRight(rightDeg);
     
-    if (vuLeftRef.current) {
-      vuLeftRef.current.style.transform = `rotate(${leftDeg}deg)`;
+    if (vuLeftLineRef.current) {
+      vuLeftLineRef.current.setAttribute('transform', `rotate(${leftDeg} 72 68)`);
     }
-    if (vuRightRef.current) {
-      vuRightRef.current.style.transform = `rotate(${rightDeg}deg)`;
+    if (vuRightLineRef.current) {
+      vuRightLineRef.current.setAttribute('transform', `rotate(${rightDeg} 72 68)`);
     }
   }, [analyserData]);
 
@@ -350,85 +359,81 @@ export function SuperAudioPlayer() {
       </div>
 
       <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center justify-center gap-4">
-          <div className="relative w-[145px] h-[75px] rounded-lg overflow-hidden shadow-lg" style={{
-            background: 'linear-gradient(180deg, #f5f5dc 0%, #e8e8d0 50%, #d4d4c0 100%)',
-            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 15px rgba(255,220,100,0.2), 0 0 30px rgba(255,200,50,0.1)'
-          }}>
-            <div className="absolute inset-x-2 top-2 flex justify-between text-[7px] text-black font-bold tracking-tight">
-              <span>+3</span>
-              <span>0</span>
-              <span>-3</span>
-              <span>-6</span>
-              <span>-12</span>
-              <span>-20</span>
+        <div className="flex items-center justify-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-red-600 tracking-widest">L</span>
+            <div className="relative w-[140px] h-[70px] rounded-lg overflow-hidden shadow-lg" style={{
+              background: 'linear-gradient(180deg, #f8f8e8 0%, #e8e8d8 50%, #d4d4c0 100%)',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(255,100,100,0.15)'
+            }}>
+              <div className="absolute inset-x-2 top-1.5 flex justify-between text-[6px] text-black font-bold">
+                <span>+3</span>
+                <span>0</span>
+                <span>-3</span>
+                <span>-6</span>
+                <span>-12</span>
+                <span>-20</span>
+              </div>
+              <svg ref={vuLeftSvgRef} className="absolute inset-0 w-full h-full" viewBox="0 0 140 70">
+                <defs>
+                  <filter id="needleGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="1" result="blur"/>
+                    <feMerge>
+                      <feMergeNode in="blur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path d="M 15 65 Q 70 5 125 65" fill="none" stroke="#1a1a1a" strokeWidth="0.6" opacity="0.5"/>
+                <path d="M 15 65 Q 70 10 125 65" fill="none" stroke="#333" strokeWidth="0.3" opacity="0.3"/>
+                <line 
+                  ref={vuLeftLineRef}
+                  x1="70" y1="65" x2="70" y2="12" 
+                  stroke="#ff1111" 
+                  strokeWidth="2" 
+                  strokeLinecap="round"
+                  filter="url(#needleGlow)"
+                  transform="rotate(-45 70 65)"
+                />
+                <circle cx="70" cy="65" r="3.5" fill="#cc0000"/>
+                <circle cx="70" cy="65" r="1.5" fill="#ff3333"/>
+              </svg>
             </div>
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
-              <defs>
-                <filter id="redGlow">
-                  <feGaussianBlur stdDeviation="1.5" result="blur"/>
-                  <feMerge>
-                    <feMergeNode in="blur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
-              </defs>
-              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.4"/>
-              <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
-              <line 
-                ref={vuLeftRef}
-                x1="72" y1="68" x2="72" y2="10" 
-                stroke="#ff0000" 
-                strokeWidth="2.5" 
-                strokeLinecap="round"
-                filter="url(#redGlow)"
-                style={{
-                  transform: `rotate(${vuLeft}deg)`,
-                  transformOrigin: '72px 68px',
-                  transition: 'transform 0.08s ease-out'
-                }}
-              />
-              <circle cx="72" cy="68" r="4" fill="#ff0000" filter="url(#redGlow)"/>
-              <circle cx="72" cy="68" r="2" fill="#ff3333"/>
-            </svg>
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">L</div>
           </div>
 
-          <div className="relative w-[145px] h-[75px] rounded-lg overflow-hidden shadow-lg" style={{
-            background: 'linear-gradient(180deg, #f5f5dc 0%, #e8e8d0 50%, #d4d4c0 100%)',
-            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 15px rgba(255,220,100,0.2), 0 0 30px rgba(255,200,50,0.1)'
-          }}>
-            <div className="absolute inset-x-2 top-2 flex justify-between text-[7px] text-black font-bold tracking-tight">
-              <span>+3</span>
-              <span>0</span>
-              <span>-3</span>
-              <span>-6</span>
-              <span>-12</span>
-              <span>-20</span>
+          <div className="flex items-center gap-2">
+            <div className="relative w-[140px] h-[70px] rounded-lg overflow-hidden shadow-lg" style={{
+              background: 'linear-gradient(180deg, #f8f8e8 0%, #e8e8d8 50%, #d4d4c0 100%)',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(255,100,100,0.15)'
+            }}>
+              <div className="absolute inset-x-2 top-1.5 flex justify-between text-[6px] text-black font-bold">
+                <span>+3</span>
+                <span>0</span>
+                <span>-3</span>
+                <span>-6</span>
+                <span>-12</span>
+                <span>-20</span>
+              </div>
+              <svg ref={vuRightSvgRef} className="absolute inset-0 w-full h-full" viewBox="0 0 140 70">
+                <path d="M 15 65 Q 70 5 125 65" fill="none" stroke="#1a1a1a" strokeWidth="0.6" opacity="0.5"/>
+                <path d="M 15 65 Q 70 10 125 65" fill="none" stroke="#333" strokeWidth="0.3" opacity="0.3"/>
+                <line 
+                  ref={vuRightLineRef}
+                  x1="70" y1="65" x2="70" y2="12" 
+                  stroke="#ff1111" 
+                  strokeWidth="2" 
+                  strokeLinecap="round"
+                  filter="url(#needleGlow)"
+                  transform="rotate(-45 70 65)"
+                />
+                <circle cx="70" cy="65" r="3.5" fill="#cc0000"/>
+                <circle cx="70" cy="65" r="1.5" fill="#ff3333"/>
+              </svg>
             </div>
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
-              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.4"/>
-              <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
-              <line 
-                ref={vuRightRef}
-                x1="72" y1="68" x2="72" y2="10" 
-                stroke="#ff0000" 
-                strokeWidth="2.5" 
-                strokeLinecap="round"
-                filter="url(#redGlow)"
-                style={{
-                  transform: `rotate(${vuRight}deg)`,
-                  transformOrigin: '72px 68px',
-                  transition: 'transform 0.08s ease-out'
-                }}
-              />
-              <circle cx="72" cy="68" r="4" fill="#ff0000" filter="url(#redGlow)"/>
-              <circle cx="72" cy="68" r="2" fill="#ff3333"/>
-            </svg>
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">R</div>
+            <span className="text-[10px] font-black text-red-600 tracking-widest">R</span>
           </div>
         </div>
-        <div className="flex justify-center gap-4 mt-1">
+        <div className="flex justify-center mt-1">
           <span className="text-[8px] text-yellow-500/70 font-bold tracking-widest">◉ VU STEREO ◉</span>
         </div>
       </div>
