@@ -14,12 +14,16 @@ C:\PROJETO-RAREGROOVE-3.0\
 ├── src/
 │   ├── components/
 │   │   ├── CoverFlow3D.jsx         # WiiFlow - carrossel 3D com player
+│   │   ├── SuperAudioPlayer.jsx     # Player Hi-Fi com VU Meter
+│   │   ├── VUMeter.jsx              # VU Meter analógico com RMS
 │   │   ├── GrooveflixRow.jsx       # Cards de álbum com covers
 │   │   ├── GrooveflixUploader.jsx   # Upload de álbuns
 │   │   ├── GrooveflixPlayer.jsx     # Player de áudio
 │   │   ├── DiscogsImporter.jsx      # Busca e importação do Discogs
 │   │   ├── GlobalAudioPlayer.jsx    # Webamp player com JIT
 │   │   └── ...
+│   ├── hooks/
+│   │   └── useSuperPlayer.js       # Web Audio API com FFT/RMS
 │   ├── pages/
 │   │   ├── Grooveflix.jsx          # Página principal
 │   │   └── ...
@@ -32,6 +36,10 @@ C:\PROJETO-RAREGROOVE-3.0\
 │       ├── cleanup-grooveflix/      # Limpa registros órfãos
 │       ├── grooveflix-delete/      # Delete seguro (B2 + DB)
 │       └── discogs-search/         # API proxy para Discogs
+├── public/images/vu/
+│   ├── vu-l.png          # Background VU esquerdo
+│   ├── vu-r.png          # Background VU direito
+│   └── vu metter.png     # Original (referência)
 └── ...
 ```
 
@@ -194,6 +202,105 @@ metadata: {
 
 ---
 
+## SuperAudioPlayer - Player com VU Meter
+
+### Visão Geral
+Player Hi-Fi com VU Meter analógico usando Web Audio API, física de agulha com balística RMS e LED de pico.
+
+### Arquivos
+- **Player:** `src/components/SuperAudioPlayer.jsx`
+- **VU Meter:** `src/components/VUMeter.jsx`
+- **Hook:** `src/hooks/useSuperPlayer.js`
+
+### Audio Engine (useSuperPlayer)
+```javascript
+// getFloatTimeDomainData para RMS
+const timeData = new Float32Array(analyser.fftSize);
+analyser.getFloatTimeDomainData(timeData);
+setTimeDomainData(new Float32Array(timeData));
+
+// FFT para espectro (futuro EQ visual)
+const freqData = new Uint8Array(analyser.frequencyBinCount);
+analyser.getByteFrequencyData(freqData);
+setAnalyserData(new Uint8Array(freqData));
+```
+
+### VU Meter - Motor RMS
+
+#### Fórmula de Balística McIntosh
+```javascript
+// Loop sumSquares para RMS real
+const calculateRMS = (data) => {
+  let sumSquares = 0.0;
+  for (let i = 0; i < data.length; i++) {
+    sumSquares += data[i] * data[i];
+  }
+  return Math.sqrt(sumSquares / data.length);
+};
+
+// Sensibilidade logarítmica (vida nos volumes baixos)
+const applyLogCurve = (rms, curve = 2.5) => {
+  if (rms <= 0) return 0;
+  return Math.pow(rms, 1 / curve);
+};
+
+// Balística de Agulha
+const ATTACK_FACTOR = 0.25;  // Sobe rápido
+const DECAY_FACTOR = 0.06;   // Cai devagar
+
+const targetLevel = applyLogCurve(leftRms, 2.5) * sliderGain * 100;
+const factor = (targetLevel > currentLevel) ? ATTACK_FACTOR : DECAY_FACTOR;
+currentLevel += (targetLevel - currentLevel) * factor;
+```
+
+#### LED de Pico
+```javascript
+// Pico usa Math.max absoluto, diferente do RMS
+let leftPeak = 0;
+for (let i = 0; i < leftData.length; i++) {
+  if (Math.abs(leftData[i]) > leftPeak) leftPeak = Math.abs(leftData[i]);
+}
+
+// Acende quando > threshold 0.7
+const peakThreshold = 0.7;
+const leftLedBrightness = leftPeak > peakThreshold ? 
+  Math.min(1, (leftPeak - peakThreshold) / 0.3) : 0;
+```
+
+### Calibração (localStorage)
+```javascript
+const defaults = {
+  zeroOffset: -55,      // Posição zero da agulha (graus)
+  inputGain: 1,        // Multiplicador RMS (0.1 - 5.0)
+  damping: 0.18,       // Suavidade adicional da agulha
+  needleBase: 0,       // Ajuste vertical da base
+  amplitudeRange: 1.0, // Amplitude do arco (30% - 150%)
+};
+
+// Salvo em localStorage key: 'raregroove_vu_calibration'
+```
+
+### Imagens de Fundo
+- **Pasta:** `public/images/vu/`
+- **Arquivos:** `vu-l.png` (164x86), `vu-r.png` (164x86)
+- Carregadas via `new Image()` e desenhadas com `ctx.drawImage()`
+
+### Controles de Calibração
+| Slider | Range | Função |
+|--------|-------|--------|
+| Zero Offset | -65° a -45° | Posição do zero (repouso) |
+| Input Gain | 0.1× a 5.0× | Sensibilidade RMS |
+| Damping | 0.05 a 0.50 | Suavidade adicional |
+| Range | 30% a 150% | Amplitude do arco |
+| Base Position | -5px a 10px | Ajuste vertical |
+
+### Comportamento Esperado
+- **Agulha:** Sobe rápido (0.25), cai devagar (0.06) - gravidade
+- **LED PK:** Acende vermelho quando pico > 70% do máximo
+- **Sem som:** Agulha volta suavemente ao zero
+
+---
+
 ## WiiFlow - Player Visual (CoverFlow3D)
 
 ### Visão Geral
@@ -275,7 +382,28 @@ npm test
 
 ---
 
-## Status Atual (2026-03-23)
+## Status Atual (2026-03-24)
+
+### ✅ VU METER COM BALÍSTICA McINTOSH - IMPLEMENTADO
+
+**Motor RMS:**
+- `getFloatTimeDomainData` para captura de onda real
+- Loop `sumSquares`: `rms = sqrt(Σsample² / N)`
+- Sensibilidade logarítmica: `pow(rms, 1/2.5)` para vida nos graves
+
+**Balística de Agulha:**
+- ATAQUE_RÁPIDO = 0.25: agulha sobe veloz com o som
+- DECAIMENTO_SUAVE = 0.06: agulha cai devagar (gravidade)
+- Factor dinâmico baseado na direção do movimento
+
+**LED de Pico:**
+- Usa `Math.max(abs(data))` para pico real
+- Acende quando > threshold 0.7
+- Brilho proporcional ao excesso
+
+**Imagens de Fundo:**
+- `vu-l.png` e `vu-r.png` em `public/images/vu/`
+- Carregadas via refs para animação suave
 
 ### ✅ CORREÇÕES RODADA 14 - 3 PROBLEMAS RESOLVIDOS
 
@@ -407,7 +535,7 @@ CLOUDFLARE_API_TOKEN=cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 
 ---
 
-*Última atualização: 2026-03-23 21:00 UTC-3*
+*Última atualização: 2026-03-24 01:45 UTC-3*
 
 ---
 
