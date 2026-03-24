@@ -38,6 +38,11 @@ export function SuperAudioPlayer() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('Flat');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
+  const [vuLeft, setVuLeft] = useState(-50);
+  const [vuRight, setVuRight] = useState(-50);
+  
+  const vuLeftRef = useRef(null);
+  const vuRightRef = useRef(null);
 
   const {
     isPlaying,
@@ -81,6 +86,30 @@ export function SuperAudioPlayer() {
     
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!analyserData || analyserData.length === 0) {
+      setVuLeft(-50);
+      setVuRight(-50);
+      return;
+    }
+    
+    const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
+    const rightAvg = Array.from(analyserData).slice(16, 32).reduce((a, v) => a + v, 0) / 16;
+    
+    const leftDeg = -50 + (leftAvg / 255) * 100;
+    const rightDeg = -50 + (rightAvg / 255) * 100;
+    
+    setVuLeft(leftDeg);
+    setVuRight(rightDeg);
+    
+    if (vuLeftRef.current) {
+      vuLeftRef.current.style.transform = `rotate(${leftDeg}deg)`;
+    }
+    if (vuRightRef.current) {
+      vuRightRef.current.style.transform = `rotate(${rightDeg}deg)`;
+    }
+  }, [analyserData]);
 
   const hydrateAndPlayRef = useRef(null);
 
@@ -336,26 +365,30 @@ export function SuperAudioPlayer() {
             </div>
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
               <defs>
-                <linearGradient id="glowRed" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#ff0000" stopOpacity="0.8"/>
-                  <stop offset="100%" stopColor="#cc0000" stopOpacity="0.4"/>
-                </linearGradient>
                 <filter id="redGlow">
-                  <feGaussianBlur stdDeviation="1" result="blur"/>
+                  <feGaussianBlur stdDeviation="1.5" result="blur"/>
                   <feMerge>
                     <feMergeNode in="blur"/>
                     <feMergeNode in="SourceGraphic"/>
                   </feMerge>
                 </filter>
               </defs>
-              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.3"/>
+              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.4"/>
               <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
-              <line x1="72" y1="68" x2="72" y2="68" stroke="#cc0000" strokeWidth="2.5" filter="url(#redGlow)" style={{
-                transform: `rotate(${-50 + (Array.from(analyserData).slice(0, 16).reduce((a, v) => a + (v / 255), 0) / 16) * 100}deg)`,
-                transformOrigin: '72px 68px',
-                transition: 'transform 0.08s ease-out'
-              }}/>
-              <circle cx="72" cy="68" r="4" fill="#cc0000" filter="url(#redGlow)"/>
+              <line 
+                ref={vuLeftRef}
+                x1="72" y1="68" x2="72" y2="10" 
+                stroke="#ff0000" 
+                strokeWidth="2.5" 
+                strokeLinecap="round"
+                filter="url(#redGlow)"
+                style={{
+                  transform: `rotate(${vuLeft}deg)`,
+                  transformOrigin: '72px 68px',
+                  transition: 'transform 0.08s ease-out'
+                }}
+              />
+              <circle cx="72" cy="68" r="4" fill="#ff0000" filter="url(#redGlow)"/>
               <circle cx="72" cy="68" r="2" fill="#ff3333"/>
             </svg>
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">L</div>
@@ -374,14 +407,22 @@ export function SuperAudioPlayer() {
               <span>-20</span>
             </div>
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
-              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.3"/>
+              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.4"/>
               <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
-              <line x1="72" y1="68" x2="72" y2="68" stroke="#cc0000" strokeWidth="2.5" filter="url(#redGlow)" style={{
-                transform: `rotate(${-50 + (Array.from(analyserData).slice(16, 32).reduce((a, v) => a + (v / 255), 0) / 16) * 100}deg)`,
-                transformOrigin: '72px 68px',
-                transition: 'transform 0.08s ease-out'
-              }}/>
-              <circle cx="72" cy="68" r="4" fill="#cc0000" filter="url(#redGlow)"/>
+              <line 
+                ref={vuRightRef}
+                x1="72" y1="68" x2="72" y2="10" 
+                stroke="#ff0000" 
+                strokeWidth="2.5" 
+                strokeLinecap="round"
+                filter="url(#redGlow)"
+                style={{
+                  transform: `rotate(${vuRight}deg)`,
+                  transformOrigin: '72px 68px',
+                  transition: 'transform 0.08s ease-out'
+                }}
+              />
+              <circle cx="72" cy="68" r="4" fill="#ff0000" filter="url(#redGlow)"/>
               <circle cx="72" cy="68" r="2" fill="#ff3333"/>
             </svg>
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">R</div>
