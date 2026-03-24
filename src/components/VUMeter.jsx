@@ -29,6 +29,7 @@ export function VUMeter({ analyserData, isPlaying }) {
   const MAX_ANGLE = calibration.zeroOffset + 110;
   const DAMPING = calibration.damping;
   const PICO_DAMPING = 0.03;
+  const NEEDLE_BASE = 5 + calibration.needleBase;
   
   useEffect(() => {
     const loadBg = async () => {
@@ -73,7 +74,7 @@ export function VUMeter({ analyserData, isPlaying }) {
 
   const amplitudeToDb = useCallback((amplitude) => {
     if (amplitude <= 0) return MIN_DB;
-    return 20 * Math.log10(amplitude / 255) + GAIN_OFFSET;
+    return 20 * Math.log10(amplitude / 255) + calibration.inputGain;
   }, []);
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export function VUMeter({ analyserData, isPlaying }) {
 
     const drawVU = (cx, bgImage) => {
       const arcCenterX = cx;
-      const arcCenterY = h - 15 + calibration.needleBase;
+      const arcCenterY = h - 15 + NEEDLE_BASE;
       const arcRadius = h - 35;
 
       if (bgImage) {
@@ -302,12 +303,20 @@ export function VUMeter({ analyserData, isPlaying }) {
             />
             <span className="text-[8px] text-white/50">{calibration.needleBase}px</span>
           </div>
-          <button
-            onClick={() => saveCalibration(defaults)}
-            className="mt-2 text-[8px] text-red-400 hover:text-red-300"
-          >
-            Resetar
-          </button>
+          <div className="mt-2 flex justify-between items-center">
+            <button
+              onClick={() => saveCalibration(defaults)}
+              className="text-[8px] text-red-400 hover:text-red-300"
+            >
+              Resetar
+            </button>
+            <button
+              onClick={() => setShowCalibration(false)}
+              className="px-3 py-1 text-[8px] bg-yellow-600 hover:bg-yellow-500 text-black rounded font-bold"
+            >
+              Salvar
+            </button>
+          </div>
         </div>
       )}
     </div>
