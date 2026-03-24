@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Play, Pause, SkipBack, SkipForward, Square, Volume2, VolumeX,
-  Repeat, Repeat1, Shuffle, ChevronUp, ChevronDown, X,
-  Music, Disc3, Headphones, Sliders, BarChart3, ChevronDown as ChevronDownIcon
+  Play, Pause, SkipBack, SkipForward, 
+  Volume2, VolumeX, Repeat, Repeat1, Shuffle, Disc3
 } from 'lucide-react';
 import { useSuperPlayer } from '../hooks/useSuperPlayer';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
@@ -32,8 +31,6 @@ export function SuperAudioPlayer() {
     expandAlbumTracks,
   } = useAudioPlayer();
 
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activePanel, setActivePanel] = useState('eq');
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [trackUrls, setTrackUrls] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -298,322 +295,142 @@ export function SuperAudioPlayer() {
   }
 
   return (
-    <>
-      <div
-        className={`fixed bottom-4 right-4 z-[99999] transition-all duration-300 ${
-          isExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-      >
-        <div className="flex items-center gap-3 bg-black/60 backdrop-blur-xl border border-yellow-500/40 rounded-2xl px-4 py-3 shadow-2xl shadow-yellow-500/10">
-          <div className="w-10 h-10 rounded-xl bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
-            <Music className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-pulse' : ''}`} />
-          </div>
-          
-          <div className="min-w-0 max-w-[150px]">
-            <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
-            <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || (userId ? 'Pronto para tocar' : 'Aguardando...')}</p>
-            {queue.length > 1 && (
-              <p className="text-yellow-400/70 text-[9px]">{currentQueueIndex + 1}/{queue.length}</p>
-            )}
-            {!userId && (
-              <p className="text-red-400/70 text-[9px]">Sem userId</p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handlePlayPause}
-              className="w-8 h-8 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 flex items-center justify-center text-yellow-300 transition"
-              title={isPlaying ? 'Pausar' : 'Reproduzir'}
-            >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="w-8 h-8 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 flex items-center justify-center text-yellow-300 transition"
-              title="Player Completo"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-          </div>
+    <div className="fixed bottom-4 right-4 z-[99999] w-[340px] bg-black/80 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
+        <div className="w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+          <Disc3 className={`w-4 h-4 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
+          <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || (userId ? 'Pronto' : 'Aguardando...')}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handlePlayPause}
+            className="w-8 h-8 rounded-lg bg-yellow-500 hover:bg-yellow-400 flex items-center justify-center text-black transition"
+            title={isPlaying ? 'Pausar' : 'Reproduzir'}
+          >
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+          </button>
+          <button
+            onClick={handleNext}
+            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 transition"
+          >
+            <SkipForward className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      {isExpanded && (
-        <div className="fixed bottom-4 right-4 z-[99998] w-[420px] bg-black/70 backdrop-blur-xl border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Headphones className="w-4 h-4 text-yellow-400" />
-              <span className="text-white font-bold text-sm">GrooveGroove Player</span>
-            </div>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
+      <div 
+        className="h-12 px-3 py-1.5 flex items-end justify-center gap-[2px]"
+        onClick={handleSeek}
+      >
+        {Array.from(analyserData).slice(0, 24).map((value, i) => (
+          <div
+            key={i}
+            className="w-1.5 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-t-sm transition-all duration-75"
+            style={{ 
+              height: `${Math.max(3, (value / 255) * 40)}px`,
+            }}
+          />
+        ))}
+      </div>
 
-          <div className="flex border-b border-white/10">
-            <button
-              onClick={() => setActivePanel('eq')}
-              className={`flex-1 py-2 text-xs font-medium transition ${
-                activePanel === 'eq' 
-                  ? 'text-yellow-400 border-b-2 border-yellow-400 bg-yellow-500/10' 
-                  : 'text-white/50 hover:text-white/70'
-              }`}
-            >
-              <Sliders className="w-4 h-4 mx-auto mb-1" />
-              Equalizador
-            </button>
-            <button
-              onClick={() => setActivePanel('visualizer')}
-              className={`flex-1 py-2 text-xs font-medium transition ${
-                activePanel === 'visualizer' 
-                  ? 'text-yellow-400 border-b-2 border-yellow-400 bg-yellow-500/10' 
-                  : 'text-white/50 hover:text-white/70'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 mx-auto mb-1" />
-              Visualizador
-            </button>
+      <div className="px-3 py-1">
+        <div className="flex items-center justify-between text-[9px] text-white/40">
+          <span>{formatTime(currentTime)}</span>
+          <span className="text-yellow-400/70">{currentQueueIndex + 1}/{queue.length}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
 
-          </div>
-
-          {activePanel === 'eq' && (
-            <div className="p-4 space-y-4">
-              <div className="relative">
-                <button
-                  onClick={() => setShowPresetMenu(!showPresetMenu)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
-                >
-                  <span className="text-white font-medium">Preset: <span className="text-yellow-400">{selectedPreset}</span></span>
-                  <ChevronDownIcon className={`w-4 h-4 text-white/50 transition-transform ${showPresetMenu ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showPresetMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg overflow-hidden z-50 shadow-xl">
-                    {Object.keys(EQ_PRESETS).map((presetName) => (
-                      <button
-                        key={presetName}
-                        onClick={() => applyPreset(presetName)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-yellow-500/20 transition ${
-                          selectedPreset === presetName ? 'text-yellow-400 bg-yellow-500/10' : 'text-white/80'
-                        }`}
-                      >
-                        {presetName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-white/50">
-                <span>Pré-Amp</span>
-                <span>{preAmp > 0 ? '+' : ''}{preAmp.toFixed(1)} dB</span>
-              </div>
+      <div className="px-3 pb-2">
+        <div className="grid grid-cols-10 gap-[2px]">
+          {eqFrequencies.map((freq) => (
+            <div key={freq} className="flex flex-col items-center">
               <input
                 type="range"
                 min="-12"
                 max="12"
-                step="0.5"
-                value={preAmp}
-                onChange={handlePreAmpChange}
-                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-              />
-
-              <div className="grid grid-cols-10 gap-1">
-                {eqFrequencies.map((freq) => (
-                  <div key={freq} className="flex flex-col items-center">
-                    <span className="text-[8px] text-white/40 mb-1">
-                      {freq >= 1000 ? `${freq/1000}k` : freq}
-                    </span>
-                    <input
-                      type="range"
-                      min="-12"
-                      max="12"
-                      step="0.5"
-                      value={eqBands[freq]}
-                      onChange={(e) => handleEqChange(freq, e.target.value)}
-                      className="w-4 h-24 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500 writing-mode-vertical"
-                      style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-                    />
-                    <span className="text-[8px] text-white/60 mt-1">
-                      {eqBands[freq] > 0 ? '+' : ''}{eqBands[freq].toFixed(0)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between text-xs text-white/50 mb-1">
-                    <span>Volume</span>
-                    <span>{(volume * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between text-xs text-white/50 mb-1">
-                    <span>Balanco</span>
-                    <span>{pan === 0 ? 'C' : pan < 0 ? `E${Math.abs(pan * 100).toFixed(0)}` : `D${(pan * 100).toFixed(0)}`}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-1"
-                    max="1"
-                    step="0.01"
-                    value={pan}
-                    onChange={handlePanChange}
-                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activePanel === 'visualizer' && (
-            <div className="p-4">
-              <div className="h-32 bg-black/40 rounded-lg flex items-end justify-center gap-1 p-2">
-                {Array.from(analyserData).slice(0, 32).map((value, i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 bg-gradient-to-t from-yellow-600 to-yellow-300 rounded-sm transition-all duration-75"
-                    style={{ 
-                      height: `${Math.max(4, (value / 255) * 100)}%`,
-                      opacity: 0.5 + (value / 510)
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center justify-center gap-4 mt-3">
-                <button
-                  onClick={toggleShuffle}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center transition ${
-                    shuffle 
-                      ? 'bg-yellow-500/30 text-yellow-300' 
-                      : 'bg-white/10 text-white/50 hover:text-white'
-                  }`}
-                  title="Aleatório"
-                >
-                  <Shuffle className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={toggleLoop}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center transition ${
-                    loopMode !== 'none' 
-                      ? 'bg-yellow-500/30 text-yellow-300' 
-                      : 'bg-white/10 text-white/50 hover:text-white'
-                  }`}
-                  title={`Loop: ${loopMode}`}
-                >
-                  {getLoopIcon()}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="p-4 border-t border-white/10">
-            <div 
-              className="h-2 bg-white/10 rounded-full cursor-pointer mb-2"
-              onClick={handleSeek}
-            >
-              <div 
-                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all"
-                style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                step="1"
+                value={eqBands[freq]}
+                onChange={(e) => handleEqChange(freq, parseInt(e.target.value))}
+                className="w-3 h-14 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
               />
             </div>
-            <div className="flex items-center justify-between text-xs text-white/50">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
+          ))}
+        </div>
+      </div>
 
-            <div className="flex items-center justify-center gap-3 mt-4">
+      <div className="px-3 pb-2 flex items-center gap-2">
+        <button
+          onClick={toggleShuffle}
+          className={`w-6 h-6 rounded flex items-center justify-center transition ${
+            shuffle ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'
+          }`}
+        >
+          <Shuffle className="w-3 h-3" />
+        </button>
+        
+        {volume === 0 ? (
+          <VolumeX className="w-3.5 h-3.5 text-white/40" />
+        ) : (
+          <Volume2 className="w-3.5 h-3.5 text-white/40" />
+        )}
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={handleVolumeChange}
+          className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
+        />
+        
+        <button
+          onClick={toggleLoop}
+          className={`w-6 h-6 rounded flex items-center justify-center transition ${
+            loopMode !== 'none' ? 'bg-yellow-500/30 text-yellow-300' : 'text-white/40'
+          }`}
+        >
+          {getLoopIcon()}
+        </button>
+      </div>
+
+      <div className="relative">
+        <button
+          onClick={() => setShowPresetMenu(!showPresetMenu)}
+          className="w-full px-3 py-1.5 text-center text-[10px] bg-white/5 hover:bg-white/10 text-yellow-400 border-t border-white/5 transition"
+        >
+          EQ: {selectedPreset}
+        </button>
+        
+        {showPresetMenu && (
+          <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-900 border border-yellow-500/30 rounded-lg overflow-hidden z-50 shadow-xl">
+            {Object.keys(EQ_PRESETS).map((presetName) => (
               <button
-                onClick={toggleShuffle}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${
-                  shuffle 
-                    ? 'bg-yellow-500/30 text-yellow-300' 
-                    : 'bg-white/10 text-white/50 hover:text-white'
+                key={presetName}
+                onClick={() => {
+                  applyPreset(presetName);
+                  setShowPresetMenu(false);
+                }}
+                className={`w-full px-3 py-1.5 text-left text-xs hover:bg-yellow-500/20 transition ${
+                  selectedPreset === presetName ? 'text-yellow-400 bg-yellow-500/10' : 'text-white/80'
                 }`}
-                title="Aleatório"
               >
-                <Shuffle className="w-4 h-4" />
+                {presetName}
               </button>
-              <button
-                onClick={handlePrev}
-                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
-                title="Anterior"
-              >
-                <SkipBack className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handlePlayPause}
-                className="w-14 h-14 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30 transition"
-                title={isPlaying ? 'Pausar' : 'Reproduzir'}
-              >
-                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
-              </button>
-              <button
-                onClick={handleNext}
-                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
-                title="Próxima"
-              >
-                <SkipForward className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleStop}
-                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/50 hover:text-white transition"
-                title="Parar"
-              >
-                <Square className="w-4 h-4" />
-              </button>
-              <button
-                onClick={toggleLoop}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${
-                  loopMode !== 'none' 
-                    ? 'bg-yellow-500/30 text-yellow-300' 
-                    : 'bg-white/10 text-white/50 hover:text-white'
-                }`}
-                title={`Loop: ${loopMode}`}
-              >
-                {getLoopIcon()}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 mt-4">
-              {volume === 0 ? (
-                <VolumeX className="w-4 h-4 text-white/40" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-white/40" />
-              )}
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-              />
-            </div>
+            ))}
           </div>
+        )}
+      </div>
 
-          {isLoading && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
-            </div>
-          )}
+      {isLoading && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
         </div>
       )}
-    </>
+    </div>
   );
 }
