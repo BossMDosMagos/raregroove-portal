@@ -423,7 +423,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
               </div>
             )}
             {isCurrentAlbumPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                 <div ref={cdRotateRef} className="cd-disc w-[360px] h-[360px] rounded-full border-4 border-white/10 shadow-2xl" style={{ background: `radial-gradient(circle at center, transparent 35%, rgba(212,175,55,0.1) 36%, rgba(212,175,55,0.05) 70%, transparent 71%)`, boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.2)' }}>
                   <div className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle at center, transparent 48%, rgba(212,175,55,0.3) 49%, rgba(212,175,55,0.1) 60%, transparent 61%)` }} />
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black border-2 border-yellow-500/50" />
