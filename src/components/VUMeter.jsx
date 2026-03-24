@@ -68,19 +68,23 @@ export function VUMeter({ analyserData, isPlaying }) {
   const peakHoldR = useRef(0);
 
   const dbToAngle = useCallback((db) => {
+    if (!isFinite(db)) return calibration.zeroOffset;
     const zeroOffset = calibration.zeroOffset;
     const arcRange = 110 * calibration.amplitudeRange;
     const clampedDb = Math.max(MIN_DB, Math.min(MAX_DB, db));
     const normalized = (clampedDb - MIN_DB) / (MAX_DB - MIN_DB);
-    return zeroOffset + normalized * arcRange;
-  }, [calibration.zeroOffset, calibration.amplitudeRange, MIN_DB, MAX_DB]);
+    const result = zeroOffset + normalized * arcRange;
+    return isFinite(result) ? result : calibration.zeroOffset;
+  }, [calibration.zeroOffset, calibration.amplitudeRange]);
 
   const amplitudeToDb = useCallback((amplitude) => {
-    if (amplitude <= 0) return MIN_DB;
+    if (!isFinite(amplitude) || amplitude <= 0) return MIN_DB;
     const db = 20 * Math.log10(amplitude / 255);
+    if (!isFinite(db)) return MIN_DB;
     const gainMultiplier = Math.pow(10, calibration.inputGain / 20);
-    return db * gainMultiplier;
-  }, [calibration.inputGain]);
+    const result = db * gainMultiplier;
+    return isFinite(result) ? result : MIN_DB;
+  }, [calibration.inputGain, MIN_DB]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -182,6 +186,11 @@ export function VUMeter({ analyserData, isPlaying }) {
     };
 
     const animate = () => {
+      if (!w || !h || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      
       ctx.clearRect(0, 0, w, h);
 
       const vu1 = drawVU(w * 0.25, vuBgL);
@@ -191,8 +200,13 @@ export function VUMeter({ analyserData, isPlaying }) {
         const leftAvg = Array.from(analyserData).slice(0, 16).reduce((a, v) => a + v, 0) / 16;
         const rightAvg = Array.from(analyserData).slice(16, 32).reduce((a, v) => a + v, 0) / 16;
         
-        targetAngleL.current = dbToAngle(amplitudeToDb(leftAvg));
-        targetAngleR.current = dbToAngle(amplitudeToDb(rightAvg));
+        const leftDb = amplitudeToDb(leftAvg);
+        const rightDb = amplitudeToDb(rightAvg);
+        
+        if (isFinite(leftDb) && isFinite(rightDb)) {
+          targetAngleL.current = dbToAngle(leftDb);
+          targetAngleR.current = dbToAngle(rightDb);
+        }
 
         if (targetAngleL.current > peakL.current) {
           peakL.current = targetAngleL.current;
