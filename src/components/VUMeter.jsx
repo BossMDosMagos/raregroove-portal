@@ -1,11 +1,12 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 
 const MIN_DB = -60;
-const MAX_DB = 3;
+const MAX_DB = 0;
+const GAIN_OFFSET = -6;
 const MIN_ANGLE = -55;
 const MAX_ANGLE = 55;
-const DAMPING = 0.15;
-const PICO_DAMPING = 0.05;
+const DAMPING = 0.18;
+const PICO_DAMPING = 0.03;
 
 export function VUMeter({ analyserData, isPlaying }) {
   const [vuBgL, setVuBgL] = useState(null);
@@ -54,7 +55,7 @@ export function VUMeter({ analyserData, isPlaying }) {
 
   const amplitudeToDb = useCallback((amplitude) => {
     if (amplitude <= 0) return MIN_DB;
-    return 20 * Math.log10(amplitude / 255);
+    return 20 * Math.log10(amplitude / 255) + GAIN_OFFSET;
   }, []);
 
   useEffect(() => {
@@ -98,15 +99,15 @@ export function VUMeter({ analyserData, isPlaying }) {
 
     const drawNeedle = (arcCenterX, arcCenterY, arcRadius, angle) => {
       const angleRad = (angle - 90) * (Math.PI / 180);
-      const needleLength = arcRadius - 14;
+      const needleLength = arcRadius - 8;
       
-      const baseX = arcCenterX + Math.cos(angleRad) * 6;
-      const baseY = arcCenterY + Math.sin(angleRad) * 6;
+      const baseX = arcCenterX + Math.cos(angleRad) * 5;
+      const baseY = arcCenterY + Math.sin(angleRad) * 5;
       const tipX = arcCenterX + Math.cos(angleRad) * needleLength;
       const tipY = arcCenterY + Math.sin(angleRad) * needleLength;
 
       const perpRad = angleRad + Math.PI / 2;
-      const baseWidth = 2;
+      const baseWidth = 1;
 
       ctx.save();
       ctx.shadowColor = 'rgba(180, 20, 20, 0.6)';
