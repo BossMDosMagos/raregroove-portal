@@ -312,35 +312,49 @@ Carrossel 3D estilo Wii com player nativo integrado. Interface principal do Groo
 ### Funcionalidades Implementadas
 
 #### 1. Super Card (Modal de Álbum)
-- Clique na capa do álbum abre modal completo
+- Botão "VER DETALHES" abaixo da capa central abre modal
 - Exibe: título, artista, ano, país, labels, gênero, formato
 - Notas (description) do Discogs
 - Tracklist completa com scroll interno
 - Botão "Ouvir Álbum" para reprodução
-- z-index 100 para garantir abertura
+- z-index 99999 para garantir abertura
+- Proteção contra erros em dados undefined/null
 
 #### 2. Playlist com Seleção Individual
 - Cada faixa é botão clicável
-- Highlight da faixa ativa (borda roxa + bg fuchsia/30)
-- Ícone "playing" animado para faixa em reprodução
-- reprodução direta ao clicar na faixa
+- Highlight da faixa ativa (borda dourada + bg yellow/30)
+- Animação de equalizer para faixa em reprodução
+- Reprodução direta ao clicar na faixa
 
 #### 3. Álbuns Multi-Disco
 - Parse da posição Discogs: "1-1", "2-3" → discNumber + trackNumber
-- Agrupamento por disco com cabeçalhos "DISCO 1", "DISCO 2"
+- Agrupamento por disco com cabeçalhos "CD 1", "CD 2"
 - Numeração correta de faixas por CD
 - "(X discos)" exibido no header quando multi-disco
 - Ordenação: disco → número da faixa
 
 #### 4. Tracklist Completa
-- Removido limite de "+X faixas"
-- Todas as faixas visíveis com scroll interno (max-h-80)
+- Todas as faixas visíveis com scroll interno (max-h-64 no modal)
 - Ordenação cronológica por disc_number + track_number
+- Proteção com Array.isArray() para evitar erros
 
-#### 5. Tratamento de Erros
-- AbortController para cancelamento limpo de requests
-- Tratamento de AbortError no getPresignedUrl
-- Evita conflitos ao trocar de faixa rapidamente
+#### 5. Imagens e Placeholder
+- Proxy de imagem via Edge Function discogs-search
+- Placeholder SVG de luxo (vinil preto com detalhes dourados)
+- Fallback automático quando proxy falha
+
+#### 6. CD Rotating Animation (REMOVIDA)
+- Animação de CD girando foi removida completamente
+- Não há mais overlay sobre a capa central
+
+### Proteção de Dados
+```javascript
+const rawTracklist = Array.isArray(grooveflixData.tracklist) ? grooveflixData.tracklist : [];
+const audioFiles = Array.isArray(grooveflixData.audio_files) ? grooveflixData.audio_files : [];
+const sortedTracklist = Array.isArray(rawTracklist) ? [...rawTracklist].sort(...) : [];
+const groupedTracks = sortedTracklist.reduce((acc, track) => {...}, {});
+const discKeys = Object.keys(groupedTracks || {}).sort(...);
+```
 
 ### Estrutura de Dados (Tracklist)
 ```javascript
@@ -535,7 +549,7 @@ CLOUDFLARE_API_TOKEN=cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 
 ---
 
-*Última atualização: 2026-03-24 01:45 UTC-3*
+*Última atualização: 2026-03-24 02:50 UTC-3*
 
 ---
 
