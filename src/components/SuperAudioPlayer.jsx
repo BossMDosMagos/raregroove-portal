@@ -295,7 +295,7 @@ export function SuperAudioPlayer() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[99999] w-[380px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-[99999] w-[400px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
       <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
         <div className="w-9 h-9 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
           <Disc3 className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
@@ -320,61 +320,75 @@ export function SuperAudioPlayer() {
         </div>
       </div>
 
-      <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/60 to-transparent">
+      <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/80 to-transparent">
         <div className="flex items-center justify-center gap-4">
-          <div className="relative w-[130px] h-[50px]">
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-[#2a2520] to-[#1a1510] border border-yellow-900/50 shadow-inner" />
-            <div className="absolute inset-x-2 top-1 flex justify-between text-[6px] text-yellow-600/70 font-bold">
+          <div className="relative w-[145px] h-[75px] rounded-lg overflow-hidden shadow-lg" style={{
+            background: 'linear-gradient(180deg, #f5f5dc 0%, #e8e8d0 50%, #d4d4c0 100%)',
+            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 15px rgba(255,220,100,0.2), 0 0 30px rgba(255,200,50,0.1)'
+          }}>
+            <div className="absolute inset-x-2 top-2 flex justify-between text-[7px] text-black font-bold tracking-tight">
+              <span>+3</span>
               <span>0</span>
               <span>-3</span>
               <span>-6</span>
               <span>-12</span>
               <span>-20</span>
             </div>
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 130 50">
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
               <defs>
-                <linearGradient id="needleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#d4af37"/>
-                  <stop offset="100%" stopColor="#8b6914"/>
+                <linearGradient id="glowRed" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ff0000" stopOpacity="0.8"/>
+                  <stop offset="100%" stopColor="#cc0000" stopOpacity="0.4"/>
                 </linearGradient>
+                <filter id="redGlow">
+                  <feGaussianBlur stdDeviation="1" result="blur"/>
+                  <feMerge>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
-              <path d="M 15 45 Q 65 5 115 45" fill="none" stroke="#3a3530" strokeWidth="1"/>
-              <path d="M 15 45 Q 65 8 115 45" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3"/>
-              <line x1="65" y1="45" x2="65" y2="45" stroke="#8b6914" strokeWidth="2" className="origin-bottom" style={{
-                transform: `rotate(${-45 + (Array.from(analyserData).slice(0, 16).reduce((a, v) => a + (v / 255), 0) / 16) * 90}deg)`,
-                transformOrigin: '65px 45px',
-                transition: 'transform 0.05s ease-out'
+              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.3"/>
+              <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
+              <line x1="72" y1="68" x2="72" y2="68" stroke="#cc0000" strokeWidth="2.5" filter="url(#redGlow)" style={{
+                transform: `rotate(${-50 + (Array.from(analyserData).slice(0, 16).reduce((a, v) => a + (v / 255), 0) / 16) * 100}deg)`,
+                transformOrigin: '72px 68px',
+                transition: 'transform 0.08s ease-out'
               }}/>
-              <circle cx="65" cy="45" r="3" fill="#d4af37"/>
+              <circle cx="72" cy="68" r="4" fill="#cc0000" filter="url(#redGlow)"/>
+              <circle cx="72" cy="68" r="2" fill="#ff3333"/>
             </svg>
-            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-yellow-500/80">L</div>
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">L</div>
           </div>
 
-          <div className="relative w-[130px] h-[50px]">
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-b from-[#2a2520] to-[#1a1510] border border-yellow-900/50 shadow-inner" />
-            <div className="absolute inset-x-2 top-1 flex justify-between text-[6px] text-yellow-600/70 font-bold">
+          <div className="relative w-[145px] h-[75px] rounded-lg overflow-hidden shadow-lg" style={{
+            background: 'linear-gradient(180deg, #f5f5dc 0%, #e8e8d0 50%, #d4d4c0 100%)',
+            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 15px rgba(255,220,100,0.2), 0 0 30px rgba(255,200,50,0.1)'
+          }}>
+            <div className="absolute inset-x-2 top-2 flex justify-between text-[7px] text-black font-bold tracking-tight">
+              <span>+3</span>
               <span>0</span>
               <span>-3</span>
               <span>-6</span>
               <span>-12</span>
               <span>-20</span>
             </div>
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 130 50">
-              <path d="M 15 45 Q 65 5 115 45" fill="none" stroke="#3a3530" strokeWidth="1"/>
-              <path d="M 15 45 Q 65 8 115 45" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3"/>
-              <line x1="65" y1="45" x2="65" y2="45" stroke="#8b6914" strokeWidth="2" className="origin-bottom" style={{
-                transform: `rotate(${-45 + (Array.from(analyserData).slice(16, 32).reduce((a, v) => a + (v / 255), 0) / 16) * 90}deg)`,
-                transformOrigin: '65px 45px',
-                transition: 'transform 0.05s ease-out'
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 145 75">
+              <path d="M 20 68 Q 72 8 124 68" fill="none" stroke="#1a1a1a" strokeWidth="0.8" opacity="0.3"/>
+              <path d="M 20 68 Q 72 12 124 68" fill="none" stroke="#333" strokeWidth="0.5" opacity="0.2"/>
+              <line x1="72" y1="68" x2="72" y2="68" stroke="#cc0000" strokeWidth="2.5" filter="url(#redGlow)" style={{
+                transform: `rotate(${-50 + (Array.from(analyserData).slice(16, 32).reduce((a, v) => a + (v / 255), 0) / 16) * 100}deg)`,
+                transformOrigin: '72px 68px',
+                transition: 'transform 0.08s ease-out'
               }}/>
-              <circle cx="65" cy="45" r="3" fill="#d4af37"/>
+              <circle cx="72" cy="68" r="4" fill="#cc0000" filter="url(#redGlow)"/>
+              <circle cx="72" cy="68" r="2" fill="#ff3333"/>
             </svg>
-            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-yellow-500/80">R</div>
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-black text-red-700 tracking-widest">R</div>
           </div>
         </div>
-        <div className="flex justify-center gap-8 mt-1">
-          <span className="text-[7px] text-yellow-600/50 font-bold">VU</span>
-          <span className="text-[7px] text-yellow-600/50 font-bold">STEREO</span>
+        <div className="flex justify-center gap-4 mt-1">
+          <span className="text-[8px] text-yellow-500/70 font-bold tracking-widest">◉ VU STEREO ◉</span>
         </div>
       </div>
 
