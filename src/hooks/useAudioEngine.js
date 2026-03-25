@@ -98,10 +98,24 @@ export function useAudioEngine() {
       cancelAnimationFrame(requestRef.current);
     }
 
-    const ctx = Howler.ctx;
-    if (!ctx || ctx.state !== 'running') return;
-
     const loop = () => {
+      const ctx = Howler.ctx;
+      if (!ctx) {
+        requestRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+        requestRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (ctx.state !== 'running') {
+        requestRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
       const analyserL = analyserLeftRef.current;
       const analyserR = analyserRightRef.current;
 
@@ -192,15 +206,15 @@ export function useAudioEngine() {
     masterGain.connect(ctx.destination);
     masterGain.connect(splitter);
 
-    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
-      Howler.masterGain.disconnect();
-      Howler.masterGain.connect(masterGain);
-      Howler.masterGain._connectedToSplitter = true;
-    }
-
     const preAmp = ctx.createGain();
     preAmp.gain.value = 1;
     preAmpRef.current = preAmp;
+
+    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
+      Howler.masterGain.disconnect();
+      Howler.masterGain.connect(preAmp);
+      Howler.masterGain._connectedToSplitter = true;
+    }
 
     const eqFilters = EQ_FREQUENCIES.map((freq, i) => {
       const filter = ctx.createBiquadFilter();
@@ -254,13 +268,17 @@ export function useAudioEngine() {
         pool: 1,
         autoplay: false,
         preload: true,
-        onplay: () => {
+        onplay: async () => {
           setIsPlaying(true);
           isPlayingRef.current = true;
           
           const ctx = Howler.ctx;
           if (ctx?.state === 'suspended') {
-            ctx.resume();
+            try {
+              await ctx.resume();
+            } catch {
+              // ignore resume failures; loop will retry
+            }
           }
 
           if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
@@ -316,7 +334,11 @@ export function useAudioEngine() {
   const play = useCallback(async () => {
     const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
-      await ctx.resume();
+      try {
+        await ctx.resume();
+      } catch {
+        // ignore resume failures; startAnimationLoop treats suspended state
+      }
     }
 
     if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
