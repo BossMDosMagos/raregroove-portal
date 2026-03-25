@@ -93,7 +93,7 @@ export function useAudioEngine() {
   const requestRef = useRef(null);
 
   const initAudioContext = useCallback(() => {
-    if (isInitialized && audioContextRef.current) return audioContextRef.current;
+    if (audioContextRef.current && isInitialized) return audioContextRef.current;
 
     Howler.autoSuspend = false;
     let ctx = Howler.ctx;
@@ -102,10 +102,15 @@ export function useAudioEngine() {
       ctx = Howler.ctx;
     }
     if (!ctx) {
-      throw new Error('Howler audio context not initialized');
+      console.warn('Howler ctx not ready, creating new one');
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
     audioContextRef.current = ctx;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
 
     if (!channelSplitter) {
       channelSplitter = ctx.createChannelSplitter(2);
@@ -124,28 +129,19 @@ export function useAudioEngine() {
     }
 
     if (!masterGainNode) {
-      if (Howler.masterGain) {
-        masterGainNode = Howler.masterGain;
-        
-        const hasSplitter = masterGainNode._hasVuSplitter;
-        if (!hasSplitter) {
-          masterGainNode.disconnect();
-          masterGainNode.connect(ctx.destination);
-          masterGainNode.connect(channelSplitter);
-          
-          channelSplitter.connect(analyserLeft, 0);
-          channelSplitter.connect(analyserRight, 1);
-          
-          masterGainNode._hasVuSplitter = true;
-        }
-      } else {
-        masterGainNode = ctx.createGain();
-        masterGainNode.gain.value = Howler.volume();
-        masterGainNode.connect(ctx.destination);
-        masterGainNode.connect(channelSplitter);
-        channelSplitter.connect(analyserLeft, 0);
-        channelSplitter.connect(analyserRight, 1);
-      }
+      masterGainNode = ctx.createGain();
+      masterGainNode.gain.value = Howler.volume();
+
+      masterGainNode.connect(ctx.destination);
+      masterGainNode.connect(channelSplitter);
+      channelSplitter.connect(analyserLeft, 0);
+      channelSplitter.connect(analyserRight, 1);
+    }
+
+    if (Howler.masterGain && !Howler.masterGain._hasVuSplitter) {
+      Howler.masterGain.disconnect();
+      Howler.masterGain.connect(masterGainNode);
+      Howler.masterGain._hasVuSplitter = true;
     }
 
     timeDomainLeftRef.current = new Float32Array(analyserLeft.fftSize);
@@ -337,9 +333,10 @@ export function useAudioEngine() {
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
     volumeRef.current = vol;
-    if (Howler.masterGain) {
-      Howler.masterGain.gain.setTargetAtTime(vol, audioContextRef.current?.currentTime || 0, 0.01);
+    if (masterGainNode) {
+      masterGainNode.gain.setTargetAtTime(vol, audioContextRef.current?.currentTime || 0, 0.01);
     }
+    Howler.volume(vol);
     if (howlRef.current) {
       howlRef.current.volume(vol);
     }

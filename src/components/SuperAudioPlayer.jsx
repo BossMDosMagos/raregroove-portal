@@ -85,6 +85,12 @@ export function SuperAudioPlayer() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (isAuthenticated && !isReady) {
+      initAudioContext();
+    }
+  }, [isAuthenticated, isReady, initAudioContext]);
+
   const hydrateAndPlayRef = useRef(null);
 
   const hydrateAndPlay = useCallback(async (index) => {
