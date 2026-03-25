@@ -145,12 +145,17 @@ export function useAudioEngine() {
 
   useEffect(() => {
     let loopId;
-    let frameCount = 0;
     const loop = () => {
       const analyser = analyserRef.current;
-      const ctx = audioContextRef.current;
+      const ctx = Howler.ctx;
 
-      console.log('VU Loop running, ctx state:', ctx?.state);
+      if (!ctx || ctx.state === 'closed') {
+        console.log('VU Loop stopping - ctx closed');
+        loopId = requestAnimationFrame(loop);
+        return;
+      }
+
+      console.log('VU Loop running, ctx state:', ctx.state);
 
       if (analyser && ctx) {
         const freqData = new Uint8Array(analyser.frequencyBinCount);
@@ -242,10 +247,11 @@ export function useAudioEngine() {
   const play = useCallback(async () => {
     if (!howlRef.current) return;
 
-    const ctx = audioContextRef.current;
+    const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
+    console.log('Play called, ctx state:', ctx?.state);
 
     howlRef.current.play();
     setIsPlaying(true);
