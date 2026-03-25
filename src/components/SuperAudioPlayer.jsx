@@ -86,10 +86,10 @@ export function SuperAudioPlayer() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && !isReady) {
+    if (!isReady) {
       initAudioContext();
     }
-  }, [isAuthenticated, isReady, initAudioContext]);
+  }, [isReady, initAudioContext]);
 
   const hydrateAndPlayRef = useRef(null);
 
