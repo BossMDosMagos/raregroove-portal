@@ -63,6 +63,25 @@ export function useAudioEngine() {
   const timeDomainBufferRef = useRef(null);
   const eqFiltersRef = useRef([]);
   const preAmpRef = useRef(null);
+  const volumeRef = useRef(0.8);
+  const isPlayingRef = useRef(false);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(0.8);
+  const [pan, setPanState] = useState(0);
+  const [preAmp, setPreAmpState] = useState(0);
+  const [eqBands, setEqBands] = useState(() => 
+    Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0]))
+  );
+  const [loopMode, setLoopModeState] = useState('none');
+  const [shuffle, setShuffleState] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [analyserData, setAnalyserData] = useState(new Uint8Array(128));
+  const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
+  const panRef = useRef(0);
+  const queueRef = useRef([]);
 
   const initAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
