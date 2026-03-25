@@ -64,12 +64,15 @@ export function useAudioEngine() {
   const volumeRef = useRef(0.8);
   const isPlayingRef = useRef(false);
   
+  const splitterRef = useRef(null);
   const analyserLeftRef = useRef(null);
   const analyserRightRef = useRef(null);
+  const masterGainRef = useRef(null);
   const timeDomainLeftRef = useRef(null);
   const timeDomainRightRef = useRef(null);
-  const masterGainRef = useRef(null);
-  const splitterRef = useRef(null);
+
+  const requestRef = useRef(null);
+  const isInitializedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -85,14 +88,67 @@ export function useAudioEngine() {
   const [isReady, setIsReady] = useState(false);
   const [analyserData, setAnalyserData] = useState(new Uint8Array(128));
   const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
+  
   const panRef = useRef(0);
-  const queueRef = useRef([]);
   const preAmpRefState = useRef(0);
   const eqBandsRef = useRef(Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0])));
-  const requestRef = useRef(null);
+
+  const startAnimationLoop = useCallback(() => {
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+    }
+
+    const ctx = Howler.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+
+    const loop = () => {
+      const analyserL = analyserLeftRef.current;
+      const analyserR = analyserRightRef.current;
+
+      if (!analyserL || !analyserR) {
+        requestRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      const timeL = timeDomainLeftRef.current;
+      const timeR = timeDomainRightRef.current;
+
+      if (timeL && timeR) {
+        analyserL.getFloatTimeDomainData(timeL);
+        analyserR.getFloatTimeDomainData(timeR);
+
+        const combinedTime = new Float32Array(timeL.length + timeR.length);
+        combinedTime.set(timeL, 0);
+        combinedTime.set(timeR, timeL.length);
+        setTimeDomainData(combinedTime);
+
+        const freqL = new Uint8Array(analyserL.frequencyBinCount);
+        const freqR = new Uint8Array(analyserR.frequencyBinCount);
+        analyserL.getByteFrequencyData(freqL);
+        analyserR.getByteFrequencyData(freqR);
+
+        const combinedFreq = new Uint8Array(freqL.length);
+        for (let i = 0; i < combinedFreq.length; i++) {
+          combinedFreq[i] = Math.max(freqL[i], freqR[i]);
+        }
+        setAnalyserData(combinedFreq);
+      }
+
+      requestRef.current = requestAnimationFrame(loop);
+    };
+
+    requestRef.current = requestAnimationFrame(loop);
+  }, []);
+
+  const stopAnimationLoop = useCallback(() => {
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+      requestRef.current = null;
+    }
+  }, []);
 
   const initAudioContext = useCallback(() => {
-    if (audioContextRef.current) return audioContextRef.current;
+    if (isInitializedRef.current && audioContextRef.current) return audioContextRef.current;
 
     Howler.autoSuspend = false;
     let ctx = Howler.ctx;
@@ -101,8 +157,7 @@ export function useAudioEngine() {
       ctx = Howler.ctx;
     }
     if (!ctx) {
-      console.warn('Creating new AudioContext');
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      return null;
     }
 
     audioContextRef.current = ctx;
@@ -127,17 +182,20 @@ export function useAudioEngine() {
     timeDomainLeftRef.current = new Float32Array(analyserL.fftSize);
     timeDomainRightRef.current = new Float32Array(analyserR.fftSize);
 
+    splitter.connect(analyserL, 0);
+    splitter.connect(analyserR, 1);
+
     const masterGain = ctx.createGain();
     masterGain.gain.value = Howler.volume();
     masterGainRef.current = masterGain;
 
     masterGain.connect(ctx.destination);
     masterGain.connect(splitter);
-    splitter.connect(analyserL, 0);
-    splitter.connect(analyserR, 1);
 
-    if (Howler.masterGain) {
+    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
+      Howler.masterGain.disconnect();
       Howler.masterGain.connect(masterGain);
+      Howler.masterGain._connectedToSplitter = true;
     }
 
     const preAmp = ctx.createGain();
@@ -167,68 +225,9 @@ export function useAudioEngine() {
     preAmp.connect(eqFilters[0]);
     eqFilters[eqFilters.length - 1].connect(masterGain);
 
+    isInitializedRef.current = true;
     setIsReady(true);
-    console.log('Audio Engine Ready: Splitter connected to analysers');
     return ctx;
-  }, []);
-
-  useEffect(() => {
-    let running = true;
-
-    const loop = () => {
-      if (!running) return;
-
-      const ctx = Howler.ctx || audioContextRef.current;
-      const analyserL = analyserLeftRef.current;
-      const analyserR = analyserRightRef.current;
-
-      if (!ctx || ctx.state !== 'running') {
-        if (ctx && ctx.state === 'suspended') {
-          ctx.resume();
-        }
-        requestRef.current = requestAnimationFrame(loop);
-        return;
-      }
-
-      if (analyserL && analyserR) {
-        const timeL = timeDomainLeftRef.current;
-        const timeR = timeDomainRightRef.current;
-
-        if (timeL && timeR) {
-          analyserL.getFloatTimeDomainData(timeL);
-          analyserR.getFloatTimeDomainData(timeR);
-          
-          console.log('Dados L:', timeL[0]?.toFixed(4), 'Dados R:', timeR[0]?.toFixed(4));
-
-          const combinedTime = new Float32Array(timeL.length + timeR.length);
-          combinedTime.set(timeL, 0);
-          combinedTime.set(timeR, timeL.length);
-          setTimeDomainData(combinedTime);
-
-          const freqL = new Uint8Array(analyserL.frequencyBinCount);
-          const freqR = new Uint8Array(analyserR.frequencyBinCount);
-          analyserL.getByteFrequencyData(freqL);
-          analyserR.getByteFrequencyData(freqR);
-          
-          const combinedFreq = new Uint8Array(freqL.length);
-          for (let i = 0; i < combinedFreq.length; i++) {
-            combinedFreq[i] = Math.max(freqL[i], freqR[i]);
-          }
-          setAnalyserData(combinedFreq);
-        }
-      }
-
-      requestRef.current = requestAnimationFrame(loop);
-    };
-
-    requestRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      running = false;
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-    };
   }, []);
 
   const loadTrack = useCallback(async (url, autoplay = true) => {
@@ -239,6 +238,8 @@ export function useAudioEngine() {
 
     Howler.autoSuspend = false;
     const ctx = initAudioContext();
+    if (!ctx) return Promise.reject(new Error('Audio context not ready'));
+
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
@@ -247,6 +248,7 @@ export function useAudioEngine() {
       const howl = new Howl({
         src: [url],
         html5: false,
+        xhr: { withCredentials: false },
         volume: volumeRef.current,
         loop: loopMode === 'track',
         pool: 1,
@@ -255,17 +257,33 @@ export function useAudioEngine() {
         onplay: () => {
           setIsPlaying(true);
           isPlayingRef.current = true;
-          const ctx = Howler.ctx || audioContextRef.current;
-          if (ctx?.state === 'suspended') ctx.resume();
+          
+          const ctx = Howler.ctx;
+          if (ctx?.state === 'suspended') {
+            ctx.resume();
+          }
+
+          if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
+            const masterGain = masterGainRef.current;
+            if (masterGain) {
+              Howler.masterGain.disconnect();
+              Howler.masterGain.connect(masterGain);
+              Howler.masterGain._connectedToSplitter = true;
+            }
+          }
+
+          startAnimationLoop();
         },
         onpause: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
+          stopAnimationLoop();
         },
         onstop: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
           setCurrentTime(0);
+          stopAnimationLoop();
         },
         onseek: (id) => {
           const pos = howl.seek(id);
@@ -290,30 +308,41 @@ export function useAudioEngine() {
       });
 
       howlRef.current = howl;
-
       setCurrentTime(0);
       setDuration(0);
     });
-  }, [loopMode, initAudioContext]);
+  }, [loopMode, initAudioContext, startAnimationLoop, stopAnimationLoop]);
 
   const play = useCallback(async () => {
-    const ctx = Howler.ctx || audioContextRef.current;
+    const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
+
+    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
+      const masterGain = masterGainRef.current;
+      if (masterGain) {
+        Howler.masterGain.disconnect();
+        Howler.masterGain.connect(masterGain);
+        Howler.masterGain._connectedToSplitter = true;
+      }
+    }
+
     if (howlRef.current) {
       howlRef.current.play();
       setIsPlaying(true);
       isPlayingRef.current = true;
+      startAnimationLoop();
     }
-  }, []);
+  }, [startAnimationLoop]);
 
   const pause = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.pause();
     setIsPlaying(false);
     isPlayingRef.current = false;
-  }, []);
+    stopAnimationLoop();
+  }, [stopAnimationLoop]);
 
   const stop = useCallback(() => {
     if (!howlRef.current) return;
@@ -321,7 +350,8 @@ export function useAudioEngine() {
     setIsPlaying(false);
     isPlayingRef.current = false;
     setCurrentTime(0);
-  }, []);
+    stopAnimationLoop();
+  }, [stopAnimationLoop]);
 
   const seek = useCallback((time) => {
     if (!howlRef.current) return;
@@ -415,6 +445,7 @@ export function useAudioEngine() {
   }, [shuffle, loopMode]);
 
   const dispose = useCallback(() => {
+    stopAnimationLoop();
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
@@ -424,7 +455,7 @@ export function useAudioEngine() {
     setCurrentTime(0);
     setDuration(0);
     setIsReady(false);
-  }, []);
+  }, [stopAnimationLoop]);
 
   useEffect(() => {
     return () => {
