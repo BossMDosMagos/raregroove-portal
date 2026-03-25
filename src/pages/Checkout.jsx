@@ -180,8 +180,6 @@ export default function Checkout() {
           icon: QrCode 
         });
         
-        console.log('[Checkout] Gateways disponíveis:', available.map(a => a.id));
-        
         setAvailableGateways(available);
 
         // Padrão: Mercado Pago
@@ -224,7 +222,7 @@ export default function Checkout() {
 
       if (error) throw error;
 
-      toast.success('Compra realizada com sucesso! 🎉', {
+      toast.success('Compra realizada com sucesso!', {
         description: 'O vendedor foi notificado.',
         duration: 5000,
       });
@@ -237,7 +235,6 @@ export default function Checkout() {
       }, 2000);
 
     } catch (error) {
-      console.error('Erro ao processar transação:', error);
       toast.error('Erro ao finalizar compra', {
         description: error.message || 'Tente novamente ou entre em contato com o suporte'
       });
@@ -248,7 +245,6 @@ export default function Checkout() {
   };
 
   const handlePaymentError = (error) => {
-    console.error('Erro no pagamento:', error);
     toast.error('Erro no pagamento', {
       description: error.message || 'Verifique seus dados e tente novamente'
     });

@@ -27,7 +27,7 @@ export function SubscriptionProvider({ children }) {
           .eq('id', user.id)
           .single()
           .then(({ data, error }) => {
-            if (error) console.warn('[SubscriptionContext] Erro ao buscar perfil:', error);
+            if (error) return { data };
             return { data };
           }),
         supabase
@@ -36,7 +36,7 @@ export function SubscriptionProvider({ children }) {
           .eq('is_active', true)
           .order('user_level', { ascending: true })
           .then(({ data, error }) => {
-            if (error) console.warn('[SubscriptionContext] Erro ao buscar planos:', error);
+            if (error) return { data };
             return { data };
           }),
         supabase
@@ -46,7 +46,7 @@ export function SubscriptionProvider({ children }) {
           .limit(1)
           .maybeSingle()
           .then(({ data, error }) => {
-            if (error) console.warn('[SubscriptionContext] Erro ao buscar settings:', error);
+            if (error) return { data };
             return { data };
           }),
       ]);

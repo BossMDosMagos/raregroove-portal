@@ -1,7 +1,6 @@
 import React from 'react';
 
 export default function Maintenance() {
-  console.log("Renderizando Pagina de Manutencao Simplificada");
   return (
     <div style={{ 
       display: 'flex', 

@@ -63,8 +63,6 @@ export default function ReviewModal({
       onClose();
 
     } catch (error) {
-      console.error('Erro ao enviar avaliação:', error);
-      
       if (error.code === '23505') {
         toast.error('Você já avaliou esta transação', {
           style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },

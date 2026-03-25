@@ -21,8 +21,6 @@ Sentry.init({
   
   beforeSend(event, hint) {
     if (import.meta.env.DEV) {
-      console.log('[Sentry] Event:', event);
-      console.log('[Sentry] Hint:', hint);
       return null;
     }
     

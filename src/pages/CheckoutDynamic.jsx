@@ -99,8 +99,8 @@ export default function CheckoutDynamic() {
         
         try {
           await refresh();
-        } catch (refreshError) {
-          console.warn('[CheckoutDynamic] Erro ao refresh subscription:', refreshError);
+        } catch {
+          // Silent fail
         }
 
         try {
@@ -140,17 +140,13 @@ export default function CheckoutDynamic() {
             name: 'PIX do Portal',
             icon: QrCode
           });
-
-          console.log('[CheckoutDynamic] Gateway disponíveis:', available.map(a => a.id));
           
           setAvailableGateways(available);
           setSelectedGateway('mercado_pago');
         } catch (settingsError) {
-          console.error('[CheckoutDynamic] Erro ao carregar settings:', settingsError);
           toast.error('Erro ao carregar configurações de pagamento');
         }
       } catch (e) {
-        console.error('[CheckoutDynamic] Erro ao iniciar checkout:', e);
         toast.error('Erro ao iniciar checkout', { description: e.message });
         navigate('/plans');
       } finally {

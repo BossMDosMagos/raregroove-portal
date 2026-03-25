@@ -100,7 +100,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       if (onRefresh) onRefresh();
       onClose();
     } catch (error) {
-      console.error("Erro detalhado:", error);
       toast.error(t('addItem.toast.error.title'), {
         description: error.message || t('addItem.toast.error.desc'),
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },

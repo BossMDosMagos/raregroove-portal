@@ -1471,11 +1471,9 @@ export function I18nProvider({ children, defaultLocale = 'pt-BR' }) {
           const rate = parseFloat(data.USDBRL.bid);
           if (!isNaN(rate) && rate > 0) {
             setExchangeRate(rate);
-            console.log('Taxa de câmbio atualizada:', rate);
           }
         }
-      } catch (error) {
-        console.error('Erro ao buscar taxa de câmbio:', error);
+      } catch {
         // Mantém o valor padrão em caso de erro
       }
     };

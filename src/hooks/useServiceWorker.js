@@ -15,7 +15,6 @@ export function useServiceWorker() {
     });
 
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      console.log('[SW] Registered:', reg.scope);
       setRegistration(reg);
 
       reg.addEventListener('updatefound', () => {
@@ -28,8 +27,8 @@ export function useServiceWorker() {
           });
         }
       });
-    }).catch((error) => {
-      console.error('[SW] Registration failed:', error);
+    }).catch(() => {
+      // SW registration failed silently
     });
   }, [isSupported]);
 
@@ -61,7 +60,6 @@ export function useServiceWorker() {
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
       return false;
     }
 
@@ -91,7 +89,6 @@ export function useServiceWorker() {
 
       const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
       if (!vapidPublicKey) {
-        console.warn('VAPID public key not configured');
         return null;
       }
 
@@ -110,8 +107,7 @@ export function useServiceWorker() {
       });
 
       return subscription;
-    } catch (error) {
-      console.error('Push subscription failed:', error);
+    } catch {
       return null;
     }
   };

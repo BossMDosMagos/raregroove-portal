@@ -63,7 +63,6 @@ export default function AdminSales() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          console.log(`✅ Encontrado status "${status}" com ${data.length} transações`);
           transactions = data;
           foundStatus = status;
           break;
@@ -71,7 +70,6 @@ export default function AdminSales() {
       }
 
       if (transactions.length === 0) {
-        console.log('⚠️ Nenhuma transação encontrada');
         setSales([]);
         setSellers([]);
         setStats({
@@ -166,14 +164,7 @@ export default function AdminSales() {
         marketplaceCommissions: commissionRevenue,
         averageTicket: enrichedTransactions.length > 0 ? totalRevenue / enrichedTransactions.length : 0
       });
-
-      console.log('✅ Dados carregados com sucesso:', { 
-        totalSales: enrichedTransactions.length, 
-        totalRevenue,
-        sellers: sellerList.length 
-      });
     } catch (error) {
-      console.error('❌ Erro ao carregar vendas:', error);
       toast.error(`Erro: ${error.message}`);
     } finally {
       setLoading(false);

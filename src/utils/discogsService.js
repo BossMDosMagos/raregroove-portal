@@ -9,8 +9,6 @@ async function callEdgeFunction(body) {
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token || SUPABASE_ANON_KEY;
 
-  console.log('[DISCOGS] Calling Edge Function with body:', JSON.stringify(body));
-
   const response = await fetch(`${SUPABASE_URL}/functions/v1/${DISCOGS_EDGE_FUNCTION}`, {
     method: 'POST',
     headers: {
@@ -21,16 +19,11 @@ async function callEdgeFunction(body) {
     body: JSON.stringify(body),
   });
 
-  console.log('[DISCOGS] Response status:', response.status);
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[DISCOGS] Error response:', errorText);
     throw new Error(`Edge Function error: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('[DISCOGS] Response data:', data);
   
   if (data.error) {
     throw new Error(data.error);
@@ -45,7 +38,6 @@ export const discogsService = {
       const data = await callEdgeFunction({ query, type: 'search', limit });
       return { data: data.data || [], error: null };
     } catch (error) {
-      console.error('[DISCOGS] Search error:', error);
       return { data: [], error };
     }
   },
@@ -55,7 +47,6 @@ export const discogsService = {
       const data = await callEdgeFunction({ type: 'release', releaseId });
       return { data: data.data, error: null };
     } catch (error) {
-      console.error('[DISCOGS] Get release error:', error);
       return { data: null, error };
     }
   },
@@ -65,7 +56,6 @@ export const discogsService = {
       const data = await callEdgeFunction({ type: 'master', releaseId: masterId });
       return { data: data.data, error: null };
     } catch (error) {
-      console.error('[DISCOGS] Get master error:', error);
       return { data: null, error };
     }
   },
@@ -75,7 +65,6 @@ export const discogsService = {
       const data = await callEdgeFunction({ type: 'artist', releaseId: artistId });
       return { data: data.data, error: null };
     } catch (error) {
-      console.error('[DISCOGS] Get artist error:', error);
       return { data: null, error };
     }
   },
@@ -140,7 +129,6 @@ export const discogsService = {
 
       return { data: item, error: null };
     } catch (error) {
-      console.error('[DISCOGS] Import from Discogs error:', error);
       return { data: null, error };
     }
   },
@@ -185,7 +173,6 @@ export const discogsService = {
 
       return { data: updated, error: null };
     } catch (error) {
-      console.error('[DISCOGS] Sync from Discogs error:', error);
       return { data: null, error };
     }
   },

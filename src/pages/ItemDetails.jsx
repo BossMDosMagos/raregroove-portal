@@ -129,7 +129,6 @@ export default function ItemDetails() {
               .rpc('is_elite_seller', { user_uuid: sellerId });
             
             if (error) {
-              console.warn('[ItemDetails] RPC is_elite_seller retornou erro:', error.code, error.message);
               if (error.code !== 'PGRST202' && error.code !== '42883') {
                 setIsElite(false);
               }
@@ -137,7 +136,6 @@ export default function ItemDetails() {
               setIsElite(Boolean(eliteData?.is_elite));
             }
           } catch (e) {
-            console.warn('[ItemDetails] Erro ao verificar elite seller:', e);
             setIsElite(false);
           }
         } else {

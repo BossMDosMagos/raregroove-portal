@@ -56,7 +56,6 @@ const GrooveflixCard = memo(function GrooveflixCard({ item, onPick, onDelete, ca
               className="w-full h-full object-cover"
               loading="lazy"
               onError={(e) => {
-                console.warn(`[COVER] 404 for item ${item.id}`);
                 e.target.style.display = 'none';
               }}
             />
@@ -114,8 +113,8 @@ function GrooveflixRow({ title, items, onPick, onDelete, canDelete }) {
           if (data?.url) {
             setCoverUrls(prev => ({ ...prev, [it.id]: data.url }));
           }
-        } catch (e) {
-          console.error('[COVER] Error:', it.id, e.message);
+        } catch {
+          // Silent fail
         } finally {
           setLoadingCovers(prev => {
             const next = new Set(prev);

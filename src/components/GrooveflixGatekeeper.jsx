@@ -15,15 +15,12 @@ export default function GrooveflixGatekeeper({ children }) {
         const { data, error } = await supabase.rpc('check_grooveflix_access');
         
         if (error) {
-          console.error('[GrooveflixGatekeeper] Erro ao verificar acesso:', error);
           setAccessData({ allowed: false, reason: 'error' });
           return;
         }
         
-        console.log('[GrooveflixGatekeeper] Resultado do acesso:', data);
         setAccessData(data);
-      } catch (err) {
-        console.error('[GrooveflixGatekeeper] Exceção:', err);
+      } catch {
         setAccessData({ allowed: false, reason: 'exception' });
       } finally {
         setLoading(false);
@@ -42,12 +39,7 @@ export default function GrooveflixGatekeeper({ children }) {
   }
 
   if (!accessData?.allowed) {
-    console.log('[GrooveflixGatekeeper] Acesso negado:', accessData?.reason);
     return <Navigate to="/plans?restricted=1" replace />;
-  }
-
-  if (accessData?.is_admin) {
-    console.log('[GrooveflixGatekeeper] Acesso admin concedido via bypass!');
   }
 
   return children;

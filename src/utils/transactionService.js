@@ -22,16 +22,13 @@ export const processPayment = async ({
   paymentMethod,
   shippingData
 }) => {
-  try {
-    // Calcular taxas
-    const platformFee = parseFloat((itemPrice * platformFeePercentage / 100).toFixed(2));
-    const processingFee = processingFeeFixed || 2.0;
-    const gatewayFee = parseFloat((itemPrice * gatewayFeePercentage / 100).toFixed(2));
-    const totalAmount = itemPrice + shippingCost + insuranceCost + processingFee + gatewayFee;
-    const netAmount = itemPrice - platformFee; // O que o vendedor recebe (bruto)
+  const platformFee = parseFloat((itemPrice * platformFeePercentage / 100).toFixed(2));
+  const processingFee = processingFeeFixed || 2.0;
+  const gatewayFee = parseFloat((itemPrice * gatewayFeePercentage / 100).toFixed(2));
+  const totalAmount = itemPrice + shippingCost + insuranceCost + processingFee + gatewayFee;
+  const netAmount = itemPrice - platformFee;
 
-    // 1. Criar registro na tabela transactions
-    const { data: transactionData, error: transactionError } = await supabase
+  const { data: transactionData, error: transactionError } = await supabase
       .from('transactions')
       .insert([
         {
@@ -113,7 +110,6 @@ export const processPayment = async ({
     });
 
     if (balanceError) {
-      console.error('Erro ao adicionar saldo pendente:', balanceError);
       // Fallback seguro se RPC não existir
       const { data: current } = await supabase
         .from('user_balances')
@@ -128,37 +124,32 @@ export const processPayment = async ({
         .eq('user_id', sellerId);
     }
 
-    // 5. Registrar na ledger financeira
-    await supabase
-      .from('financial_ledger')
-      .insert([
-        {
-          source_type: 'venda',
-          source_id: transactionData.id,
-          entry_type: 'venda_realizada',
-          amount: netAmount,
-          user_id: sellerId,
-          metadata: {
-            item_id: itemId,
-            buyer_id: buyerId,
-            platform_fee: platformFee,
-            gateway_fee: gatewayFee,
-            shipping_cost: shippingCost
-          }
+  await supabase
+    .from('financial_ledger')
+    .insert([
+      {
+        source_type: 'venda',
+        source_id: transactionData.id,
+        entry_type: 'venda_realizada',
+        amount: netAmount,
+        user_id: sellerId,
+        metadata: {
+          item_id: itemId,
+          buyer_id: buyerId,
+          platform_fee: platformFee,
+          gateway_fee: gatewayFee,
+          shipping_cost: shippingCost
         }
-      ]);
+      }
+    ]);
 
-    return {
-      success: true,
-      transactionId: transactionData.id,
-      shippingId: shippingId,
-      transaction: transactionData,
-      netAmount: netAmount
-    };
-  } catch (error) {
-    console.error('Erro ao processar pagamento:', error);
-    throw error;
-  }
+  return {
+    success: true,
+    transactionId: transactionData.id,
+    shippingId: shippingId,
+    transaction: transactionData,
+    netAmount: netAmount
+  };
 };
 
 /**
@@ -171,88 +162,77 @@ export const processSwapPayment = async ({
   swapGuaranteeAmount,
   platformSettings
 }) => {
-  try {
-    // Validar que swap existe e está pendente
-    const { data: swapData, error: swapError } = await supabase
-      .from('swaps')
-      .select('*')
-      .eq('swap_id', swapId)
-      .single();
+  const { data: swapData, error: swapError } = await supabase
+    .from('swaps')
+    .select('*')
+    .eq('swap_id', swapId)
+    .single();
 
-    if (swapError || !swapData) throw new Error('Swap não encontrado');
+  if (swapError || !swapData) throw new Error('Swap não encontrado');
 
-    if (swapData.status !== 'aguardando_taxas') {
-      throw new Error('Swap não está mais aguardando taxas');
-    }
+  if (swapData.status !== 'aguardando_taxas') {
+    throw new Error('Swap não está mais aguardando taxas');
+  }
 
-    // Determinar qual usuário está pagando
-    const isUser1 = swapData.user_1_id === userId;
-    const updateData = isUser1
-      ? { guarantee_fee_1_paid: true }
-      : { guarantee_fee_2_paid: true };
+  const isUser1 = swapData.user_1_id === userId;
+  const updateData = isUser1
+    ? { guarantee_fee_1_paid: true }
+    : { guarantee_fee_2_paid: true };
 
-    // 1. Marcar taxa como paga
-    const { error: updateError } = await supabase
-      .from('swaps')
-      .update(updateData)
-      .eq('swap_id', swapId);
+  const { error: updateError } = await supabase
+    .from('swaps')
+    .update(updateData)
+    .eq('swap_id', swapId);
 
-    if (updateError) throw updateError;
+  if (updateError) throw updateError;
 
-    // 2. Descontar valor da custódia do usuário
-    await ensureUserBalance(userId);
+  await ensureUserBalance(userId);
 
-    await supabase.rpc('deduct_from_balance', {
-      p_user_id: userId,
-      p_amount: swapGuaranteeAmount
-    });
+  await supabase.rpc('deduct_from_balance', {
+    p_user_id: userId,
+    p_amount: swapGuaranteeAmount
+  });
 
-    // 3. Registrar na ledger
-    await supabase
-      .from('financial_ledger')
-      .insert([
-        {
-          source_type: 'troca',
-          source_id: swapId,
-          entry_type: 'taxa_garantia_troca',
-          amount: swapGuaranteeAmount,
-          user_id: userId,
-          metadata: {
-            swap_id: swapId,
-            is_user_1: isUser1
-          }
+  await supabase
+    .from('financial_ledger')
+    .insert([
+      {
+        source_type: 'troca',
+        source_id: swapId,
+        entry_type: 'taxa_garantia_troca',
+        amount: swapGuaranteeAmount,
+        user_id: userId,
+        metadata: {
+          swap_id: swapId,
+          is_user_1: isUser1
         }
-      ]);
+      }
+    ]);
 
-    // 4. Verificar se ambos pagaram - se sim, muda status
-    const { data: updatedSwap } = await supabase
+  const { data: updatedSwap } = await supabase
+    .from('swaps')
+    .select('*')
+    .eq('swap_id', swapId)
+    .single();
+
+  if (updatedSwap.guarantee_fee_1_paid && updatedSwap.guarantee_fee_2_paid) {
+    await supabase
       .from('swaps')
-      .select('*')
-      .eq('swap_id', swapId)
-      .single();
-
-    if (updatedSwap.guarantee_fee_1_paid && updatedSwap.guarantee_fee_2_paid) {
-      await supabase
-        .from('swaps')
-        .update({ status: 'autorizado_envio' })
-        .eq('swap_id', swapId);
-
-      return {
-        success: true,
-        bothPaid: true,
-        message: 'Taxa paga! Aguardando confirmação do outro usuário...'
-      };
-    }
+      .update({ status: 'autorizado_envio' })
+      .eq('swap_id', swapId);
 
     return {
       success: true,
-      bothPaid: false,
-      message: 'Taxa de garantia registrada!'
+      bothPaid: true,
+      message: 'Taxa paga! Aguardando confirmação do outro usuário...'
     };
-  } catch (error) {
-    console.error('Erro ao processar taxa de swap:', error);
-    throw error;
   }
+
+  return {
+    success: true,
+    bothPaid: false,
+    message: 'Taxa de garantia registrada!'
+  };
 };
 
 /**
@@ -260,7 +240,7 @@ export const processSwapPayment = async ({
  */
 export const ensureUserBalance = async (userId) => {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('user_balances')
       .select('*')
       .eq('user_id', userId)
@@ -277,9 +257,8 @@ export const ensureUserBalance = async (userId) => {
           }
         ]);
     }
-  } catch (error) {
+  } catch {
     // Usuário pode já ter o registro
-    console.log('Erro ao garantir balance (pode ser normal):', error.message);
   }
 };
 
@@ -288,107 +267,87 @@ export const ensureUserBalance = async (userId) => {
  * Marca os itens como trocados e faz reversão de saldos
  */
 export const completeSwap = async (swapId) => {
-  try {
-    // TODO: Implementar lógica completa de conclusão de troca
-    // Por agora, apenas atualiza status
+  const { data, error } = await supabase
+    .from('swaps')
+    .update({ status: 'concluido', completed_at: new Date().toISOString() })
+    .eq('swap_id', swapId)
+    .select()
+    .single();
 
-    const { data, error } = await supabase
-      .from('swaps')
-      .update({ status: 'concluido', completed_at: new Date().toISOString() })
-      .eq('swap_id', swapId)
-      .select()
-      .single();
+  if (error) throw error;
 
-    if (error) throw error;
+  await supabase
+    .from('financial_ledger')
+    .insert([
+      {
+        source_type: 'troca',
+        source_id: swapId,
+        entry_type: 'troca_concluida',
+        amount: 0,
+        metadata: { swap_id: swapId }
+      }
+    ]);
 
-    // Registrar na ledger que troca foi concluída
-    await supabase
-      .from('financial_ledger')
-      .insert([
-        {
-          source_type: 'troca',
-          source_id: swapId,
-          entry_type: 'troca_concluida',
-          amount: 0,
-          metadata: { swap_id: swapId }
-        }
-      ]);
-
-    return data;
-  } catch (error) {
-    console.error('Erro ao completar troca:', error);
-    throw error;
-  }
+  return data;
 };
 
 /**
  * Cancelar transação e reembolsar
  */
 export const cancelTransaction = async (transactionId, reason) => {
-  try {
-    const { data: transaction, error: fetchError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('id', transactionId)
+  const { data: transaction, error: fetchError } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', transactionId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  await supabase
+    .from('transactions')
+    .update({ status: 'cancelado' })
+    .eq('id', transactionId);
+
+  await supabase
+    .from('items')
+    .update({ is_sold: false, sold_to_user_id: null })
+    .eq('id', transaction.item_id);
+
+  const { error: refundError } = await supabase.rpc('subtract_pending_balance', {
+    p_user_id: transaction.seller_id,
+    p_amount: transaction.net_amount
+  });
+
+  if (refundError) {
+    const { data: current } = await supabase
+      .from('user_balances')
+      .select('pending_balance')
+      .eq('user_id', transaction.seller_id)
       .single();
-
-    if (fetchError) throw fetchError;
-
-    // 1. Atualizar status para cancelado
+    
+    const newBalance = Math.max(0, (current?.pending_balance || 0) - transaction.net_amount);
     await supabase
-      .from('transactions')
-      .update({ status: 'cancelado' })
-      .eq('id', transactionId);
-
-    // 2. Reverter item de "vendido"
-    await supabase
-      .from('items')
-      .update({ is_sold: false, sold_to_user_id: null })
-      .eq('id', transaction.item_id);
-
-    // 3. Reembolsar saldo do vendedor - usar RPC para segurança
-    const { error: refundError } = await supabase.rpc('subtract_pending_balance', {
-      p_user_id: transaction.seller_id,
-      p_amount: transaction.net_amount
-    });
-
-    if (refundError) {
-      console.error('Erro ao reembolsar saldo via RPC:', refundError);
-      // Fallback
-      const { data: current } = await supabase
-        .from('user_balances')
-        .select('pending_balance')
-        .eq('user_id', transaction.seller_id)
-        .single();
-      
-      const newBalance = Math.max(0, (current?.pending_balance || 0) - transaction.net_amount);
-      await supabase
-        .from('user_balances')
-        .update({ pending_balance: newBalance })
-        .eq('user_id', transaction.seller_id);
-    }
-
-    // 4. Registrar cancelamento na ledger
-    await supabase
-      .from('financial_ledger')
-      .insert([
-        {
-          source_type: 'venda',
-          source_id: transactionId,
-          entry_type: 'cancelamento',
-          amount: -transaction.net_amount,
-          user_id: transaction.seller_id,
-          metadata: {
-            reason: reason
-          }
-        }
-      ]);
-
-    return { success: true };
-  } catch (error) {
-    console.error('Erro ao cancelar transação:', error);
-    throw error;
+      .from('user_balances')
+      .update({ pending_balance: newBalance })
+      .eq('user_id', transaction.seller_id);
   }
+
+  await supabase
+    .from('financial_ledger')
+    .insert([
+      {
+        source_type: 'venda',
+        source_id: transactionId,
+        entry_type: 'cancelamento',
+        amount: -transaction.net_amount,
+        user_id: transaction.seller_id,
+        metadata: {
+          reason: reason
+        }
+      }
+    ]);
+
+  return { success: true };
 };
 
 export default {

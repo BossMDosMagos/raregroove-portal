@@ -125,7 +125,6 @@ export default function MyItems() {
       setDeleteConfirmText('');
       fetchMyItems();
     } catch (error) {
-      console.error('Erro ao deletar:', error);
       toast.error(t('myItems.toast.deleteError.title'), {
         description: error.message || t('myItems.toast.deleteError.desc'),
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },

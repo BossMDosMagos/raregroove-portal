@@ -46,40 +46,33 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
   const active = activeIndex >= 0 ? tracks[activeIndex] : null;
 
   const presign = async ({ filePath, mode, filename, fileType = 'audio' }) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Sessão não disponível');
-      const { data, error } = await supabase.functions.invoke('b2-presign', {
-        body: { 
-          file_path: filePath, 
-          mode, 
-          filename: filename || undefined, 
-          type: fileType
-        },
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-      });
-      
-      console.log('[PRESIGN] Result:', error ? error.message : 'OK');
-      
-      if (error) {
-        const err = new Error(error.message);
-        err.code = error.code || null;
-        throw err;
-      }
-      
-      if (!data?.url) {
-        throw new Error('URL não retornada');
-      }
-      
-      return String(data.url);
-    } catch (e) {
-      console.error('[PRESIGN] Error:', e.message);
-      throw e;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('Sessão não disponível');
+    const { data, error } = await supabase.functions.invoke('b2-presign', {
+      body: { 
+        file_path: filePath, 
+        mode, 
+        filename: filename || undefined, 
+        type: fileType
+      },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+    });
+    
+    if (error) {
+      const err = new Error(error.message);
+      err.code = error.code || null;
+      throw err;
     }
+    
+    if (!data?.url) {
+      throw new Error('URL não retornada');
+    }
+    
+    return String(data.url);
   };
 
   const resolveAudioUrl = async ({ autoPlay, retries = 0 } = {}) => {
@@ -105,7 +98,6 @@ export default function GrooveflixPlayer({ queue, activeId, onChangeActiveId, on
       
       // CORREÇÃO: Retry automático em caso de erro
       if (retries < 2) {
-        console.log(`[PRESIGN] Tentando novamente... (tentativa ${retries + 1})`);
         setTimeout(() => resolveAudioUrl({ autoPlay, retries: retries + 1 }), 1000);
         setResolving(false);
         return;

@@ -22,83 +22,55 @@ import { loadStripe } from '@stripe/stripe-js';
  * @param {string} selectedGateway - 'stripe', 'mercado_pago', ou 'paypal'
  */
 export const getGatewayConfig = async (selectedGateway) => {
-  try {
-    // ✅ Buscar apenas dados NÃO-SENSÍVEIS do banco
-    const { data: settingsById, error: settingsByIdError } = await supabase
+  const { data: settingsById } = await supabase
+    .from('platform_settings')
+    .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage')
+    .eq('id', 1)
+    .maybeSingle();
+
+  let data = settingsById;
+
+  if (!data) {
+    const { data: firstSettings } = await supabase
       .from('platform_settings')
       .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage')
-      .eq('id', 1)
+      .order('id', { ascending: true })
+      .limit(1)
       .maybeSingle();
 
-    let data = settingsById;
-
-    if (!data) {
-      const { data: firstSettings } = await supabase
-        .from('platform_settings')
-        .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage')
-        .order('id', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      data = firstSettings;
-    }
-
-    const safeData = data || {
-      gateway_mode: 'production', // 🚀 Forçar produção
-      gateway_provider: 'stripe',
-      sale_fee_pct: 10,
-      processing_fee_fixed: 2.0,
-      swap_guarantee_fee_fixed: 5.0,
-      insurance_percentage: 5,
-    };
-
-    const mode = safeData.gateway_mode || 'production';
-    const provider = selectedGateway || safeData.gateway_provider || 'stripe';
-
-    let config = {
-      provider,
-      mode,
-      saleFeePercentage: safeData.sale_fee_pct,
-      processingFeeFixed: safeData.processing_fee_fixed,
-      swapGuaranteeFee: safeData.swap_guarantee_fee_fixed,
-      insurancePercentage: safeData.insurance_percentage
-    };
-
-    // 🔐 Carregar APENAS chaves públicas de variáveis de ambiente
-    if (provider === 'stripe') {
-      config.publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-      
-      if (!config.publishableKey) {
-        console.warn('⚠️ AVISO: Stripe Publishable Key não configurada em VITE_STRIPE_PUBLISHABLE_KEY');
-      }
-    } else if (provider === 'mercado_pago') {
-      config.publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
-      
-      if (!config.publicKey) {
-        console.warn('⚠️ AVISO: Mercado Pago Public Key não configurada em VITE_MP_PUBLIC_KEY');
-      }
-      
-      if (config.publicKey && !config.publicKey.startsWith('APP_USR-')) {
-          console.warn('⚠️ AVISO CRÍTICO: Mercado Pago Public Key não parece ser de PRODUÇÃO (não começa com APP_USR-). O checkout pode falhar.');
-      }
-    } else if (provider === 'paypal') {
-      config.clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-      
-      if (!config.clientId) {
-        console.warn('⚠️ AVISO: PayPal Client ID não configurado em VITE_PAYPAL_CLIENT_ID');
-      }
-      
-      console.log('🔍 [paymentGateway] PayPal config:', {
-        hasClientId: !!config.clientId,
-        // ⚠️ Client Secret NUNCA está no frontend
-      });
-    }
-
-    return config;
-  } catch (error) {
-    console.error('❌ Erro ao buscar configuração de gateway:', error);
-    throw error;
+    data = firstSettings;
   }
+
+  const safeData = data || {
+    gateway_mode: 'production',
+    gateway_provider: 'stripe',
+    sale_fee_pct: 10,
+    processing_fee_fixed: 2.0,
+    swap_guarantee_fee_fixed: 5.0,
+    insurance_percentage: 5,
+  };
+
+  const mode = safeData.gateway_mode || 'production';
+  const provider = selectedGateway || safeData.gateway_provider || 'stripe';
+
+  let config = {
+    provider,
+    mode,
+    saleFeePercentage: safeData.sale_fee_pct,
+    processingFeeFixed: safeData.processing_fee_fixed,
+    swapGuaranteeFee: safeData.swap_guarantee_fee_fixed,
+    insurancePercentage: safeData.insurance_percentage
+  };
+
+  if (provider === 'stripe') {
+    config.publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  } else if (provider === 'mercado_pago') {
+    config.publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+  } else if (provider === 'paypal') {
+    config.clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+  }
+
+  return config;
 };
 
 /**
@@ -121,47 +93,35 @@ export const initStripe = async (publishableKey) => {
  * 🔐 A chave secreta é obtida pela Edge Function via Supabase Secrets
  */
 export const createStripePaymentIntent = async (amount, metadata, config, currency = 'BRL') => {
-  try {
-    // Chamar Supabase Edge Function que cria o Payment Intent no backend
-    // ⚠️ NÃO enviamos a secretKey - a Edge Function busca de seu próprio ambiente
-    const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
-      body: {
-        amount: Math.round(amount * 100), // Stripe usa centavos
-        currency: currency.toLowerCase(),
-        metadata
-      }
-    });
+  const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
+    body: {
+      amount: Math.round(amount * 100),
+      currency: currency.toLowerCase(),
+      metadata
+    }
+  });
 
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('❌ Erro ao criar Payment Intent:', error);
-    throw error;
-  }
+  if (error) throw error;
+  return data;
 };
 
 /**
  * Confirmar pagamento Stripe
  */
 export const confirmStripePayment = async (clientSecret, cardElement, stripe) => {
-  try {
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardElement,
-      },
-    });
+  const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+    payment_method: {
+      card: cardElement,
+    },
+  });
 
-    if (error) throw error;
+  if (error) throw error;
 
-    return {
-      success: true,
-      paymentIntentId: paymentIntent.id,
-      status: paymentIntent.status
-    };
-  } catch (error) {
-    console.error('Erro ao confirmar pagamento Stripe:', error);
-    throw error;
-  }
+  return {
+    success: true,
+    paymentIntentId: paymentIntent.id,
+    status: paymentIntent.status
+  };
 };
 
 /**

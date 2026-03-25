@@ -95,7 +95,6 @@ export default function SwapPayment() {
 
       setLoading(false);
     } catch (error) {
-      console.error('Erro ao carregar swap:', error);
       toast.error('Erro ao carregar dados');
       setLoading(false);
     }
@@ -132,7 +131,6 @@ export default function SwapPayment() {
         setTimeout(() => navigate('/swaps'), 3000);
       }
     } catch (error) {
-      console.error('Erro ao processar taxa:', error);
       toast.error('Erro ao processar taxa', {
         description: error.message
       });
@@ -140,7 +138,6 @@ export default function SwapPayment() {
   };
 
   const handlePaymentError = (error) => {
-    console.error('Erro no pagamento:', error);
     toast.error('Erro no pagamento', {
       description: error.message || 'Tente novamente'
     });

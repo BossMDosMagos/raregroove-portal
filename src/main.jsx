@@ -9,24 +9,22 @@ import { AudioPlayerProvider } from './contexts/AudioPlayerContext.jsx'
 import { DiscogsProvider } from './contexts/DiscogsContext.jsx'
 
 if (import.meta.env.VITE_SENTRY_DSN) {
-  import('./sentry.js').then(({ default: Sentry }) => {
-    console.log('[Sentry] Monitoramento ativo');
-  });
+  import('./sentry.js');
 }
 
 window.addEventListener('error', (event) => {
   if (import.meta.env.VITE_SENTRY_DSN && !event.message?.includes('ResizeObserver')) {
     import('./sentry.js').then(({ captureAuthError }) => {
-      console.error('Global error:', event.error);
-    });
+      captureAuthError(event.error);
+    }).catch(() => {});
   }
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   if (import.meta.env.VITE_SENTRY_DSN) {
     import('./sentry.js').then(({ default: Sentry }) => {
-      console.error('Unhandled promise rejection:', event.reason);
-    });
+      Sentry?.captureException(event.reason);
+    }).catch(() => {});
   }
 });
 

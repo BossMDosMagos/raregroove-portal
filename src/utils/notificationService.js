@@ -26,7 +26,6 @@ export const notificationService = {
       if (error) throw error;
       return { data, error: null };
     } catch (error) {
-      console.error('Error fetching notifications:', error);
       return { data: [], error };
     }
   },
@@ -41,7 +40,6 @@ export const notificationService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error marking notification as read:', error);
       return { success: false, error };
     }
   },
@@ -57,7 +55,6 @@ export const notificationService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
       return { success: false, error };
     }
   },
@@ -72,7 +69,6 @@ export const notificationService = {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      console.error('Error deleting notification:', error);
       return { success: false, error };
     }
   },
@@ -95,7 +91,6 @@ export const notificationService = {
       if (error) throw error;
       return { data, error: null };
     } catch (error) {
-      console.error('Error creating notification:', error);
       return { data: null, error };
     }
   },
@@ -111,7 +106,6 @@ export const notificationService = {
       if (error) throw error;
       return { count, error: null };
     } catch (error) {
-      console.error('Error getting unread count:', error);
       return { count: 0, error };
     }
   },
@@ -140,7 +134,6 @@ export const notificationService = {
 
       const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        console.warn('VAPID key not configured');
         return false;
       }
 
@@ -154,7 +147,6 @@ export const notificationService = {
       toast.success('Notificações ativadas!', { style: toastStyles.success });
       return true;
     } catch (error) {
-      console.error('Error subscribing to push:', error);
       toast.error('Erro ao ativar notificações', { style: toastStyles.error });
       return false;
     }
@@ -173,8 +165,8 @@ export const notificationService = {
         });
 
       if (error) throw error;
-    } catch (error) {
-      console.error('Error saving push subscription:', error);
+    } catch {
+      // Silent fail
     }
   },
 };

@@ -66,7 +66,6 @@ export default function Grooveflix() {
           .eq('id', user.id)
           .single();
         setIsAdmin(Boolean(profileData?.is_admin));
-        console.log('[GROOVEFLIX] Admin:', profileData?.is_admin);
       }
     };
     init();
@@ -74,7 +73,6 @@ export default function Grooveflix() {
 
   const loadItems = useCallback(async () => {
     if (!userId) {
-      console.log('[GROOVEFLIX] No userId, skipping load');
       setLoading(false);
       return;
     }
@@ -83,8 +81,6 @@ export default function Grooveflix() {
     setDebugInfo(null);
 
     try {
-      console.log('[GROOVEFLIX] Loading items for user:', userId);
-
       const { data, error } = await supabase
         .from('items')
         .select('id, title, artist, image_url, metadata, created_at')
@@ -93,31 +89,13 @@ export default function Grooveflix() {
         .limit(120);
 
       if (error) {
-        console.error('[GROOVEFLIX] DB Error:', error);
         throw error;
       }
-
-      console.log('[GROOVEFLIX] Raw items from DB:', data?.length || 0);
 
       const allItems = data || [];
       const grooveflixItems = allItems.filter(item =>
         item.metadata?.grooveflix?.category
       );
-
-      console.log('[GROOVEFLIX] Items with grooveflix metadata:', grooveflixItems.length);
-
-      if (grooveflixItems.length > 0) {
-        const sample = grooveflixItems[0];
-        console.log('[GROOVEFLIX] Sample grooveflix item:', JSON.stringify({
-          id: sample.id,
-          title: sample.title,
-          category: sample.metadata?.grooveflix?.category,
-          hasAudio: !!sample.metadata?.grooveflix?.audio_path,
-          hasAudioFiles: !!sample.metadata?.grooveflix?.audio_files,
-          audioFilesCount: sample.metadata?.grooveflix?.audio_files?.length || 0,
-          hasCover: !!sample.metadata?.grooveflix?.cover_path,
-        }, null, 2));
-      }
 
       setDebugInfo({
         totalItems: allItems.length,
@@ -131,13 +109,11 @@ export default function Grooveflix() {
       });
 
       const tracks = normalizeTracks(grooveflixItems);
-      console.log('[GROOVEFLIX] Normalized tracks:', tracks.length);
 
       setItems(tracks);
       setLoading(false);
 
-      } catch (e) {
-      console.error('[GROOVEFLIX] Load error:', e);
+    } catch (e) {
       toast.error(t('grooveflix.error.load'), { description: e.message });
       setItems([]);
     }

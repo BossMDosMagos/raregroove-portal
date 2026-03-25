@@ -68,7 +68,6 @@ export function WishlistModal({ isOpen, onClose, onWishAdded, editingWish = null
       onWishAdded?.();
       onClose();
     } catch (error) {
-      console.error('Erro ao salvar desejo:', error);
       toast.error(t('wishlist.toast.error.title'), {
         description: error.message || t('wishlist.toast.error.desc'),
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -235,7 +234,6 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
       });
       onDelete?.(wish.id);
     } catch (error) {
-      console.error('Erro ao deletar:', error);
       toast.error(t('wishlist.toast.removeError.title'), {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });
@@ -258,7 +256,6 @@ export function WishlistCard({ wish, onEdit, onDelete, onToggleActive }) {
       });
       onToggleActive?.(wish.id);
     } catch (error) {
-      console.error('Erro ao atualizar:', error);
       toast.error(t('wishlist.toast.toggleError.title'), {
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
       });

@@ -11,12 +11,8 @@ const toastErrorStyle = { background: '#050505', border: '1px solid #ef4444', co
  */
 export const createProfileOnSignUp = async (user) => {
   try {
-    console.log('Aguardando trigger criar perfil básico...');
-    
     // Aguardar 500ms para garantir que o trigger handle_new_user executou
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log('Tentando atualizar perfil com dados completos:', user);
     
     // Usar UPDATE direto em vez de UPSERT (trigger já criou o perfil)
     const { data, error } = await supabase
@@ -31,20 +27,11 @@ export const createProfileOnSignUp = async (user) => {
       .select();
 
     if (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      console.error('Detalhes do erro:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
       return { success: false, error };
     }
     
-    console.log('Perfil atualizado com sucesso:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('Erro ao atualizar perfil (catch):', error);
     return { success: false, error };
   }
 };

@@ -7,42 +7,34 @@ import { supabase } from '../lib/supabase';
 
 // Dummy shipping estimates - Replace com integração real
 export const estimateShipping = async (fromCep, toCep, weightKg) => {
-  try {
-    // TODO: Integrar com Melhor Envio API
-    // Para agora, retornamos estimativas dummy baseadas no peso e distância
+  const estimates = [
+    {
+      id: 'sedex',
+      carrier: 'Correios',
+      service: 'SEDEX',
+      estimatedCost: calculateEstimateCost(weightKg, 'sedex'),
+      estimatedDays: 3,
+      icon: '🚚'
+    },
+    {
+      id: 'pac',
+      carrier: 'Correios',
+      service: 'PAC',
+      estimatedCost: calculateEstimateCost(weightKg, 'pac'),
+      estimatedDays: 8,
+      icon: '📦'
+    },
+    {
+      id: 'loggi',
+      carrier: 'Loggi',
+      service: 'Express',
+      estimatedCost: calculateEstimateCost(weightKg, 'loggi'),
+      estimatedDays: 2,
+      icon: '🚗'
+    }
+  ];
 
-    const estimates = [
-      {
-        id: 'sedex',
-        carrier: 'Correios',
-        service: 'SEDEX',
-        estimatedCost: calculateEstimateCost(weightKg, 'sedex'),
-        estimatedDays: 3,
-        icon: '🚚'
-      },
-      {
-        id: 'pac',
-        carrier: 'Correios',
-        service: 'PAC',
-        estimatedCost: calculateEstimateCost(weightKg, 'pac'),
-        estimatedDays: 8,
-        icon: '📦'
-      },
-      {
-        id: 'loggi',
-        carrier: 'Loggi',
-        service: 'Express',
-        estimatedCost: calculateEstimateCost(weightKg, 'loggi'),
-        estimatedDays: 2,
-        icon: '🚗'
-      }
-    ];
-
-    return estimates;
-  } catch (error) {
-    console.error('Erro ao estimar frete:', error);
-    throw error;
-  }
+  return estimates;
 };
 
 /**

@@ -348,15 +348,6 @@ export default function Login() {
 
         // Criar perfil na tabela profiles
         if (data?.user) {
-          console.log('Usuário criado no auth, criando perfil...', {
-            userId: data.user.id,
-            email: email,
-            fullName: fullName,
-            country_code: countryCode,
-            cpf_cnpj: countryCode === 'BR' ? normalizeDoc(cpfCnpj) : normalizeForeignDoc(cpfCnpj),
-            rg: countryCode === 'BR' ? normalizeDoc(rg) : normalizeForeignDoc(rg)
-          });
-          
           const result = await createProfileOnSignUp({
             id: data.user.id,
             email: email,

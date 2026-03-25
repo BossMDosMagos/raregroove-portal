@@ -129,7 +129,6 @@ export default function ChatThread() {
               .rpc('is_elite_seller', { user_uuid: otherUserId });
             
             if (error) {
-              console.warn('[ChatThread] RPC is_elite_seller retornou erro:', error.code, error.message);
               if (error.code !== 'PGRST202' && error.code !== '42883') {
                 setOtherUserIsElite(false);
               }
@@ -137,25 +136,13 @@ export default function ChatThread() {
               setOtherUserIsElite(Boolean(eliteData?.is_elite));
             }
           } catch (e) {
-            console.warn('[ChatThread] Erro ao verificar elite seller:', e);
             setOtherUserIsElite(false);
           }
         } else {
           setOtherUserIsElite(false);
         }
 
-        // DEBUG: Primeiro verificar quantas mensagens não lidas existem
-        const { data: unreadMessages, error: checkError } = await supabase
-          .from('messages')
-          .select('id, read_at, receiver_id')
-          .eq('item_id', itemId)
-          .eq('receiver_id', user.id);
-        
-        console.log('🔍 DEBUG - Todas as mensagens deste item:', unreadMessages);
-        console.log('🔍 DEBUG - Mensagens com read_at NULL:', unreadMessages?.filter(m => m.read_at === null).length || 0);
-
         // Marcar mensagens como lidas onde o usuário atual é o receiver
-        console.log('🔵 Marcando mensagens como lidas para item:', itemId, 'user:', user.id);
         const { data: updatedMessages, error: updateError } = await supabase
           .from('messages')
           .update({ read_at: new Date().toISOString() })
@@ -165,16 +152,7 @@ export default function ChatThread() {
           .select();
         
         if (updateError) {
-          console.error('❌ Erro ao marcar como lidas:', updateError);
-          console.error('❌ Detalhes:', JSON.stringify(updateError));
-        } else {
-          console.log('✅ Mensagens marcadas como lidas:', updatedMessages?.length || 0);
-          console.log('✅ IDs marcados:', updatedMessages?.map(m => m.id) || []);
-          // Forçar atualização do contador após delay
-          setTimeout(() => {
-            console.log('🔄 Forçando refresh do contador...');
-            refreshUnreadCount();
-          }, 1000);
+          // Handle error silently
         }
       }
 
@@ -182,54 +160,7 @@ export default function ChatThread() {
     };
 
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId]); // Apenas itemId como dependência
-
-  useEffect(() => {
-    if (!currentUser?.id || !itemId) {
-      console.log('⚠️ Aguardando currentUser e itemId...');
-      return;
-    }
-
-    console.log('🔴 Configurando realtime para item:', itemId, 'user:', currentUser.id);
-    
-    const channel = supabase
-      .channel(`chat-${itemId}-${currentUser.id}`) // Canal único por item+user
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `item_id=eq.${itemId}`
-        },
-        (payload) => {
-          console.log('🟢 Nova mensagem recebida via realtime:', payload.new);
-          setMessages((prev) => {
-            // Evitar duplicatas
-            if (prev.some(msg => msg.id === payload.new.id)) {
-              console.log('⚠️ Mensagem duplicada, ignorando');
-              return prev;
-            }
-            console.log('✅ Adicionando mensagem ao estado');
-            return [...prev, payload.new];
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Status da subscrição do chat:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Chat realtime conectado com sucesso!');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erro ao conectar realtime do chat');
-        }
-      });
-
-    return () => {
-      console.log('🔴 Desconectando realtime do chat');
-      channel.unsubscribe();
-    };
-  }, [itemId, currentUser]);
+  }, [itemId]);
 
   const handleSendMessage = async () => {
     if (isMessageEmptyAfterSanitize(message)) {
@@ -277,7 +208,6 @@ export default function ChatThread() {
       setSending(true);
       const safeMessage = sanitizeMessage(message).trim();
 
-      console.log('📤 Enviando mensagem:', { sender: currentUser.id, receiver: otherUser.id, item: itemId });
       const { data: newMessage, error } = await supabase.from('messages').insert([
         {
           sender_id: currentUser.id,
@@ -288,11 +218,9 @@ export default function ChatThread() {
       ]).select();
 
       if (error) {
-        console.error('❌ Erro ao enviar mensagem:', error);
         throw error;
       }
 
-      console.log('✅ Mensagem enviada com sucesso:', newMessage);
       setMessage('');
     } catch (error) {
       toast.error('ERRO AO ENVIAR', {
@@ -370,10 +298,6 @@ export default function ChatThread() {
 
     try {
       setClosingDeal(true);
-      console.log('🔵 [Fechar Negócio] Iniciando...');
-      console.log('📌 Current User ID:', currentUser?.id);
-      console.log('👥 Other User:', otherUser?.id, otherUser?.full_name);
-      console.log('📦 Item ID:', itemId);
 
       // Validar dados antes de prosseguir
       if (!currentUser?.id) {
@@ -387,7 +311,6 @@ export default function ChatThread() {
       }
 
       const profileIds = [currentUser.id, otherUser.id].filter(Boolean);
-      console.log('🔍 Buscando profiles com IDs:', profileIds);
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -395,17 +318,14 @@ export default function ChatThread() {
         .in('id', profileIds);
 
       if (profilesError) {
-        console.error('❌ Erro ao buscar profiles:', profilesError);
         throw profilesError;
       }
-      console.log('✅ Profiles encontrados:', profilesData?.length || 0);
 
       const missingDocs = (profilesData || []).filter(
         (profile) => !profile.cpf_cnpj || !profile.rg
       );
 
       if (missingDocs.length > 0) {
-        console.warn('⚠️ Documentos faltando em:', missingDocs.map(p => p.id));
         toast.error('CADASTRO INCOMPLETO', {
           description: 'Ambos usuarios precisam ter CPF/CNPJ e RG validados para fechar negocio',
           style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -420,10 +340,8 @@ export default function ChatThread() {
         .single();
 
       if (settingsError) {
-        console.error('❌ Erro ao buscar settings:', settingsError);
         throw settingsError;
       }
-      console.log('✅ Settings carregadas');
 
       const saleFeePct = Number(settingsData?.sale_fee_pct || 0);
       const processingFee = Number(settingsData?.processing_fee_fixed || 0);
@@ -433,10 +351,7 @@ export default function ChatThread() {
       const netAmount = Number((price - platformFee - gatewayFee).toFixed(2));
       const totalAmount = Number((price + platformFee + gatewayFee).toFixed(2));
 
-      console.log('💰 Cálculos:', { price, platformFee, gatewayFee, netAmount, totalAmount });
-
       // 1. Criar transação
-      console.log('🔄 Inserindo transação...');
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
         .insert([{
@@ -455,28 +370,20 @@ export default function ChatThread() {
         .single();
 
       if (transactionError) {
-        console.error('❌ Erro ao criar transação:', transactionError);
-        console.error('   Code:', transactionError.code);
-        console.error('   Message:', transactionError.message);
         throw transactionError;
       }
-      console.log('✅ Transação criada:', transactionData?.id);
 
       // 2. Atualizar status do item para 'reservado'
-      console.log('🔄 Atualizando status do item...');
       const { error: itemError } = await supabase
         .from('items')
         .update({ status: 'reservado' })
         .eq('id', itemId);
 
       if (itemError) {
-        console.error('❌ Erro ao atualizar item:', itemError);
         throw itemError;
       }
-      console.log('✅ Item atualizado');
 
       // 3. Enviar mensagem automática do sistema
-      console.log('🔄 Enviando mensagem do sistema...');
       const systemMessage = `🤝 [SISTEMA]: O vendedor aceitou sua proposta! Aguarde as instruções para pagamento.\n\n📦 Item: ${item.title}\n💰 Valor: R$ ${item.price}\n💳 Taxas: R$ ${platformFee.toFixed(2)} + R$ ${gatewayFee.toFixed(2)}\n✅ Total: R$ ${totalAmount.toFixed(2)}`;
       
       const { error: messageError } = await supabase.from('messages').insert([{
@@ -487,17 +394,13 @@ export default function ChatThread() {
       }]);
 
       if (messageError) {
-        console.error('❌ Erro ao enviar mensagem:', messageError);
         // Não falha aqui - mensagem é apenas informativa
-      } else {
-        console.log('✅ Mensagem enviada');
       }
 
       // 4. Atualizar estados locais
       setActiveTransaction(transactionData);
       setItem({ ...item, status: 'reservado' });
 
-      console.log('✅ Negócio fechado com sucesso!');
       toast.success('NEGÓCIO FECHADO', {
         description: 'Transação criada com sucesso. O item foi reservado.',
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
@@ -505,9 +408,6 @@ export default function ChatThread() {
       setDealConfirmData(null);
 
     } catch (error) {
-      console.error('❌ Erro ao fechar negócio:', error);
-      console.error('📋 Stack:', error.stack);
-      
       // Construir mensagem de erro mais informativa
       let errorMessage = 'Há um problema ao processar este negócio';
       if (error?.message) {

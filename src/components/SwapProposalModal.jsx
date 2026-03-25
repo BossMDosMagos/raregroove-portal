@@ -40,7 +40,6 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
         setSelectedItemId(data[0].id);
       }
     } catch (error) {
-      console.error('Erro ao carregar itens:', error);
       toast.error('Erro ao carrregar seus itens');
     } finally {
       setLoading(false);
@@ -55,7 +54,6 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
 
     // 🍯 HONEY POT: Detectar bots preenchendo campo oculto
     if (websiteUrl) {
-      console.warn('🚨 BOT DETECTADO no swap: Campo honey pot preenchido:', websiteUrl);
       toast.error('ATIVIDADE SUSPEITA', {
         description: 'Sua solicitação foi bloqueada por motivos de segurança.',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -117,7 +115,6 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
         navigate(`/swap-payment/${swapData.swap_id || swapData.id}`);
       }, 1000);
     } catch (error) {
-      console.error('Erro ao criar proposta:', error);
       toast.error('Erro ao criar proposta de troca');
     } finally {
       setCreating(false);

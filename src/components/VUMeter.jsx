@@ -66,8 +66,8 @@ export function VUMeter({ timeDomainData, isPlaying }) {
           bgR.onerror = reject;
         });
         setVuBgR(bgR);
-      } catch (e) {
-        console.warn('[VU] Background images not loaded:', e);
+      } catch {
+        // Silent fail
       }
     };
     loadBg();

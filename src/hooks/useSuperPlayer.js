@@ -175,10 +175,7 @@ export function useSuperPlayer() {
   }, [isPlaying]);
 
   const loadTrack = useCallback(async (url) => {
-    console.log('[AUDIO DEBUG] Loading track with URL:', url);
-    
     if (!url) {
-      console.error('[AUDIO DEBUG] ERROR: URL is null or undefined!');
       return;
     }
     
@@ -192,7 +189,6 @@ export function useSuperPlayer() {
     connectSource(audio);
     
     audio.src = url;
-    console.log('[AUDIO DEBUG] Audio src set, loading...');
     audio.load();
     
     setCurrentTime(0);
@@ -200,11 +196,9 @@ export function useSuperPlayer() {
     
     return new Promise((resolve, reject) => {
       audio.addEventListener('canplay', () => {
-        console.log('[AUDIO DEBUG] canplay event fired - ready to play');
         resolve(audio);
       }, { once: true });
       audio.addEventListener('error', (e) => {
-        console.error('[AUDIO DEBUG] Audio error:', audio.error);
         reject(audio.error);
       }, { once: true });
     });
@@ -221,8 +215,8 @@ export function useSuperPlayer() {
     try {
       await audioElementRef.current.play();
       setIsPlaying(true);
-    } catch (e) {
-      console.error('[SUPER PLAYER] Play error:', e);
+    } catch {
+      // Ignore play errors
     }
   }, []);
 

@@ -49,20 +49,17 @@ const fetchProxiedImage = async (discogsUrl) => {
     });
     
     if (!response.ok) {
-      console.warn('[IMAGE] Proxy failed with status:', response.status);
       return PLACEHOLDER_SVG;
     }
     
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.startsWith('image/')) {
-      console.warn('[IMAGE] Proxy returned non-image:', contentType);
       return PLACEHOLDER_SVG;
     }
     
     const blob = await response.blob();
     return URL.createObjectURL(blob);
-  } catch (e) {
-    console.warn('[IMAGE] Proxy error:', e.message);
+  } catch {
     return PLACEHOLDER_SVG;
   }
 };
@@ -80,10 +77,10 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
-  const rawTracklist = grooveflixData.tracklist || [];
-  const audioFiles = grooveflixData.audio_files || [];
+  const rawTracklist = Array.isArray(grooveflixData.tracklist) ? grooveflixData.tracklist : [];
+  const audioFiles = Array.isArray(grooveflixData.audio_files) ? grooveflixData.audio_files : [];
 
-  const sortedTracklist = [...rawTracklist].sort((a, b) => {
+  const sortedTracklist = Array.isArray(rawTracklist) ? [...rawTracklist].sort((a, b) => {
     const discA = a.discNumber || 1;
     const discB = b.discNumber || 1;
     
@@ -105,7 +102,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     const trackA = a.trackNumber || parseInt(a.position?.split('-')[1]) || 0;
     const trackB = b.trackNumber || parseInt(b.position?.split('-')[1]) || 0;
     return trackA - trackB;
-  });
+  }) : [];
 
   const groupedTracks = sortedTracklist.reduce((acc, track) => {
     const discKey = track.discNumber || 1;
@@ -120,7 +117,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     return acc;
   }, {});
 
-  const discKeys = Object.keys(groupedTracks).sort((a, b) => {
+  const discKeys = Object.keys(groupedTracks || {}).sort((a, b) => {
     const isNumericA = /^\d+$/.test(a);
     const isNumericB = /^\d+$/.test(b);
     if (isNumericA && isNumericB) return parseInt(a) - parseInt(b);
@@ -192,7 +189,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       const discogsCover = item.metadata?.grooveflix?.coverUrl;
 
       if (discogsCover) {
-        console.log('[COVER] Fetching proxied image for:', item.title);
         const blobUrl = await fetchProxiedImage(discogsCover);
         if (blobUrl !== PLACEHOLDER_SVG) {
           setCoverUrls(prev => ({ ...prev, [item.id]: blobUrl }));
@@ -207,8 +203,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           const url = await getPresignedUrl(coverPath, 'cover');
           setCoverUrls(prev => ({ ...prev, [item.id]: url }));
           return;
-        } catch (e) {
-          console.error('[COVER] Presign error:', e);
+        } catch {
+          // Ignore presign errors
         }
       }
       
@@ -230,7 +226,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       const userId = session?.user?.id;
 
       if (!userId) {
-        console.error('[PRESIGN] No userId available');
         throw new Error('missing_userId');
       }
 
@@ -250,7 +245,6 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       return data.url;
     } catch (e) {
       if (e.name === 'AbortError') {
-        console.log('[PRESIGN] Request aborted');
         return null;
       }
       throw e;
@@ -340,8 +334,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
       if (typeof onAlbumDeleted === 'function') {
         onAlbumDeleted(item.id);
       }
-    } catch (e) {
-      console.error('[DELETE] Error:', e);
+    } catch {
       toast.error('Erro ao deletar álbum');
     }
   }, [SUPABASE_URL, SUPABASE_ANON_KEY]);
@@ -349,10 +342,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const handleCardClick = useCallback((e) => {
     e.stopPropagation();
     e.preventDefault();
-    console.log('[SUPERCARD] Click! focusedItem:', focusedItem?.title, 'items:', items.length);
     setShowSuperCard(true);
-    toast.info(`Abrindo: ${focusedItem?.title}`);
-  }, [focusedItem]);
+  }, []);
 
   if (items.length === 0) {
     return (
@@ -442,6 +433,15 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
             />
           ))}
         </div>
+        
+        <button
+          onClick={() => {
+            setShowSuperCard(true);
+          }}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 px-6 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full shadow-lg shadow-yellow-500/30 transition-all hover:scale-105"
+        >
+          VER DETALHES
+        </button>
       </div>
 
       <div className="mt-6 text-center">
@@ -471,9 +471,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
             </div>
           </div>
           <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
-            {discKeys.map((discKey) => {
-              const discData = groupedTracks[discKey];
-              const discTracks = discData.tracks;
+            {(discKeys || []).map((discKey) => {
+              const discTracks = groupedTracks[discKey]?.tracks || [];
               
               const isNumericDisc = /^\d+$/.test(discKey);
               let discLabel;
@@ -495,7 +494,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     </div>
                   )}
                   <div className="space-y-1">
-                    {discTracks.map((track, i) => {
+                    {(discTracks || []).map((track, i) => {
                       const globalIndex = sortedTracklist.indexOf(track);
                       const isActive = activeTrackIndex === globalIndex;
                       const isTrackPlaying = isActive && isPlaying;
@@ -654,8 +653,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                       )}
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
-                      {discKeys.map((discKey) => {
-                        const discTracks = groupedTracks[discKey];
+                      {(discKeys || []).map((discKey) => {
+                        const discTracks = groupedTracks[discKey]?.tracks || [];
                         const isNumeric = /^\d+$/.test(discKey);
                         const discNum = isNumeric ? parseInt(discKey, 10) : null;
                         const discLabel = discKeys.length > 1
@@ -673,7 +672,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                                 <span className="text-white/30 text-xs">({discTracks.length} faixas)</span>
                               </div>
                             )}
-                            {discTracks.map((track, i) => {
+                            {(discTracks || []).map((track, i) => {
                               const globalIndex = sortedTracklist.indexOf(track);
                               return (
                                 <button

@@ -32,7 +32,6 @@ export default function AdminUsers() {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Erro ao carregar usuarios:', error);
       toast.error('ERRO AO CARREGAR', {
         description: 'Não foi possível carregar os usuários',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },

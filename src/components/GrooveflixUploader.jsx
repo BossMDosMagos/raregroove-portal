@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Upload, X, FileAudio, FileText, CheckCircle, Loader2, Music, Disc, FolderOpen, Image, Cloud, Shield, Zap, HardDrive, Search, Check, Trash2, ExternalLink, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -213,7 +213,7 @@ function UploadFileItem({ file, index, status, progress, onRemove }) {
 
 function FolderUploadZone({ files, onChange, uploadProgress }) {
   const [dragOver, setDragOver] = useState(false);
-  const [localFiles, setLocalFiles] = useState([]);
+  const [localFiles, setLocalFiles] = useState(() => files ? Array.from(files) : []);
 
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -223,8 +223,10 @@ function FolderUploadZone({ files, onChange, uploadProgress }) {
 
   useEffect(() => {
     if (files) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFiles(Array.from(files));
-    } else {
+    } else if (localFiles.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFiles([]);
     }
   }, [files]);
@@ -1123,7 +1125,6 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       setTracklist([]);
 
     } catch (error) {
-      console.error('Upload error:', error);
       toast.error(t('grooveflix.upload.generalError'), {
         description: error.message,
       });

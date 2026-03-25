@@ -20,14 +20,12 @@ export function AudioPlayerProvider({ children }) {
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('[AUDIO CONTEXT] Session:', session?.user?.id);
       setUserId(session?.user?.id || null);
     };
     
     init();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[AUDIO CONTEXT] Auth state changed:', session?.user?.id);
       setUserId(session?.user?.id || null);
     });
     
@@ -42,7 +40,6 @@ export function AudioPlayerProvider({ children }) {
     }
     
     if (!userId) {
-      console.warn('[AUDIO CONTEXT] No userId for presign');
       return null;
     }
     
@@ -55,15 +52,12 @@ export function AudioPlayerProvider({ children }) {
       });
 
       if (error || !data?.url) {
-        console.warn('[AUDIO CONTEXT] Presign failed:', error);
         return null;
       }
 
       urlCacheRef.current.set(filePath, data.url);
-      console.log('[AUDIO CONTEXT] URL cached for:', filePath.substring(0, 50));
       return data.url;
-    } catch (e) {
-      console.error('[AUDIO CONTEXT] Presign error:', e.message);
+    } catch {
       return null;
     }
   }, [userId]);
@@ -121,7 +115,6 @@ export function AudioPlayerProvider({ children }) {
 
   const playTrack = useCallback((track) => {
     if (!track) return;
-    console.log('[AUDIO CONTEXT] playTrack:', track.title);
     
     let queueTracks = [];
     
@@ -133,7 +126,6 @@ export function AudioPlayerProvider({ children }) {
       queueTracks = [track];
     }
     
-    console.log('[AUDIO CONTEXT] Queue set:', queueTracks.length, 'tracks');
     currentQueueRef.current = queueTracks;
     setQueue(queueTracks);
     setCurrentTrack(track);
@@ -142,7 +134,6 @@ export function AudioPlayerProvider({ children }) {
 
   const playAlbum = useCallback((albumItem, startIndex = 0) => {
     if (!albumItem) return;
-    console.log('[AUDIO CONTEXT] playAlbum:', albumItem.title, 'starting at index:', startIndex);
     
     const albumTracks = expandAlbumTracks(albumItem);
     if (albumTracks.length === 0) {

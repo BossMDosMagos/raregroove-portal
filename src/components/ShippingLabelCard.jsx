@@ -75,10 +75,8 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
         
         // Remover canvas temporário
         document.body.removeChild(tempCanvas);
-        
-        console.log('[ShippingLabelCard] Código de barras gerado para CEP:', cepDigitos);
-      } catch (error) {
-        console.error('[ShippingLabelCard] Erro ao gerar código de barras:', error);
+      } catch {
+        // Silent fail
       }
     }
   }, [buyerInfo?.cep]);
@@ -95,7 +93,6 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
         .single();
 
       if (shippingError) throw shippingError;
-      console.log('[ShippingLabelCard] Shipping Data:', shippingData);
       setShipping(shippingData);
 
       // Buscar URL do portal para QR Code
@@ -107,9 +104,6 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
       
       if (settingsData?.base_portal_url) {
         setPortalUrl(settingsData.base_portal_url);
-        console.log('[ShippingLabelCard] Portal URL carregado:', settingsData.base_portal_url);
-      } else {
-        console.log('[ShippingLabelCard] Portal URL não configurado');
       }
 
       // Se já tem código de rastreio, carrega
@@ -120,14 +114,10 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
       // Buscar ENDEREÇO DE ENTREGA PADRÃO do COMPRADOR (destinatário)
       // SEMPRE usa o endereço padrão cadastrado em "Meus Endereços de Entrega"
       const defaultBuyerAddress = await fetchDefaultAddress(shippingData.buyer_id);
-      console.log('[ShippingLabelCard] Buyer ID:', shippingData.buyer_id);
-      console.log('[ShippingLabelCard] Default Buyer Address:', defaultBuyerAddress);
       
       // Se não tem endereço padrão, usar dados do profile como fallback
       let buyerData = null;
       if (defaultBuyerAddress) {
-        // Usar dados do endereço padrão
-        console.log('[ShippingLabelCard] Usando endereço padrão do comprador');
         buyerData = {
           full_name: defaultBuyerAddress.full_name,
           phone: defaultBuyerAddress.phone,
@@ -140,16 +130,12 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
         };
       } else {
         // Fallback: buscar do profile
-        console.log('[ShippingLabelCard] Sem endereço padrão, usando do profile');
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name, phone, email, address, number, complement, city, state, cep')
           .eq('id', shippingData.buyer_id)
           .single();
-        if (profileError) {
-          console.error('[ShippingLabelCard] Erro ao buscar profile comprador:', profileError);
-        } else {
-          console.log('[ShippingLabelCard] Dados do profile comprador:', profileData);
+        if (!profileError) {
           buyerData = profileData;
         }
       }
@@ -158,21 +144,16 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
       if (buyerData) {
         buyerData.cep = formatCEP(buyerData.cep || '');
         buyerData.phone = formatPhone(buyerData.phone || '');
-        console.log('[ShippingLabelCard] Buyer Data formatado:', buyerData);
       }
       setBuyerInfo(buyerData);
 
       // Buscar ENDEREÇO DE ENTREGA PADRÃO do VENDEDOR (remetente)
       // SEMPRE usa o endereço padrão cadastrado em "Meus Endereços de Entrega"
       const defaultSellerAddress = await fetchDefaultAddress(shippingData.seller_id);
-      console.log('[ShippingLabelCard] Seller ID:', shippingData.seller_id);
-      console.log('[ShippingLabelCard] Default Seller Address:', defaultSellerAddress);
       
       // Se não tem endereço padrão, usar dados do profile como fallback
       let sellerData = null;
       if (defaultSellerAddress) {
-        // Usar dados do endereço padrão
-        console.log('[ShippingLabelCard] Usando endereço padrão do vendedor');
         sellerData = {
           full_name: defaultSellerAddress.full_name,
           phone: defaultSellerAddress.phone,
@@ -185,16 +166,12 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
         };
       } else {
         // Fallback: buscar novo do profile
-        console.log('[ShippingLabelCard] Sem endereço padrão, usando do profile');
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name, phone, email, city, state, address, number, complement, cep')
           .eq('id', shippingData.seller_id)
           .single();
-        if (profileError) {
-          console.error('[ShippingLabelCard] Erro ao buscar profile vendedor:', profileError);
-        } else {
-          console.log('[ShippingLabelCard] Dados do profile vendedor:', profileData);
+        if (!profileError) {
           sellerData = profileData;
         }
       }
@@ -203,11 +180,9 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
       if (sellerData) {
         sellerData.cep = formatCEP(sellerData.cep || '');
         sellerData.phone = formatPhone(sellerData.phone || '');
-        console.log('[ShippingLabelCard] Seller Data formatado:', sellerData);
       }
       setSellerInfo(sellerData);
     } catch (error) {
-      console.error('Erro ao carregar shipping:', error);
       toast.error('Erro ao carregar dados de envio');
     } finally {
       setLoading(false);
@@ -266,10 +241,7 @@ export default function ShippingLabelCard({ transactionId, shippingId, onTrackin
 
       toast.dismiss();
       toast.success('✓ PDF gerado e baixado com sucesso!');
-      
-      console.log('[ShippingLabelCard] PDF criado com sucesso:', fileName);
     } catch (error) {
-      console.error('[ShippingLabelCard] Erro ao gerar PDF:', error);
       toast.dismiss();
       toast.error('Erro ao gerar PDF', {
         description: error.message || 'Tente novamente'

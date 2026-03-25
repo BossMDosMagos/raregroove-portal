@@ -102,7 +102,6 @@ const fetchAddressByCEP = async (cep) => {
       state: data.uf
     };
   } catch (error) {
-    console.error('Erro ao buscar CEP:', error);
     return null;
   }
 };
@@ -254,7 +253,6 @@ export default function Profile() {
             .rpc('is_elite_seller', { user_uuid: userId });
           
           if (error) {
-            console.warn('[Profile] RPC is_elite_seller retornou erro:', error.code, error.message);
             if (error.code !== 'PGRST202' && error.code !== '42883') {
               setIsElite(false);
             }
@@ -262,7 +260,6 @@ export default function Profile() {
             setIsElite(Boolean(eliteData?.is_elite));
           }
         } catch (e) {
-          console.warn('[Profile] Erro ao verificar elite seller:', e);
           setIsElite(false);
         }
       } else {
@@ -392,8 +389,6 @@ export default function Profile() {
         });
       }
     } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      
       // Tratamento específico de erros
       let errorTitle = 'ERRO AO ATUALIZAR';
       let errorDescription = 'Não foi possível salvar seu perfil';
@@ -538,7 +533,6 @@ export default function Profile() {
       setEditingAddress(null);
       setShowAddressModal(false);
     } catch (error) {
-      console.error('Erro ao salvar endereço:', error);
       toast.error('ERRO AO SALVAR', {
         description: error.message || 'Não foi possível salvar o endereço',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -559,7 +553,6 @@ export default function Profile() {
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
       });
     } catch (error) {
-      console.error('Erro ao deletar endereço:', error);
       toast.error('ERRO AO REMOVER', {
         description: 'Não foi possível remover o endereço',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
@@ -577,7 +570,6 @@ export default function Profile() {
         style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
       });
     } catch (error) {
-      console.error('Erro ao definir endereço como padrão:', error);
       toast.error('ERRO AO ATUALIZAR', {
         description: 'Não foi possível definir como endereço principal',
         style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },

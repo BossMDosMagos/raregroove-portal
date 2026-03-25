@@ -23,8 +23,8 @@ export function MetricsDashboard() {
 
       if (error) throw error;
       setMetrics(data);
-    } catch (error) {
-      console.error('Failed to fetch metrics:', error);
+    } catch {
+      // Silently fail
     } finally {
       setLoading(false);
     }

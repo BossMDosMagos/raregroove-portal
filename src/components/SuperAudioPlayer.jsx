@@ -88,23 +88,19 @@ export function SuperAudioPlayer() {
 
   const hydrateAndPlay = useCallback(async (index) => {
     if (index < 0 || index >= queue.length) {
-      console.log('[SUPER PLAYER] Invalid index:', index);
       return;
     }
     
     const track = queue[index];
     if (!track) {
-      console.log('[SUPER PLAYER] No track at index:', index);
       return;
     }
     
     if (!track.audioPath) {
-      console.log('[SUPER PLAYER] No audioPath for track:', track.title);
       toast.error('Este álbum não tem arquivo de áudio');
       return;
     }
 
-    console.log('[SUPER PLAYER] Hydrating:', track.title, '| path:', track.audioPath);
     setIsLoading(true);
     setDebug(`Carregando: ${track.title}`);
     
@@ -112,30 +108,22 @@ export function SuperAudioPlayer() {
       let url = trackUrls[track.audioPath];
       
       if (!url) {
-        console.log('[SUPER PLAYER] Getting presigned URL...');
         url = await getPresignedUrl(track.audioPath);
         
         if (!url) {
-          console.error('[SUPER PLAYER] Failed to get presigned URL');
           setDebug('Erro de URL');
           toast.error('Erro ao acessar arquivo de áudio');
           return;
         }
         
-        console.log('[SUPER PLAYER] Presigned URL received');
         setTrackUrls(prev => ({ ...prev, [track.audioPath]: url }));
       }
       
-      console.log('[SUPER PLAYER] Loading audio...');
       await loadTrack(url);
-      
-      console.log('[SUPER PLAYER] Starting playback...');
       await play();
       
       setDebug('');
-      console.log('[SUPER PLAYER] Playback started!');
     } catch (e) {
-      console.error('[SUPER PLAYER] Error:', e);
       setDebug('Erro: ' + e.message);
       toast.error('Erro ao reproduzir: ' + e.message);
     } finally {
@@ -157,34 +145,29 @@ export function SuperAudioPlayer() {
 
   useEffect(() => {
     if (!currentTrack || queue.length === 0) {
-      console.log('[SUPER PLAYER] Skipping: no track or empty queue');
       return;
     }
     
     const idx = queue.findIndex(t => t.id === currentTrack?.id);
     if (idx < 0) {
-      console.log('[SUPER PLAYER] Track not found in queue:', currentTrack?.id);
       return;
     }
     
-    console.log('[SUPER PLAYER] Track changed:', currentTrack?.title, '| index:', idx, '| playing:', globalIsPlaying);
     setCurrentQueueIndex(idx);
     
     if (globalIsPlaying) {
       const playCurrentTrack = async () => {
         try {
           if (hydrateAndPlayRef.current) {
-            console.log('[SUPER PLAYER] Calling hydrateAndPlay...');
             await hydrateAndPlayRef.current(idx);
           }
-        } catch (e) {
-          console.error('[SUPER PLAYER] Play error:', e);
+        } catch {
           toast.error('Erro ao reproduzir');
         }
       };
       playCurrentTrack();
     }
-  }, [currentTrack?.id, queue]);
+  }, [currentTrack?.id, queue, globalIsPlaying]);
 
   const handlePlayPause = useCallback(async () => {
     if (!isReady) {

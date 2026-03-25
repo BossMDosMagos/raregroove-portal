@@ -15,13 +15,5 @@ export function validateSecretVault() {
 
   const missingRequired = required.filter((key) => !env[key] || String(env[key]).trim().length === 0);
   const missingOptional = optional.filter((key) => !env[key] || String(env[key]).trim().length === 0);
-
-  if (missingRequired.length > 0) {
-    console.warn('[Cofre Invisível] Variáveis obrigatórias ausentes:', missingRequired);
-  }
-
-  if (missingOptional.length > 0) {
-    console.warn('[Cofre Invisível] Variáveis opcionais ausentes (gateways podem não aparecer):', missingOptional);
-  }
 }
 
