@@ -82,6 +82,8 @@ export function useAudioEngine() {
   const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
   const panRef = useRef(0);
   const queueRef = useRef([]);
+  const preAmpRefState = useRef(0);
+  const eqBandsRef = useRef(Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0])));
 
   const initAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
