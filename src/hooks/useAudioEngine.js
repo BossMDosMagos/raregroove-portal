@@ -86,7 +86,11 @@ export function useAudioEngine() {
   const initAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
 
-    const ctx = Howler.ctx;
+    let ctx = Howler.ctx;
+    if (!ctx) {
+      Howler.volume(0.8);
+      ctx = Howler.ctx;
+    }
     if (!ctx) {
       throw new Error('Howler audio context not initialized');
     }
