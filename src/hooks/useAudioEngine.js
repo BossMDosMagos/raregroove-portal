@@ -97,6 +97,7 @@ export function useAudioEngine() {
       throw new Error('Howler audio context not initialized');
     }
 
+    console.log('AudioContext initialized, state:', ctx.state);
     audioContextRef.current = ctx;
 
     const preAmp = ctx.createGain();
@@ -144,9 +145,12 @@ export function useAudioEngine() {
 
   useEffect(() => {
     let loopId;
+    let frameCount = 0;
     const loop = () => {
       const analyser = analyserRef.current;
       const ctx = audioContextRef.current;
+
+      console.log('VU Loop running, ctx state:', ctx?.state);
 
       if (analyser && ctx) {
         const freqData = new Uint8Array(analyser.frequencyBinCount);
@@ -155,6 +159,11 @@ export function useAudioEngine() {
 
         const timeData = timeDomainBufferRef.current;
         analyser.getFloatTimeDomainData(timeData);
+        
+        const rms = Math.sqrt(timeData.reduce((sum, val) => sum + val * val, 0) / timeData.length);
+        const rmsDb = 20 * Math.log10(rms || 0.0001);
+        console.log('RMS:', rms.toFixed(4), 'dB:', rmsDb.toFixed(1));
+
         setTimeDomainData(new Float32Array(timeData));
       }
 
