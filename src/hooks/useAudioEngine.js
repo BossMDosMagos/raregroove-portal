@@ -135,8 +135,8 @@ export function useAudioEngine() {
 
     preAmp.connect(eqFilters[0]);
     eqFilters[eqFilters.length - 1].connect(masterGain);
+    masterGain.connect(ctx.destination);
     masterGain.connect(analyser);
-    analyser.connect(ctx.destination);
 
     setIsReady(true);
     return ctx;
