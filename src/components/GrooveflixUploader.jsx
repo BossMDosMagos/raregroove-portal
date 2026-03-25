@@ -477,19 +477,52 @@ function SuperCard({
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10">
             {metadata.coverUrl ? (
               <>
-                <img 
+                <img
                   src={metadata.coverUrl}
                   alt={metadata.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
                   onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.querySelector('.fallback-placeholder')?.classList.remove('hidden');
+                    const img = e.target;
+                    const parent = img.parentElement;
+                    
+                    if (!img.dataset.fallbackAttempted) {
+                      img.dataset.fallbackAttempted = 'true';
+                      
+                      if (img.crossOrigin !== 'anonymous') {
+                        img.crossOrigin = 'anonymous';
+                        img.src = metadata.coverUrl + (metadata.coverUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        return;
+                      }
+                    }
+                    
+                    img.style.display = 'none';
+                    const fallback = parent.querySelector('.fallback-placeholder');
+                    if (fallback) {
+                      fallback.classList.remove('hidden');
+                      const fallbackImg = fallback.querySelector('img');
+                      if (fallbackImg) fallbackImg.style.display = 'flex';
+                    }
                   }}
                 />
                 <div className="fallback-placeholder hidden w-full h-full flex-col items-center justify-center text-white/30 absolute inset-0 bg-black/50">
+                  <img 
+                    src="/images/vinyl-generic.svg" 
+                    alt="Vinil genérico" 
+                    className="w-24 h-24 mb-2 opacity-20 hidden"
+                    style={{ display: 'flex' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
                   <Disc className="w-16 h-16 mb-2 opacity-30" />
-                  <p className="text-sm">Erro ao carregar</p>
+                  <p className="text-sm">CORS/Auth error</p>
+                  <button
+                    onClick={() => document.getElementById('cover-input')?.click()}
+                    className="mt-2 text-xs text-fuchsia-400 hover:text-fuchsia-300"
+                  >
+                    Selecionar imagem local
+                  </button>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                   <p className="text-xs text-emerald-300 font-medium flex items-center gap-1">

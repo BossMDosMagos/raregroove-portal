@@ -3,7 +3,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Square, Volume2, VolumeX,
   Repeat, Repeat1, Shuffle, Disc3
 } from 'lucide-react';
-import { useSuperPlayer } from '../hooks/useSuperPlayer';
+import { useAudioEngine, ANSI } from '../hooks/useAudioEngine';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -54,6 +54,7 @@ export function SuperAudioPlayer() {
     analyserData,
     timeDomainData,
     eqFrequencies,
+    vuMeterData,
     loadTrack,
     play,
     pause,
@@ -68,7 +69,7 @@ export function SuperAudioPlayer() {
     getNextTrack,
     getPrevTrack,
     initAudioContext,
-  } = useSuperPlayer();
+  } = useAudioEngine();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -306,7 +307,7 @@ export function SuperAudioPlayer() {
       </div>
 
       <div className="px-3 py-2 border-t border-white/5 bg-gradient-to-b from-black/80 to-transparent">
-        <VUMeter timeDomainData={timeDomainData} isPlaying={isPlaying} />
+        <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
 
       <div className="px-3 py-1.5 border-t border-white/5">
