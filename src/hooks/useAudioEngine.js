@@ -67,7 +67,6 @@ export function useAudioEngine() {
   const splitterRef = useRef(null);
   const analyserLeftRef = useRef(null);
   const analyserRightRef = useRef(null);
-  const masterGainRef = useRef(null);
   const timeDomainLeftRef = useRef(null);
   const timeDomainRightRef = useRef(null);
 
@@ -165,20 +164,18 @@ export function useAudioEngine() {
     if (isInitializedRef.current && audioContextRef.current) return audioContextRef.current;
 
     Howler.autoSuspend = false;
+    Howler.volume(0.8);
+    
     let ctx = Howler.ctx;
-    if (!ctx) {
-      Howler.volume(0.8);
-      ctx = Howler.ctx;
-    }
     if (!ctx) {
       return null;
     }
 
-    audioContextRef.current = ctx;
-
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
+
+    audioContextRef.current = ctx;
 
     const splitter = ctx.createChannelSplitter(2);
     splitterRef.current = splitter;
@@ -199,22 +196,9 @@ export function useAudioEngine() {
     splitter.connect(analyserL, 0);
     splitter.connect(analyserR, 1);
 
-    const masterGain = ctx.createGain();
-    masterGain.gain.value = Howler.volume();
-    masterGainRef.current = masterGain;
-
-    masterGain.connect(ctx.destination);
-    masterGain.connect(splitter);
-
     const preAmp = ctx.createGain();
     preAmp.gain.value = 1;
     preAmpRef.current = preAmp;
-
-    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
-      Howler.masterGain.disconnect();
-      Howler.masterGain.connect(preAmp);
-      Howler.masterGain._connectedToSplitter = true;
-    }
 
     const eqFilters = EQ_FREQUENCIES.map((freq, i) => {
       const filter = ctx.createBiquadFilter();
@@ -237,7 +221,8 @@ export function useAudioEngine() {
     }
 
     preAmp.connect(eqFilters[0]);
-    eqFilters[eqFilters.length - 1].connect(masterGain);
+    eqFilters[eqFilters.length - 1].connect(Howler.masterGain);
+    Howler.masterGain.connect(splitter);
 
     isInitializedRef.current = true;
     setIsReady(true);
@@ -278,15 +263,6 @@ export function useAudioEngine() {
               await ctx.resume();
             } catch {
               // ignore resume failures; loop will retry
-            }
-          }
-
-          if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
-            const masterGain = masterGainRef.current;
-            if (masterGain) {
-              Howler.masterGain.disconnect();
-              Howler.masterGain.connect(masterGain);
-              Howler.masterGain._connectedToSplitter = true;
             }
           }
 
@@ -341,15 +317,6 @@ export function useAudioEngine() {
       }
     }
 
-    if (Howler.masterGain && !Howler.masterGain._connectedToSplitter) {
-      const masterGain = masterGainRef.current;
-      if (masterGain) {
-        Howler.masterGain.disconnect();
-        Howler.masterGain.connect(masterGain);
-        Howler.masterGain._connectedToSplitter = true;
-      }
-    }
-
     if (howlRef.current) {
       howlRef.current.play();
       setIsPlaying(true);
@@ -385,9 +352,6 @@ export function useAudioEngine() {
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
     volumeRef.current = vol;
-    if (masterGainRef.current) {
-      masterGainRef.current.gain.setTargetAtTime(vol, audioContextRef.current?.currentTime || 0, 0.01);
-    }
     Howler.volume(vol);
     if (howlRef.current) {
       howlRef.current.volume(vol);
