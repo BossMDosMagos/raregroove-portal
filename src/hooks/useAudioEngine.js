@@ -130,9 +130,12 @@ export function useAudioEngine() {
 
     timeDomainBufferRef.current = new Float32Array(analyser.fftSize);
 
+    const masterGain = Howler.masterGain || ctx.createGain();
+    masterGain.gain.value = Howler.volume();
+
     preAmp.connect(eqFilters[0]);
-    eqFilters[eqFilters.length - 1].connect(Howler.masterGain);
-    Howler.masterGain.connect(analyser);
+    eqFilters[eqFilters.length - 1].connect(masterGain);
+    masterGain.connect(analyser);
     analyser.connect(ctx.destination);
 
     setIsReady(true);
