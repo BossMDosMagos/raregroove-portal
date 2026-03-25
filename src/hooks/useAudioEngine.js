@@ -84,6 +84,7 @@ export function useAudioEngine() {
   const queueRef = useRef([]);
   const preAmpRefState = useRef(0);
   const eqBandsRef = useRef(Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0])));
+  const requestRef = useRef(null);
 
   const initAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
@@ -97,7 +98,6 @@ export function useAudioEngine() {
       throw new Error('Howler audio context not initialized');
     }
 
-    console.log('AudioContext initialized, state:', ctx.state);
     audioContextRef.current = ctx;
 
     const preAmp = ctx.createGain();
@@ -144,18 +144,14 @@ export function useAudioEngine() {
   }, []);
 
   useEffect(() => {
-    let loopId;
     const loop = () => {
       const analyser = analyserRef.current;
       const ctx = Howler.ctx;
 
-      if (!ctx || ctx.state === 'closed') {
-        console.log('VU Loop stopping - ctx closed');
-        loopId = requestAnimationFrame(loop);
+      if (!ctx || ctx.state === 'closed' || !isPlayingRef.current) {
+        requestRef.current = requestAnimationFrame(loop);
         return;
       }
-
-      console.log('VU Loop running, ctx state:', ctx.state);
 
       if (analyser && ctx) {
         const freqData = new Uint8Array(analyser.frequencyBinCount);
@@ -164,21 +160,18 @@ export function useAudioEngine() {
 
         const timeData = timeDomainBufferRef.current;
         analyser.getFloatTimeDomainData(timeData);
-        
-        const rms = Math.sqrt(timeData.reduce((sum, val) => sum + val * val, 0) / timeData.length);
-        const rmsDb = 20 * Math.log10(rms || 0.0001);
-        console.log('RMS:', rms.toFixed(4), 'dB:', rmsDb.toFixed(1));
-
         setTimeDomainData(new Float32Array(timeData));
       }
 
-      loopId = requestAnimationFrame(loop);
+      requestRef.current = requestAnimationFrame(loop);
     };
 
-    loopId = requestAnimationFrame(loop);
+    requestRef.current = requestAnimationFrame(loop);
 
     return () => {
-      cancelAnimationFrame(loopId);
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
     };
   }, []);
 
@@ -251,7 +244,6 @@ export function useAudioEngine() {
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
-    console.log('Play called, ctx state:', ctx?.state);
 
     howlRef.current.play();
     setIsPlaying(true);
