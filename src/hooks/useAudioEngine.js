@@ -59,18 +59,11 @@ function calculatePeak(data) {
 let audioNodes = null;
 
 function ensureAudioNodes() {
-  if (audioNodes) {
-    console.log('[DEBUG] audioNodes already exists, reusing');
-    return audioNodes;
-  }
+  if (audioNodes) return audioNodes;
 
   const ctx = Howler.ctx;
-  if (!ctx) {
-    console.log('[DEBUG] ensureAudioNodes: Howler.ctx is null');
-    return null;
-  }
+  if (!ctx) return null;
 
-  console.log('[DEBUG] ensureAudioNodes: creating new audio nodes');
   const splitter = ctx.createChannelSplitter(2);
   const analyserL = ctx.createAnalyser();
   const analyserR = ctx.createAnalyser();
@@ -83,18 +76,13 @@ function ensureAudioNodes() {
   const bufferL = new Float32Array(analyserL.fftSize);
   const bufferR = new Float32Array(analyserR.fftSize);
 
-  console.log('[DEBUG] Howler.masterGain:', Howler.masterGain ? 'exists' : 'null');
   if (Howler.masterGain) {
-    console.log('[DEBUG] Connecting masterGain to splitter and destination');
     Howler.masterGain.connect(splitter);
     Howler.masterGain.connect(ctx.destination);
-  } else {
-    console.log('[DEBUG] WARNING: masterGain is null, analysers not connected to audio!');
   }
   
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
-  console.log('[DEBUG] splitter connected to analysers');
 
   audioNodes = {
     ctx,
@@ -139,7 +127,6 @@ export function useAudioEngine() {
   const isInitializedRef = useRef(false);
 
   const startLoop = useCallback(() => {
-    console.log('[DEBUG] startLoop called, isLoopRunning:', isLoopRunningRef.current);
     if (isLoopRunningRef.current) return;
     isLoopRunningRef.current = true;
 
@@ -147,15 +134,7 @@ export function useAudioEngine() {
       if (!isLoopRunningRef.current) return;
 
       const nodes = audioNodes;
-      
-      if (!nodes) {
-        console.log('[VU DEBUG] audioNodes is NULL');
-        animationFrameRef.current = requestAnimationFrame(loop);
-        return;
-      }
-      
-      if (nodes.ctx.state !== 'running') {
-        console.log('[VU DEBUG] ctx.state:', nodes.ctx.state);
+      if (!nodes || nodes.ctx.state !== 'running') {
         animationFrameRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -165,14 +144,6 @@ export function useAudioEngine() {
       if (bufferL && bufferR) {
         analyserL.getFloatTimeDomainData(bufferL);
         analyserR.getFloatTimeDomainData(bufferR);
-
-        const leftRMS = calculateRMS(bufferL);
-        const rightRMS = calculateRMS(bufferR);
-        console.log('[VU DEBUG] leftRMS:', leftRMS.toFixed(4), 'rightRMS:', rightRMS.toFixed(4));
-
-        if (leftRMS < 0.001 && rightRMS < 0.001) {
-          console.log('[VU DEBUG] NO AUDIO SIGNAL - check analyser connections');
-        }
 
         const combinedTime = new Float32Array(bufferL.length + bufferR.length);
         combinedTime.set(bufferL, 0);
@@ -208,16 +179,13 @@ export function useAudioEngine() {
   const initAudioContext = useCallback(() => {
     if (isInitializedRef.current) return;
 
-    console.log('[DEBUG] initAudioContext called');
     Howler.autoSuspend = false;
     Howler.volume(0.8);
 
     const ctx = Howler.ctx;
-    console.log('[DEBUG] Howler.ctx in init:', ctx ? 'exists' : 'null', ctx?.state);
     if (!ctx) return;
 
     audioNodes = ensureAudioNodes();
-    console.log('[DEBUG] audioNodes:', audioNodes ? 'created' : 'null');
 
     if (ctx.state === 'suspended') {
       ctx.resume();
@@ -255,7 +223,6 @@ export function useAudioEngine() {
   }, []);
 
   const loadTrack = useCallback(async (url, autoplay = true) => {
-    console.log('[DEBUG] loadTrack called with url:', url);
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
@@ -273,19 +240,18 @@ export function useAudioEngine() {
       const howl = new Howl({
         src: [url],
         html5: false,
-        xhr: { withCredentials: false },
+        format: ['mp3'],
+        xhr: { method: 'GET', withCredentials: false },
         volume: volumeRef.current,
         loop: loopMode === 'track',
         pool: 1,
         autoplay: false,
         preload: true,
         onplay: () => {
-          console.log('[DEBUG] onplay called');
           setIsPlaying(true);
           isPlayingRef.current = true;
           
           const ctx = Howler.ctx;
-          console.log('[DEBUG] Howler.ctx:', ctx ? 'exists' : 'null', ctx?.state);
           if (ctx?.state === 'suspended') {
             ctx.resume();
           }
