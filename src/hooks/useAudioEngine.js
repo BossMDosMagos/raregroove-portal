@@ -145,6 +145,14 @@ export function useAudioEngine() {
         analyserL.getFloatTimeDomainData(bufferL);
         analyserR.getFloatTimeDomainData(bufferR);
 
+        const leftRMS = calculateRMS(bufferL);
+        const rightRMS = calculateRMS(bufferR);
+        console.log('[VU DEBUG] leftRMS:', leftRMS.toFixed(4), 'rightRMS:', rightRMS.toFixed(4));
+
+        if (leftRMS < 0.001 && rightRMS < 0.001) {
+          console.log('[VU DEBUG] NO AUDIO SIGNAL - check analyser connections');
+        }
+
         const combinedTime = new Float32Array(bufferL.length + bufferR.length);
         combinedTime.set(bufferL, 0);
         combinedTime.set(bufferR, bufferL.length);
