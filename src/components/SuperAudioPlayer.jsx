@@ -21,7 +21,24 @@ const EQ_PRESETS = {
 };
 
 export function SuperAudioPlayer() {
-  const isGrooveflix = typeof window !== 'undefined' && window.location.pathname === '/grooveflix';
+  const [currentPath, setCurrentPath] = useState('/');
+
+  useEffect(() => {
+    setCurrentPath(window.location.pathname);
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    const originalPushState = window.history.pushState;
+    window.history.pushState = (...args) => {
+      originalPushState.apply(window.history, args);
+      setCurrentPath(window.location.pathname);
+    };
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.history.pushState = originalPushState;
+    };
+  }, []);
+
+  const isGrooveflix = currentPath === '/grooveflix';
 
   const {
     currentTrack,
