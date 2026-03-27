@@ -11,20 +11,6 @@ const ANSI = {
   RMS_FRAMES: 18,
 };
 
-const MARKS = [
-  { vu: -20, label: '-20', minor: false },
-  { vu: -10, label: '-10', minor: false },
-  { vu: -7, label: '-7', minor: true },
-  { vu: -5, label: '-5', minor: false },
-  { vu: -3, label: '-3', minor: false },
-  { vu: -2, label: '-2', minor: true },
-  { vu: -1, label: '-1', minor: true },
-  { vu: 0, label: '0', minor: false },
-  { vu: 1, label: '+1', minor: true },
-  { vu: 2, label: '+2', minor: true },
-  { vu: 3, label: '+3', minor: false },
-];
-
 const DEFAULTS = {
   inputGain: 1.0,
   damping: 0.35,
@@ -134,51 +120,10 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     const cx = W * 0.5;
     const cy = H * 1.18;
     const len = H * 1.12;
-    const arcR = len - 7 * dpr;
 
     const ANG_L = -Math.PI * 0.38;
     const ANG_R = Math.PI * 0.38;
     const range = ANG_R - ANG_L;
-    const ang = (vu) => ANG_L + vuToPos(vu) * range;
-
-    ctx.strokeStyle = 'rgba(180,20,20,0.12)';
-    ctx.lineWidth = 12 * dpr;
-    ctx.beginPath();
-    ctx.arc(cx, cy, arcR, ang(0), ANG_R);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#2a2520';
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.beginPath();
-    ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
-    ctx.stroke();
-
-    MARKS.forEach((m) => {
-      const a = ang(m.vu);
-      const isRed = m.vu >= 0;
-      const tLen = m.minor ? 4 * dpr : 9 * dpr;
-
-      const x1 = cx + Math.sin(a) * (arcR - tLen);
-      const y1 = cy - Math.cos(a) * (arcR - tLen);
-      const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
-      const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
-
-      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
-      ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-
-      if (!m.minor) {
-        const dist = arcR - tLen - 10 * dpr;
-        ctx.fillStyle = isRed ? '#993333' : '#6a6550';
-        ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
-      }
-    });
 
     const pos = Math.max(-0.02, Math.min(1.05, posNorm));
     const needAng = ANG_L + pos * range;
