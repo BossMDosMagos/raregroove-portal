@@ -3,6 +3,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Square, Volume2, VolumeX,
   Repeat, Repeat1, Shuffle, Disc3
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAudioEngine, ANSI } from '../hooks/useAudioEngine';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
@@ -21,6 +22,9 @@ const EQ_PRESETS = {
 };
 
 export function SuperAudioPlayer() {
+  const location = useLocation();
+  const isGrooveflix = location.pathname === '/grooveflix';
+
   const {
     currentTrack,
     queue,
@@ -276,7 +280,7 @@ export function SuperAudioPlayer() {
 
   const hasTrack = queue.length > 0 && currentTrack;
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !isGrooveflix) {
     return null;
   }
 
