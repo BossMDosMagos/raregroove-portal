@@ -59,11 +59,18 @@ function calculatePeak(data) {
 let audioNodes = null;
 
 function ensureAudioNodes() {
-  if (audioNodes) return audioNodes;
+  if (audioNodes) {
+    console.log('[DEBUG] audioNodes already exists, reusing');
+    return audioNodes;
+  }
 
   const ctx = Howler.ctx;
-  if (!ctx) return null;
+  if (!ctx) {
+    console.log('[DEBUG] ensureAudioNodes: Howler.ctx is null');
+    return null;
+  }
 
+  console.log('[DEBUG] ensureAudioNodes: creating new audio nodes');
   const splitter = ctx.createChannelSplitter(2);
   const analyserL = ctx.createAnalyser();
   const analyserR = ctx.createAnalyser();
@@ -76,13 +83,18 @@ function ensureAudioNodes() {
   const bufferL = new Float32Array(analyserL.fftSize);
   const bufferR = new Float32Array(analyserR.fftSize);
 
+  console.log('[DEBUG] Howler.masterGain:', Howler.masterGain ? 'exists' : 'null');
   if (Howler.masterGain) {
+    console.log('[DEBUG] Connecting masterGain to splitter and destination');
     Howler.masterGain.connect(splitter);
     Howler.masterGain.connect(ctx.destination);
+  } else {
+    console.log('[DEBUG] WARNING: masterGain is null, analysers not connected to audio!');
   }
   
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
+  console.log('[DEBUG] splitter connected to analysers');
 
   audioNodes = {
     ctx,
@@ -135,7 +147,15 @@ export function useAudioEngine() {
       if (!isLoopRunningRef.current) return;
 
       const nodes = audioNodes;
-      if (!nodes || nodes.ctx.state !== 'running') {
+      
+      if (!nodes) {
+        console.log('[VU DEBUG] audioNodes is NULL');
+        animationFrameRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      
+      if (nodes.ctx.state !== 'running') {
+        console.log('[VU DEBUG] ctx.state:', nodes.ctx.state);
         animationFrameRef.current = requestAnimationFrame(loop);
         return;
       }
