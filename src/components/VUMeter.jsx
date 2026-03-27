@@ -60,7 +60,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   const calRef = useRef(calibration);
   const isPlayingRef = useRef(isPlaying);
   const bgImageRef = useRef(null);
-  const imageSizeRef = useRef({ width: 502, height: 534 });
 
   useEffect(() => {
     calRef.current = calibration;
@@ -81,10 +80,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         });
         setBgImage(img);
         bgImageRef.current = img;
-        const halfWidth = Math.floor(img.naturalWidth / 2);
-        imageSizeRef.current = { width: halfWidth, height: img.naturalHeight };
       } catch {
-        console.log('[VUMeter] Fundo vintage não carregado');
+        console.log('[VUMeter] Fundo não carregado');
       }
     };
     loadBg();
@@ -114,6 +111,110 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     ball.pos += ball.vel * dt;
     ball.pos = Math.max(-0.02, Math.min(1.05, ball.pos));
     return ball.pos;
+  };
+
+  const drawVU = (canvas, posNorm, ch, bgImg) => {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth * dpr;
+    const H = canvas.offsetHeight * dpr;
+    
+    canvas.width = W;
+    canvas.height = H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (bgImg && bgImg.complete) {
+      ctx.drawImage(bgImg, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    const cx = W * 0.5;
+    const cy = H * 1.18;
+    const len = H * 1.12;
+    const arcR = len - 7 * dpr;
+
+    const ANG_L = -Math.PI * 0.38;
+    const ANG_R = Math.PI * 0.38;
+    const range = ANG_R - ANG_L;
+    const ang = (vu) => ANG_L + vuToPos(vu) * range;
+
+    ctx.strokeStyle = 'rgba(180,20,20,0.12)';
+    ctx.lineWidth = 12 * dpr;
+    ctx.beginPath();
+    ctx.arc(cx, cy, arcR, ang(0), ANG_R);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#2a2520';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath();
+    ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
+    ctx.stroke();
+
+    MARKS.forEach((m) => {
+      const a = ang(m.vu);
+      const isRed = m.vu >= 0;
+      const tLen = m.minor ? 4 * dpr : 9 * dpr;
+
+      const x1 = cx + Math.sin(a) * (arcR - tLen);
+      const y1 = cy - Math.cos(a) * (arcR - tLen);
+      const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
+      const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
+
+      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
+      ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      if (!m.minor) {
+        const dist = arcR - tLen - 10 * dpr;
+        ctx.fillStyle = isRed ? '#993333' : '#6a6550';
+        ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
+      }
+    });
+
+    const pos = Math.max(-0.02, Math.min(1.05, posNorm));
+    const needAng = ANG_L + pos * range;
+    const ex = cx + Math.sin(needAng) * len;
+    const ey = cy - Math.cos(needAng) * len;
+
+    let c1, c2, glow;
+    if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
+    else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
+    else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
+
+    const grad = ctx.createLinearGradient(cx, cy, ex, ey);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
+
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 10 * dpr;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#DAA520';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#5a5550';
+    ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(ch, 7 * dpr, 6 * dpr);
   };
 
   useEffect(() => {
@@ -163,118 +264,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      const drawVU = (canvas, posNorm, ch, bgImg, offsetX) => {
-        const ctx = canvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
-        const imgSize = imageSizeRef.current;
-        
-        const W = imgSize.width * dpr;
-        const H = imgSize.height * dpr;
-        
-        if (canvas.width !== W || canvas.height !== H) {
-          canvas.width = W;
-          canvas.height = H;
-          canvas.style.width = `${imgSize.width}px`;
-          canvas.style.height = `${imgSize.height}px`;
-        }
-
-        ctx.clearRect(0, 0, W, H);
-
-        if (bgImg && bgImg.complete) {
-          ctx.drawImage(bgImg, offsetX * dpr, 0, W, H, 0, 0, W, H);
-        } else {
-          ctx.fillStyle = '#1a1510';
-          ctx.fillRect(0, 0, W, H);
-        }
-
-        const cx = W * 0.5;
-        const cy = H * 1.18;
-        const len = H * 1.12;
-        const arcR = len - 7 * dpr;
-
-        const ANG_L = -Math.PI * 0.38;
-        const ANG_R = Math.PI * 0.38;
-        const range = ANG_R - ANG_L;
-        const ang = (vu) => ANG_L + vuToPos(vu) * range;
-
-        ctx.strokeStyle = 'rgba(180,20,20,0.12)';
-        ctx.lineWidth = 12 * dpr;
-        ctx.beginPath();
-        ctx.arc(cx, cy, arcR, ang(0), ANG_R);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#2a2520';
-        ctx.lineWidth = 1.5 * dpr;
-        ctx.beginPath();
-        ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
-        ctx.stroke();
-
-        MARKS.forEach((m) => {
-          const a = ang(m.vu);
-          const isRed = m.vu >= 0;
-          const tLen = m.minor ? 4 * dpr : 9 * dpr;
-
-          const x1 = cx + Math.sin(a) * (arcR - tLen);
-          const y1 = cy - Math.cos(a) * (arcR - tLen);
-          const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
-          const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
-
-          ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
-          ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-
-          if (!m.minor) {
-            const dist = arcR - tLen - 10 * dpr;
-            ctx.fillStyle = isRed ? '#993333' : '#6a6550';
-            ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
-          }
-        });
-
-        const pos = Math.max(-0.02, Math.min(1.05, posNorm));
-        const needAng = ANG_L + pos * range;
-        const ex = cx + Math.sin(needAng) * len;
-        const ey = cy - Math.cos(needAng) * len;
-
-        let c1, c2, glow;
-        if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
-        else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
-        else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
-
-        const grad = ctx.createLinearGradient(cx, cy, ex, ey);
-        grad.addColorStop(0, c1);
-        grad.addColorStop(1, c2);
-
-        ctx.shadowColor = glow;
-        ctx.shadowBlur = 10 * dpr;
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2.2 * dpr;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = '#DAA520';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#5a5550';
-        ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(ch, 7 * dpr, 6 * dpr);
-      };
-
-      drawVU(canvasL, posL, 'L', bgImageRef.current, 0);
-      drawVU(canvasR, posR, 'R', bgImageRef.current, imageSizeRef.current.width);
+      drawVU(canvasL, posL, 'L', bgImageRef.current);
+      drawVU(canvasR, posR, 'R', bgImageRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -292,8 +283,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     <div className="w-full">
       <div className="flex items-end justify-center gap-2 mb-1">
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">L</span>
-        <canvas ref={canvasLRef} className="rounded" />
-        <canvas ref={canvasRRef} className="rounded" />
+        <canvas ref={canvasLRef} className="w-[156px] h-[80px]" />
+        <canvas ref={canvasRRef} className="w-[156px] h-[80px]" />
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">R</span>
       </div>
 
