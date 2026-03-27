@@ -65,7 +65,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     img.onerror = () => {
       console.error('[VUMeter] Falha ao carregar o fundo');
     };
-    img.src = '/images/vu/base vintage.png';
+    img.src = '/images/vu/base.png';
   }, []);
 
   useEffect(() => {
