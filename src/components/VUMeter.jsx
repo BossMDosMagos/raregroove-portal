@@ -1,7 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-import vuBaseImage from '/images/vu/base vintage.png';
-
 const STORAGE_KEY = 'raregroove_vu_calibration';
 
 const ANSI = {
@@ -58,22 +56,16 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   }, [isPlaying]);
 
   useEffect(() => {
-    const loadBg = async () => {
-      try {
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = vuBaseImage;
-        });
-        setBgImage(img);
-        bgImageRef.current = img;
-        console.log('[VUMeter] Fundo carregado com sucesso!');
-      } catch (error) {
-        console.error('[VUMeter] Falha ao carregar o fundo:', error);
-      }
+    const img = new Image();
+    img.onload = () => {
+      setBgImage(img);
+      bgImageRef.current = img;
+      console.log('[VUMeter] Fundo carregado!');
     };
-    loadBg();
+    img.onerror = () => {
+      console.error('[VUMeter] Falha ao carregar o fundo');
+    };
+    img.src = '/images/vu/base vintage.png';
   }, []);
 
   useEffect(() => {
