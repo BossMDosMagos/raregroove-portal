@@ -9,7 +9,6 @@ const ANSI = {
   SCALE_MIN: -20,
   SCALE_MAX: 3,
   RMS_FRAMES: 18,
-  SEG_COUNT: 24,
 };
 
 const MARKS = [
@@ -29,12 +28,11 @@ const MARKS = [
 const DEFAULTS = {
   inputGain: 1.0,
   damping: 0.35,
-  offset: 0,
 };
 
 export function VUMeter({ vuMeterData, isPlaying }) {
   const [showCalibration, setShowCalibration] = useState(false);
-  const [vuBg, setVuBg] = useState(null);
+  const [bgImage, setBgImage] = useState(null);
   const [calibration, setCalibration] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -61,7 +59,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   const lastTimeRef = useRef(null);
   const calRef = useRef(calibration);
   const isPlayingRef = useRef(isPlaying);
-  const vuBgRef = useRef(null);
+  const bgImageRef = useRef(null);
+  const imageSizeRef = useRef({ width: 502, height: 534 });
 
   useEffect(() => {
     calRef.current = calibration;
@@ -80,10 +79,12 @@ export function VUMeter({ vuMeterData, isPlaying }) {
           img.onload = resolve;
           img.onerror = reject;
         });
-        setVuBg(img);
-        vuBgRef.current = img;
+        setBgImage(img);
+        bgImageRef.current = img;
+        const halfWidth = Math.floor(img.naturalWidth / 2);
+        imageSizeRef.current = { width: halfWidth, height: img.naturalHeight };
       } catch {
-        console.log('[VUMeter] Fundo vintage não carregado, usando fallback');
+        console.log('[VUMeter] Fundo vintage não carregado');
       }
     };
     loadBg();
@@ -108,119 +109,11 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
   const stepBall = (ch, target, dt) => {
     const ball = ballRef.current[ch];
-    const OMEGA_N = ANSI.OMEGA_N;
-    const ZETA = ANSI.ZETA;
-    
-    const acc = OMEGA_N * OMEGA_N * (target - ball.pos) - 2 * ZETA * OMEGA_N * ball.vel;
+    const acc = ANSI.OMEGA_N * ANSI.OMEGA_N * (target - ball.pos) - 2 * ANSI.ZETA * ANSI.OMEGA_N * ball.vel;
     ball.vel += acc * dt;
     ball.pos += ball.vel * dt;
     ball.pos = Math.max(-0.02, Math.min(1.05, ball.pos));
     return ball.pos;
-  };
-
-  const drawNeedle = (canvas, posNorm, ch, cal, bgImage) => {
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth * dpr;
-    const H = canvas.offsetHeight * dpr;
-    
-    canvas.width = W;
-    canvas.height = H;
-
-    ctx.clearRect(0, 0, W, H);
-
-    if (bgImage && bgImage.complete) {
-      ctx.drawImage(bgImage, 0, 0, W, H);
-    } else {
-      ctx.fillStyle = '#1a1510';
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    const cx = W * 0.5;
-    const cy = H * 1.18;
-    const len = H * 1.12;
-    const arcR = len - 7 * dpr;
-
-    const ANG_L = -Math.PI * 0.38;
-    const ANG_R = Math.PI * 0.38;
-    const range = ANG_R - ANG_L;
-
-    const ang = (vu) => ANG_L + vuToPos(vu) * range;
-
-    ctx.strokeStyle = 'rgba(180,20,20,0.15)';
-    ctx.lineWidth = 14 * dpr;
-    ctx.beginPath();
-    ctx.arc(cx, cy, arcR, ang(0), ANG_R);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#2a2520';
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.beginPath();
-    ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
-    ctx.stroke();
-
-    MARKS.forEach((m) => {
-      const a = ang(m.vu);
-      const isRed = m.vu >= 0;
-      const tLen = m.minor ? 4 * dpr : 9 * dpr;
-
-      const x1 = cx + Math.sin(a) * (arcR - tLen);
-      const y1 = cy - Math.cos(a) * (arcR - tLen);
-      const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
-      const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
-
-      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
-      ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-
-      if (!m.minor) {
-        const dist = arcR - tLen - 10 * dpr;
-        ctx.fillStyle = isRed ? '#993333' : '#6a6550';
-        ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
-      }
-    });
-
-    const pos = Math.max(-0.02, Math.min(1.05, posNorm));
-    const needAng = ANG_L + pos * range;
-    const ex = cx + Math.sin(needAng) * len;
-    const ey = cy - Math.cos(needAng) * len;
-
-    let c1, c2, glow;
-    if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
-    else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
-    else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
-
-    const grad = ctx.createLinearGradient(cx, cy, ex, ey);
-    grad.addColorStop(0, c1);
-    grad.addColorStop(1, c2);
-
-    ctx.shadowColor = glow;
-    ctx.shadowBlur = 10 * dpr;
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 2.2 * dpr;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(ex, ey);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#DAA520';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#5a5550';
-    ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(ch, 7 * dpr, 6 * dpr);
   };
 
   useEffect(() => {
@@ -270,8 +163,118 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      drawNeedle(canvasL, posL, 'L', calRef.current, vuBgRef.current);
-      drawNeedle(canvasR, posR, 'R', calRef.current, vuBgRef.current);
+      const drawVU = (canvas, posNorm, ch, bgImg, offsetX) => {
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const imgSize = imageSizeRef.current;
+        
+        const W = imgSize.width * dpr;
+        const H = imgSize.height * dpr;
+        
+        if (canvas.width !== W || canvas.height !== H) {
+          canvas.width = W;
+          canvas.height = H;
+          canvas.style.width = `${imgSize.width}px`;
+          canvas.style.height = `${imgSize.height}px`;
+        }
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (bgImg && bgImg.complete) {
+          ctx.drawImage(bgImg, offsetX * dpr, 0, W, H, 0, 0, W, H);
+        } else {
+          ctx.fillStyle = '#1a1510';
+          ctx.fillRect(0, 0, W, H);
+        }
+
+        const cx = W * 0.5;
+        const cy = H * 1.18;
+        const len = H * 1.12;
+        const arcR = len - 7 * dpr;
+
+        const ANG_L = -Math.PI * 0.38;
+        const ANG_R = Math.PI * 0.38;
+        const range = ANG_R - ANG_L;
+        const ang = (vu) => ANG_L + vuToPos(vu) * range;
+
+        ctx.strokeStyle = 'rgba(180,20,20,0.12)';
+        ctx.lineWidth = 12 * dpr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, arcR, ang(0), ANG_R);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#2a2520';
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
+        ctx.stroke();
+
+        MARKS.forEach((m) => {
+          const a = ang(m.vu);
+          const isRed = m.vu >= 0;
+          const tLen = m.minor ? 4 * dpr : 9 * dpr;
+
+          const x1 = cx + Math.sin(a) * (arcR - tLen);
+          const y1 = cy - Math.cos(a) * (arcR - tLen);
+          const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
+          const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
+
+          ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
+          ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          if (!m.minor) {
+            const dist = arcR - tLen - 10 * dpr;
+            ctx.fillStyle = isRed ? '#993333' : '#6a6550';
+            ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
+          }
+        });
+
+        const pos = Math.max(-0.02, Math.min(1.05, posNorm));
+        const needAng = ANG_L + pos * range;
+        const ex = cx + Math.sin(needAng) * len;
+        const ey = cy - Math.cos(needAng) * len;
+
+        let c1, c2, glow;
+        if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
+        else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
+        else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
+
+        const grad = ctx.createLinearGradient(cx, cy, ex, ey);
+        grad.addColorStop(0, c1);
+        grad.addColorStop(1, c2);
+
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 10 * dpr;
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2.2 * dpr;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#DAA520';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#5a5550';
+        ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(ch, 7 * dpr, 6 * dpr);
+      };
+
+      drawVU(canvasL, posL, 'L', bgImageRef.current, 0);
+      drawVU(canvasR, posR, 'R', bgImageRef.current, imageSizeRef.current.width);
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -289,8 +292,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     <div className="w-full">
       <div className="flex items-end justify-center gap-2 mb-1">
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">L</span>
-        <canvas ref={canvasLRef} className="w-[156px] h-[80px]" />
-        <canvas ref={canvasRRef} className="w-[156px] h-[80px]" />
+        <canvas ref={canvasLRef} className="rounded" />
+        <canvas ref={canvasRRef} className="rounded" />
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">R</span>
       </div>
 
@@ -311,45 +314,23 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
       {showCalibration && (
         <div className="mt-2 p-3 bg-black/90 rounded-lg border border-yellow-600/40">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Input Gain (×dB)</label>
-              <input
-                type="range"
-                min="0.1"
-                max="5"
-                step="0.05"
-                value={calibration.inputGain}
-                onChange={(e) => saveCalibration({ ...calibration, inputGain: Number(e.target.value) })}
-                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
-              />
-              <span className="text-[8px] text-yellow-400">{calibration.inputGain.toFixed(2)}×</span>
-            </div>
-            <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Damping</label>
-              <input
-                type="range"
-                min="0.1"
-                max="1.0"
-                step="0.05"
-                value={calibration.damping}
-                onChange={(e) => saveCalibration({ ...calibration, damping: Number(e.target.value) })}
-                className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
-              />
-              <span className="text-[8px] text-yellow-400">{calibration.damping.toFixed(2)}</span>
-            </div>
+          <div>
+            <label className="text-[9px] text-yellow-500 block mb-1">Input Gain (×dB)</label>
+            <input
+              type="range"
+              min="0.1"
+              max="5"
+              step="0.05"
+              value={calibration.inputGain}
+              onChange={(e) => saveCalibration({ ...calibration, inputGain: Number(e.target.value) })}
+              className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
+            />
+            <span className="text-[8px] text-yellow-400">{calibration.inputGain.toFixed(2)}×</span>
           </div>
-          <div className="mt-2 text-[8px] text-yellow-600/50 space-y-1">
+          <div className="mt-2 text-[8px] text-yellow-600/50">
             <p>ANSI C16.5-1942: 0 VU = -18 dBFS</p>
-            <p>Rise: 300ms | Overshoot: ~1.5%</p>
           </div>
-          <div className="mt-3 flex justify-between items-center">
-            <button
-              onClick={() => saveCalibration(DEFAULTS)}
-              className="text-[9px] text-red-400 hover:text-red-300 px-2 py-1"
-            >
-              Resetar Padrão
-            </button>
+          <div className="mt-3 flex justify-end">
             <button
               onClick={() => setShowCalibration(false)}
               className="px-4 py-1 text-[9px] bg-yellow-600 hover:bg-yellow-500 text-black rounded font-bold"
