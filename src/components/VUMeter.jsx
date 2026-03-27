@@ -132,6 +132,36 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     ctx.lineTo(ex, ey);
     ctx.stroke();
     ctx.shadowBlur = 0;
+
+    const ledX = W * 0.88;
+    const ledY = H * 0.12;
+    const ledR = W * 0.06;
+
+    let ledColor, ledGlow;
+    if (pos >= vuToPos(0)) {
+      ledColor = '#ff0000';
+      ledGlow = 'rgba(255,0,0,0.9)';
+    } else if (pos >= vuToPos(-3)) {
+      ledColor = '#ffff00';
+      ledGlow = 'rgba(255,255,0,0.8)';
+    } else {
+      ledColor = '#00ff00';
+      ledGlow = 'rgba(0,255,0,0.7)';
+    }
+
+    ctx.beginPath();
+    ctx.arc(ledX, ledY, ledR, 0, Math.PI * 2);
+    ctx.fillStyle = ledColor;
+    ctx.shadowColor = ledGlow;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(ledX, ledY, ledR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   };
 
   useEffect(() => {
