@@ -63,7 +63,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       console.log('[VUMeter] Fundo carregado!', img.src);
     };
     img.onerror = (e) => {
-      console.error('[VUMeter] Falha ao carregar:', img.src, e);
+      console.warn('[VUMeter] Fundo não disponível, usando fallback');
+      setBgImage(null);
     };
     img.src = '/images/vu/base.png';
   }, []);
@@ -115,6 +116,9 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
     if (bgImg && bgImg.complete) {
       ctx.drawImage(bgImg, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#1a1510';
+      ctx.fillRect(0, 0, W, H);
     }
 
     const cx = W * 0.5;
