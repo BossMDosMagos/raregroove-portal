@@ -30,7 +30,8 @@ function calculateRMS(data) {
   if (!data || data.length === 0) return 0;
   let sum = 0;
   for (let i = 0; i < data.length; i++) {
-    sum += data[i] * data[i];
+    const v = (data[i] - 128) / 128;
+    sum += v * v;
   }
   return Math.sqrt(sum / data.length);
 }
@@ -39,18 +40,32 @@ function calculatePeak(data) {
   if (!data || data.length === 0) return 0;
   let peak = 0;
   for (let i = 0; i < data.length; i++) {
-    const abs = Math.abs(data[i]);
+    const abs = Math.abs((data[i] - 128) / 128);
     if (abs > peak) peak = abs;
   }
   return peak;
 }
 
+function rmsToPos(rms) {
+  if (rms < 0.0001) return 0;
+  const db = 20 * Math.log10(rms);
+  const MIN = -60;
+  return Math.max(0, Math.min(1, (db - MIN) / (0 - MIN)));
+}
+
 export function useAudioEngine() {
   const howlRef = useRef(null);
   
-  const requestRef = useRef(null);
-  const isLoopRunningRef = useRef(false);
-  const analyserRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const isPlayingRef = useRef(false);
+  
+  const analyserLRef = useRef(null);
+  const analyserRRef = useRef(null);
+  const splitterRef = useRef(null);
+  const mergerRef = useRef(null);
+  const dataLRef = useRef(null);
+  const dataRRef = useRef(null);
+  const isConnectedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -76,6 +91,127 @@ export function useAudioEngine() {
   const masterGainRef = useRef(null);
   const isInitializedRef = useRef(false);
 
+  const ensureContextRunning = useCallback(async () => {
+    const ctx = Howler.ctx;
+    if (!ctx) return false;
+    if (ctx.state === 'closed') return false;
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        return false;
+      }
+    }
+    return ctx.state === 'running';
+  }, []);
+
+  const disconnectAnalysers = useCallback(() => {
+    try { if (splitterRef.current) splitterRef.current.disconnect(); } catch (e) {}
+    try { if (analyserLRef.current) analyserLRef.current.disconnect(); } catch (e) {}
+    try { if (analyserRRef.current) analyserRRef.current.disconnect(); } catch (e) {}
+    try { if (mergerRef.current) mergerRef.current.disconnect(); } catch (e) {}
+    splitterRef.current = null;
+    analyserLRef.current = null;
+    analyserRRef.current = null;
+    mergerRef.current = null;
+    dataLRef.current = null;
+    dataRRef.current = null;
+    isConnectedRef.current = false;
+  }, []);
+
+  const connectAnalysers = useCallback(() => {
+    const ctx = Howler.ctx;
+    if (!ctx) return;
+
+    disconnectAnalysers();
+
+    const FFT_SIZE = ANSI.FFT_SIZE;
+
+    splitterRef.current = ctx.createChannelSplitter(2);
+
+    analyserLRef.current = ctx.createAnalyser();
+    analyserLRef.current.fftSize = FFT_SIZE;
+    analyserLRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
+    dataLRef.current = new Uint8Array(analyserLRef.current.frequencyBinCount);
+
+    analyserRRef.current = ctx.createAnalyser();
+    analyserRRef.current.fftSize = FFT_SIZE;
+    analyserRRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
+    dataRRef.current = new Uint8Array(analyserRRef.current.frequencyBinCount);
+
+    mergerRef.current = ctx.createChannelMerger(2);
+
+    Howler.masterGain.connect(splitterRef.current);
+
+    splitterRef.current.connect(analyserLRef.current, 0);
+    splitterRef.current.connect(analyserRRef.current, 1);
+
+    analyserLRef.current.connect(mergerRef.current, 0, 0);
+    analyserRRef.current.connect(mergerRef.current, 0, 1);
+
+    mergerRef.current.connect(ctx.destination);
+
+    isConnectedRef.current = true;
+  }, [disconnectAnalysers]);
+
+  const stopAnimLoop = useCallback(() => {
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+  }, []);
+
+  const animLoop = useCallback(() => {
+    stopAnimLoop();
+
+    if (!isPlayingRef.current) return;
+
+    const ctx = Howler.ctx;
+    if (!ctx || ctx.state === 'closed' || !analyserLRef.current || !analyserRRef.current) {
+      animFrameRef.current = requestAnimationFrame(animLoop);
+      return;
+    }
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (isPlayingRef.current) {
+          animFrameRef.current = requestAnimationFrame(animLoop);
+        }
+      });
+      return;
+    }
+
+    try {
+      analyserLRef.current.getByteTimeDomainData(dataLRef.current);
+      analyserRRef.current.getByteTimeDomainData(dataRRef.current);
+
+      const rmsL = calculateRMS(dataLRef.current);
+      const rmsR = calculateRMS(dataRRef.current);
+
+      const combinedTime = new Float32Array(dataLRef.current.length + dataRRef.current.length);
+      combinedTime.set(dataLRef.current, 0);
+      combinedTime.set(dataRRef.current, dataLRef.current.length);
+      setTimeDomainData(combinedTime);
+
+      const freqL = new Uint8Array(analyserLRef.current.frequencyBinCount);
+      const freqR = new Uint8Array(analyserRRef.current.frequencyBinCount);
+      analyserLRef.current.getByteFrequencyData(freqL);
+      analyserRRef.current.getByteFrequencyData(freqR);
+
+      const combinedFreq = new Uint8Array(freqL.length);
+      for (let i = 0; i < combinedFreq.length; i++) {
+        combinedFreq[i] = Math.max(freqL[i], freqR[i]);
+      }
+      setAnalyserData(combinedFreq);
+    } catch (e) {
+      console.log('[Audio] Analyser read error:', e.message);
+    }
+
+    if (isPlayingRef.current) {
+      animFrameRef.current = requestAnimationFrame(animLoop);
+    }
+  }, [stopAnimLoop]);
+
   const initAudioContext = useCallback(() => {
     if (isInitializedRef.current) return;
 
@@ -85,7 +221,6 @@ export function useAudioEngine() {
     const ctx = Howler.ctx;
     if (!ctx) return;
 
-    if (ctx.state === 'closed') return;
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
@@ -123,87 +258,15 @@ export function useAudioEngine() {
     setIsReady(true);
   }, []);
 
-  const startLoop = useCallback(() => {
-    if (isLoopRunningRef.current) return;
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-      requestRef.current = null;
-    }
-    isLoopRunningRef.current = true;
-
-    const ctx = Howler.ctx;
-    if (!ctx || ctx.state === 'closed' || ctx.state === 'suspended') {
-      return;
-    }
-
-    analyserRef.current = ctx.createAnalyser();
-    analyserRef.current.fftSize = ANSI.FFT_SIZE;
-    analyserRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
-
-    const freqData = new Uint8Array(analyserRef.current.frequencyBinCount);
-    const timeData = new Float32Array(analyserRef.current.fftSize);
-
-    if (masterGainRef.current) {
-      masterGainRef.current.connect(analyserRef.current);
-    }
-
-    const loop = () => {
-      if (!isLoopRunningRef.current) return;
-
-      const currentCtx = Howler.ctx;
-      if (!currentCtx || currentCtx.state === 'closed' || currentCtx.state === 'suspended') {
-        isLoopRunningRef.current = false;
-        return;
-      }
-
-      const analyser = analyserRef.current;
-      if (!analyser) {
-        isLoopRunningRef.current = false;
-        return;
-      }
-
-      try {
-        analyser.getFloatTimeDomainData(timeData);
-        analyser.getByteFrequencyData(freqData);
-
-        const combinedTime = new Float32Array(timeData.length);
-        combinedTime.set(timeData);
-        setTimeDomainData(combinedTime);
-
-        const combinedFreq = new Uint8Array(freqData.length);
-        combinedFreq.set(freqData);
-        setAnalyserData(combinedFreq);
-      } catch (e) {
-        console.log('[Audio] Analyser error:', e.message);
-      }
-
-      if (isLoopRunningRef.current) {
-        requestRef.current = requestAnimationFrame(loop);
-      }
-    };
-
-    requestRef.current = requestAnimationFrame(loop);
-  }, []);
-
-  const stopLoop = useCallback(() => {
-    isLoopRunningRef.current = false;
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-      requestRef.current = null;
-    }
-    if (analyserRef.current) {
-      try {
-        analyserRef.current.disconnect();
-      } catch (e) {}
-      analyserRef.current = null;
-    }
-  }, []);
-
   const loadTrack = useCallback(async (url, autoplay = true) => {
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
     }
+
+    stopAnimLoop();
+    disconnectAnalysers();
+    isPlayingRef.current = false;
 
     initAudioContext();
 
@@ -225,16 +288,22 @@ export function useAudioEngine() {
         preload: true,
         onplay: () => {
           setIsPlaying(true);
-          startLoop();
+          isPlayingRef.current = true;
+          
+          ensureContextRunning();
+          stopAnimLoop();
+          animFrameRef.current = requestAnimationFrame(animLoop);
         },
         onpause: () => {
           setIsPlaying(false);
-          stopLoop();
+          isPlayingRef.current = false;
+          stopAnimLoop();
         },
         onstop: () => {
           setIsPlaying(false);
+          isPlayingRef.current = false;
           setCurrentTime(0);
-          stopLoop();
+          stopAnimLoop();
         },
         onseek: () => {
           const pos = howl.seek();
@@ -245,6 +314,9 @@ export function useAudioEngine() {
         onload: () => {
           const dur = howl.duration();
           setDuration(dur);
+          
+          connectAnalysers();
+          
           if (autoplay) {
             howl.play();
           }
@@ -255,6 +327,7 @@ export function useAudioEngine() {
         },
         onplayerror: (id, err) => {
           reject(new Error('Playback error: ' + err));
+          Howler.ctx?.resume().then(() => howl?.play());
         },
       });
 
@@ -262,7 +335,7 @@ export function useAudioEngine() {
       setCurrentTime(0);
       setDuration(0);
     });
-  }, [initAudioContext, startLoop, stopLoop]);
+  }, [initAudioContext, ensureContextRunning, stopAnimLoop, animLoop, connectAnalysers]);
 
   const play = useCallback(async () => {
     const ctx = Howler.ctx;
@@ -273,24 +346,30 @@ export function useAudioEngine() {
     if (howlRef.current) {
       howlRef.current.play();
       setIsPlaying(true);
-      startLoop();
+      isPlayingRef.current = true;
+      
+      ensureContextRunning();
+      stopAnimLoop();
+      animFrameRef.current = requestAnimationFrame(animLoop);
     }
-  }, [startLoop]);
+  }, [ensureContextRunning, stopAnimLoop, animLoop]);
 
   const pause = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.pause();
     setIsPlaying(false);
-    stopLoop();
-  }, [stopLoop]);
+    isPlayingRef.current = false;
+    stopAnimLoop();
+  }, [stopAnimLoop]);
 
   const stop = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.stop();
     setIsPlaying(false);
+    isPlayingRef.current = false;
     setCurrentTime(0);
-    stopLoop();
-  }, [stopLoop]);
+    stopAnimLoop();
+  }, [stopAnimLoop]);
 
   const seek = useCallback((time) => {
     if (!howlRef.current) return;
@@ -381,7 +460,9 @@ export function useAudioEngine() {
   }, []);
 
   const dispose = useCallback(() => {
-    stopLoop();
+    isPlayingRef.current = false;
+    stopAnimLoop();
+    disconnectAnalysers();
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
@@ -391,26 +472,13 @@ export function useAudioEngine() {
     setDuration(0);
     setIsReady(false);
     isInitializedRef.current = false;
-  }, [stopLoop]);
+  }, [stopAnimLoop, disconnectAnalysers]);
 
   useEffect(() => {
     return () => {
       dispose();
     };
   }, [dispose]);
-
-  useEffect(() => {
-    if (!howlRef.current) return;
-    const interval = setInterval(() => {
-      if (howlRef.current && howlRef.current.playing()) {
-        const pos = howlRef.current.seek();
-        if (typeof pos === 'number') {
-          setCurrentTime(pos);
-        }
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
 
   const vuMeterData = useMemo(() => {
     const timeData = timeDomainData;
@@ -421,8 +489,9 @@ export function useAudioEngine() {
       };
     }
 
-    const leftData = timeData;
-    const rightData = timeData;
+    const halfLen = Math.floor(timeData.length / 2);
+    const leftData = timeData.slice(0, halfLen);
+    const rightData = timeData.slice(halfLen);
 
     const leftRMS = calculateRMS(leftData);
     const rightRMS = calculateRMS(rightData);
