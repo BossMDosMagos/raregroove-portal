@@ -1,18 +1,30 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
 const STORAGE_KEY = 'raregroove_vu_calibration';
 
 const ANSI = {
-  ZERO_VU_DB: -18,
-  PEAK_THRESHOLD_DB: -0.5,
-  RISE_TIME_MS: 300,
-  PEAK_HOLD_MS: 500,
-  OVERSHOOT: 0.015,
-  MIN_DB: -60,
-  MAX_DB: 3,
-  ARC_START_DEG: -55,
-  ARC_RANGE_DEG: 110,
+  OMEGA_N: 21.0,
+  ZETA: 0.80,
+  REF_DBFS: -18.0,
+  SCALE_MIN: -20,
+  SCALE_MAX: 3,
+  RMS_FRAMES: 18,
+  SEG_COUNT: 24,
 };
+
+const MARKS = [
+  { vu: -20, label: '-20', minor: false },
+  { vu: -10, label: '-10', minor: false },
+  { vu: -7, label: '-7', minor: true },
+  { vu: -5, label: '-5', minor: false },
+  { vu: -3, label: '-3', minor: false },
+  { vu: -2, label: '-2', minor: true },
+  { vu: -1, label: '-1', minor: true },
+  { vu: 0, label: '0', minor: false },
+  { vu: 1, label: '+1', minor: true },
+  { vu: 2, label: '+2', minor: true },
+  { vu: 3, label: '+3', minor: false },
+];
 
 const DEFAULTS = {
   inputGain: 1.0,
@@ -20,37 +32,7 @@ const DEFAULTS = {
   offset: 0,
 };
 
-function dbToLinear(db) {
-  return Math.pow(10, db / 20);
-}
-
-function linearToDb(linear) {
-  if (linear <= 0) return -Infinity;
-  return 20 * Math.log10(linear);
-}
-
-function rmsToVu(rmsDb) {
-  return rmsDb - ANSI.ZERO_VU_DB;
-}
-
-function vuToAngle(vu) {
-  const minVu = ANSI.MIN_DB - ANSI.ZERO_VU_DB;
-  const maxVu = ANSI.MAX_DB - ANSI.ZERO_VU_DB;
-  const clampedVu = Math.max(minVu, Math.min(maxVu, vu));
-  const normalized = (clampedVu - minVu) / (maxVu - minVu);
-  return ANSI.ARC_START_DEG + normalized * ANSI.ARC_RANGE_DEG;
-}
-
-function springOvershoot(current, target, overshoot) {
-  if (target > current) {
-    return target * (1 + overshoot);
-  }
-  return target;
-}
-
 export function VUMeter({ vuMeterData, isPlaying }) {
-  const [vuBgL, setVuBgL] = useState(null);
-  const [vuBgR, setVuBgR] = useState(null);
   const [showCalibration, setShowCalibration] = useState(false);
   const [calibration, setCalibration] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -64,39 +46,28 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return DEFAULTS;
   });
 
-  const vuBgLRef = useRef(null);
-  const vuBgRRef = useRef(null);
+  const ballRef = useRef({ L: { pos: 0, vel: 0 }, R: { pos: 0, vel: 0 } });
+  const rmsBufRef = useRef({
+    L: new Float32Array(ANSI.RMS_FRAMES),
+    R: new Float32Array(ANSI.RMS_FRAMES),
+    idx: 0,
+  });
+  const targetRef = useRef({ L: 0, R: 0 });
 
-  const needleAngleL = useRef(ANSI.ARC_START_DEG);
-  const needleAngleR = useRef(ANSI.ARC_START_DEG);
-  const targetAngleL = useRef(ANSI.ARC_START_DEG);
-  const targetAngleR = useRef(ANSI.ARC_START_DEG);
-  const velocityL = useRef(0);
-  const velocityR = useRef(0);
-  const overshootL = useRef(false);
-  const overshootR = useRef(false);
-
-  const peakHoldL = useRef({ value: -60, holdUntil: 0 });
-  const peakHoldR = useRef({ value: -60, holdUntil: 0 });
-  const ledBrightnessL = useRef(0);
-  const ledBrightnessR = useRef(0);
-
-  const canvasRef = useRef(null);
+  const canvasLRef = useRef(null);
+  const canvasRRef = useRef(null);
   const animationRef = useRef(null);
-  const lastFrameTime = useRef(0);
+  const lastTimeRef = useRef(null);
   const calRef = useRef(calibration);
-
-  useEffect(() => {
-    vuBgLRef.current = vuBgL;
-  }, [vuBgL]);
-
-  useEffect(() => {
-    vuBgRRef.current = vuBgR;
-  }, [vuBgR]);
+  const isPlayingRef = useRef(isPlaying);
 
   useEffect(() => {
     calRef.current = calibration;
   }, [calibration]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   const saveCalibration = useCallback((newCal) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newCal));
@@ -104,300 +75,183 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     calRef.current = newCal;
   }, []);
 
-  useEffect(() => {
-    const loadBg = async () => {
-      try {
-        const bgL = new Image();
-        bgL.src = '/images/vu/vu-l.png';
-        await new Promise((resolve, reject) => {
-          bgL.onload = resolve;
-          bgL.onerror = reject;
-        });
-        setVuBgL(bgL);
+  const vuToPos = (vu) => {
+    return (vu - ANSI.SCALE_MIN) / (ANSI.SCALE_MAX - ANSI.SCALE_MIN);
+  };
 
-        const bgR = new Image();
-        bgR.src = '/images/vu/vu-r.png';
-        await new Promise((resolve, reject) => {
-          bgR.onload = resolve;
-          bgR.onerror = reject;
-        });
-        setVuBgR(bgR);
-      } catch {
-        // Silent fail - will draw fallback
-      }
-    };
-    loadBg();
-  }, []);
+  const rmsToPos = (rms) => {
+    if (rms < 0.000031623) return 0;
+    const dbfs = 20 * Math.log10(rms);
+    const vu = dbfs - ANSI.REF_DBFS;
+    return Math.max(0, Math.min(1, vuToPos(vu)));
+  };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const stepBall = (ch, target, dt) => {
+    const ball = ballRef.current[ch];
+    const OMEGA_N = ANSI.OMEGA_N;
+    const ZETA = ANSI.ZETA;
+    
+    const acc = OMEGA_N * OMEGA_N * (target - ball.pos) - 2 * ZETA * OMEGA_N * ball.vel;
+    ball.vel += acc * dt;
+    ball.pos += ball.vel * dt;
+    ball.pos = Math.max(-0.02, Math.min(1.05, ball.pos));
+    return ball.pos;
+  };
 
+  const drawNeedle = (canvas, posNorm, ch, cal) => {
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
+    const W = canvas.offsetWidth * dpr;
+    const H = canvas.offsetHeight * dpr;
+    
+    canvas.width = W;
+    canvas.height = H;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0b0b0b';
+    ctx.fillRect(0, 0, W, H);
 
-    const w = rect.width;
-    const h = rect.height;
+    const cx = W * 0.5;
+    const cy = H * 1.18;
+    const len = H * 1.12;
+    const arcR = len - 7 * dpr;
 
-    const drawVUBackground = (cx, bgImage) => {
-      const cal = calRef.current;
-      const arcCenterY = h - 15 + (cal.offset || 0);
-      const arcRadius = h - 35;
+    const ANG_L = -Math.PI * 0.38;
+    const ANG_R = Math.PI * 0.38;
+    const range = ANG_R - ANG_L;
 
-      if (bgImage && bgImage.complete) {
-        ctx.drawImage(bgImage, cx - 82, 2, 164, h - 4);
-      } else {
-        ctx.fillStyle = '#0a0a0a';
-        ctx.fillRect(cx - 82, 2, 164, h - 4);
+    const ang = (vu) => ANG_L + vuToPos(vu) * range;
 
-        ctx.strokeStyle = '#2a2a2a';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(cx - 82, 2, 164, h - 4);
+    ctx.strokeStyle = 'rgba(180,20,20,0.18)';
+    ctx.lineWidth = 14 * dpr;
+    ctx.beginPath();
+    ctx.arc(cx, cy, arcR, ang(0), ANG_R);
+    ctx.stroke();
 
-        const dbMarks = [-48, -36, -24, -18, -12, -6, -3, 0];
-        const ZERO_VU = ANSI.ZERO_VU_DB;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath();
+    ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
+    ctx.stroke();
 
-        ctx.font = '5px monospace';
+    MARKS.forEach((m) => {
+      const a = ang(m.vu);
+      const isRed = m.vu >= 0;
+      const tLen = m.minor ? 4 * dpr : 9 * dpr;
+
+      const x1 = cx + Math.sin(a) * (arcR - tLen);
+      const y1 = cy - Math.cos(a) * (arcR - tLen);
+      const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
+      const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
+
+      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#333' : '#555';
+      ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      if (!m.minor) {
+        const dist = arcR - tLen - 10 * dpr;
+        ctx.fillStyle = isRed ? '#993333' : '#4a4a4a';
+        ctx.font = `${7.5 * dpr}px Courier New`;
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
+      }
+    });
 
-        dbMarks.forEach(db => {
-          const vu = rmsToVu(db);
-          const angle = vuToAngle(vu);
-          const angleRad = (angle - 90) * (Math.PI / 180);
-          const labelR = arcRadius + 10;
-          const labelX = cx + Math.cos(angleRad) * labelR;
-          const labelY = arcCenterY + Math.sin(angleRad) * labelR;
+    const pos = Math.max(-0.02, Math.min(1.05, posNorm));
+    const needAng = ANG_L + pos * range;
+    const ex = cx + Math.sin(needAng) * len;
+    const ey = cy - Math.cos(needAng) * len;
 
-          ctx.beginPath();
-          ctx.moveTo(
-            cx + Math.cos(angleRad) * (arcRadius - 5),
-            arcCenterY + Math.sin(angleRad) * (arcRadius - 5)
-          );
-          ctx.lineTo(
-            cx + Math.cos(angleRad) * (arcRadius + 2),
-            arcCenterY + Math.sin(angleRad) * (arcRadius + 2)
-          );
+    let c1, c2, glow;
+    if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
+    else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
+    else { c1 = '#555'; c2 = '#ccc'; glow = 'transparent'; }
 
-          if (db >= ZERO_VU) {
-            ctx.strokeStyle = '#ff4444';
-          } else if (db >= ZERO_VU - 6) {
-            ctx.strokeStyle = '#ffcc00';
-          } else {
-            ctx.strokeStyle = db === ZERO_VU ? '#00ff00' : '#444444';
-          }
-          ctx.lineWidth = 1;
-          ctx.stroke();
+    const grad = ctx.createLinearGradient(cx, cy, ex, ey);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
 
-          ctx.fillStyle = db === ZERO_VU ? '#00ff00' : '#666666';
-          ctx.fillText(db.toString(), labelX, labelY);
-        });
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 10 * dpr;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#DAA520';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#3a3a3a';
+    ctx.font = `bold ${9 * dpr}px Courier New`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(ch, 7 * dpr, 6 * dpr);
+  };
+
+  useEffect(() => {
+    const canvasL = canvasLRef.current;
+    const canvasR = canvasRRef.current;
+    if (!canvasL || !canvasR) return;
+
+    const animate = (timestamp) => {
+      if (lastTimeRef.current === null) lastTimeRef.current = timestamp;
+      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.05);
+      lastTimeRef.current = timestamp;
+
+      const gain = calRef.current.inputGain || 1;
+      let leftRMS = 0;
+      let rightRMS = 0;
+
+      if (vuMeterData && vuMeterData.leftRMS !== undefined) {
+        leftRMS = (vuMeterData.leftRMS || 0) * gain;
+        rightRMS = (vuMeterData.rightRMS || 0) * gain;
       }
 
-      return { arcCenterX: cx, arcCenterY, arcRadius };
-    };
-
-    const drawNeedle = (cx, cy, radius, angle) => {
-      const angleRad = (angle - 90) * (Math.PI / 180);
-      const needleLength = radius - 8;
-
-      const baseX = cx + Math.cos(angleRad) * 5;
-      const baseY = cy + Math.sin(angleRad) * 5;
-      const tipX = cx + Math.cos(angleRad) * needleLength;
-      const tipY = cy + Math.sin(angleRad) * needleLength;
-
-      const perpRad = angleRad + Math.PI / 2;
-      const baseWidth = 1.2;
-
-      ctx.save();
-      ctx.shadowColor = 'rgba(255, 60, 30, 0.9)';
-      ctx.shadowBlur = 8;
-
-      const needleGrad = ctx.createLinearGradient(baseX, baseY, tipX, tipY);
-      needleGrad.addColorStop(0, '#550000');
-      needleGrad.addColorStop(0.15, '#aa0000');
-      needleGrad.addColorStop(0.4, '#dd1100');
-      needleGrad.addColorStop(0.7, '#ff2200');
-      needleGrad.addColorStop(1, '#ff4422');
-
-      ctx.beginPath();
-      ctx.moveTo(baseX + Math.cos(perpRad) * baseWidth, baseY + Math.sin(perpRad) * baseWidth);
-      ctx.lineTo(tipX, tipY);
-      ctx.lineTo(baseX - Math.cos(perpRad) * baseWidth, baseY - Math.sin(perpRad) * baseWidth);
-      ctx.closePath();
-      ctx.fillStyle = needleGrad;
-      ctx.fill();
-      ctx.restore();
-
-      const centerGrad = ctx.createRadialGradient(cx - 1, cy - 1, 0, cx, cy, 6);
-      centerGrad.addColorStop(0, '#ff6644');
-      centerGrad.addColorStop(0.4, '#cc2200');
-      centerGrad.addColorStop(1, '#440000');
-      ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-      ctx.fillStyle = centerGrad;
-      ctx.fill();
-    };
-
-    const drawLedPeak = (cx, brightness, label) => {
-      const ledX = cx + 70;
-      const ledY = 12;
-      const ledSize = 5;
-
-      if (brightness > 0.05) {
-        ctx.save();
-        ctx.shadowColor = `rgba(255, 0, 0, ${brightness})`;
-        ctx.shadowBlur = 12 * brightness;
-
-        const ledGrad = ctx.createRadialGradient(ledX, ledY, 0, ledX, ledY, ledSize);
-        ledGrad.addColorStop(0, `rgba(255, 150, 150, ${brightness})`);
-        ledGrad.addColorStop(0.4, `rgba(255, 30, 0, ${brightness})`);
-        ledGrad.addColorStop(1, `rgba(100, 0, 0, ${brightness * 0.5})`);
-
-        ctx.beginPath();
-        ctx.arc(ledX, ledY, ledSize, 0, Math.PI * 2);
-        ctx.fillStyle = ledGrad;
-        ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.beginPath();
-        ctx.arc(ledX, ledY, ledSize, 0, Math.PI * 2);
-        ctx.fillStyle = '#1a0000';
-        ctx.fill();
-        ctx.strokeStyle = '#330000';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+      if (!isPlayingRef.current) {
+        leftRMS = 0;
+        rightRMS = 0;
       }
 
-      ctx.font = '4px monospace';
-      ctx.fillStyle = '#555';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, ledX, ledY + ledSize + 5);
-    };
+      targetRef.current.L = leftRMS;
+      targetRef.current.R = rightRMS;
 
-    const animate = () => {
-      const now = performance.now();
-      const deltaTime = Math.min((now - lastFrameTime.current) / 1000, 0.1);
-      lastFrameTime.current = now;
+      const rmsBuf = rmsBufRef.current;
+      const idx = rmsBuf.idx % ANSI.RMS_FRAMES;
+      rmsBuf.L[idx] = targetRef.current.L * targetRef.current.L;
+      rmsBuf.R[idx] = targetRef.current.R * targetRef.current.R;
+      rmsBuf.idx++;
 
-      ctx.clearRect(0, 0, w, h);
-
-      const vu1 = drawVUBackground(w * 0.25, vuBgLRef.current);
-      const vu2 = drawVUBackground(w * 0.75, vuBgRRef.current);
-
-      const cal = calRef.current;
-      const gain = cal.inputGain || 1;
-      const damping = cal.damping || 0.35;
-
-      let leftRMSDb = -60;
-      let rightRMSDb = -60;
-      let leftPeakDb = -60;
-      let rightPeakDb = -60;
-
-      if (vuMeterData) {
-        leftRMSDb = (vuMeterData.leftRMSDb || -60) + Math.log10(gain) * 20;
-        rightRMSDb = (vuMeterData.rightRMSDb || -60) + Math.log10(gain) * 20;
-        leftPeakDb = vuMeterData.leftPeakDb || -60;
-        rightPeakDb = vuMeterData.rightPeakDb || -60;
+      let sL = 0, sR = 0;
+      for (let i = 0; i < ANSI.RMS_FRAMES; i++) {
+        sL += rmsBuf.L[i];
+        sR += rmsBuf.R[i];
       }
+      const rmsL = Math.sqrt(sL / ANSI.RMS_FRAMES);
+      const rmsR = Math.sqrt(sR / ANSI.RMS_FRAMES);
 
-      leftRMSDb = Math.max(ANSI.MIN_DB, Math.min(ANSI.MAX_DB, leftRMSDb));
-      rightRMSDb = Math.max(ANSI.MIN_DB, Math.min(ANSI.MAX_DB, rightRMSDb));
+      const targetL = rmsToPos(rmsL);
+      const targetR = rmsToPos(rmsR);
 
-      const leftVu = rmsToVu(leftRMSDb);
-      const rightVu = rmsToVu(rightRMSDb);
+      const posL = stepBall('L', targetL, dt);
+      const posR = stepBall('R', targetR, dt);
 
-      let targetL = vuToAngle(leftVu);
-      let targetR = vuToAngle(rightVu);
-
-      const smoothingFactor = 1 - Math.exp(-deltaTime / (ANSI.RISE_TIME_MS / 1000));
-
-      const prevTargetL = targetAngleL.current;
-      const prevTargetR = targetAngleR.current;
-
-      if (targetL > needleAngleL.current && !overshootL.current) {
-        targetAngleL.current = springOvershoot(needleAngleL.current, targetL, ANSI.OVERSHOOT);
-        overshootL.current = true;
-      } else {
-        targetAngleL.current = targetL;
-      }
-
-      if (targetR > needleAngleR.current && !overshootR.current) {
-        targetAngleR.current = springOvershoot(needleAngleR.current, targetR, ANSI.OVERSHOOT);
-        overshootR.current = true;
-      } else {
-        targetAngleR.current = targetR;
-      }
-
-      const overshootRecoverL = targetAngleL.current <= needleAngleL.current;
-      const overshootRecoverR = targetAngleR.current <= needleAngleR.current;
-
-      if (overshootL.current && overshootRecoverL) {
-        overshootL.current = false;
-      }
-      if (overshootR.current && overshootRecoverR) {
-        overshootR.current = false;
-      }
-
-      needleAngleL.current += (targetAngleL.current - needleAngleL.current) * smoothingFactor * damping;
-      needleAngleR.current += (targetAngleR.current - needleAngleR.current) * smoothingFactor * damping;
-
-      const minAngle = ANSI.ARC_START_DEG;
-      const maxAngle = ANSI.ARC_START_DEG + ANSI.ARC_RANGE_DEG;
-      needleAngleL.current = Math.max(minAngle, Math.min(maxAngle, needleAngleL.current));
-      needleAngleR.current = Math.max(minAngle, Math.min(maxAngle, needleAngleR.current));
-
-      if (!isPlaying || leftRMSDb < ANSI.MIN_DB + 5) {
-        const decayFactor = Math.pow(0.02, deltaTime);
-        needleAngleL.current = minAngle + (needleAngleL.current - minAngle) * decayFactor;
-        needleAngleR.current = minAngle + (needleAngleR.current - minAngle) * decayFactor;
-        overshootL.current = false;
-        overshootR.current = false;
-      }
-
-      const peakThreshold = ANSI.PEAK_THRESHOLD_DB;
-      const nowMs = performance.now();
-
-      if (leftPeakDb > peakThreshold) {
-        peakHoldL.current = { value: leftPeakDb, holdUntil: nowMs + ANSI.PEAK_HOLD_MS };
-      }
-      if (rightPeakDb > peakThreshold) {
-        peakHoldR.current = { value: rightPeakDb, holdUntil: nowMs + ANSI.PEAK_HOLD_MS };
-      }
-
-      if (nowMs > peakHoldL.current.holdUntil) {
-        peakHoldL.current.value *= 0.95;
-      }
-      if (nowMs > peakHoldR.current.holdUntil) {
-        peakHoldR.current.value *= 0.95;
-      }
-
-      const peakNormL = Math.max(0, Math.min(1, (peakHoldL.current.value - peakThreshold) / (-ANSI.MIN_DB - peakThreshold)));
-      const peakNormR = Math.max(0, Math.min(1, (peakHoldR.current.value - peakThreshold) / (-ANSI.MIN_DB - peakThreshold)));
-
-      const ledAttack = 0.4;
-      const ledDecay = 0.15;
-      ledBrightnessL.current += (peakNormL - ledBrightnessL.current) * (peakNormL > ledBrightnessL.current ? ledAttack : ledDecay);
-      ledBrightnessR.current += (peakNormR - ledBrightnessR.current) * (peakNormR > ledBrightnessR.current ? ledAttack : ledDecay);
-
-      drawNeedle(vu1.arcCenterX, vu1.arcCenterY, vu1.arcRadius, needleAngleL.current);
-      drawNeedle(vu2.arcCenterX, vu2.arcCenterY, vu2.arcRadius, needleAngleR.current);
-
-      drawLedPeak(w * 0.25, ledBrightnessL.current, 'PK');
-      drawLedPeak(w * 0.75, ledBrightnessR.current, 'PK');
+      drawNeedle(canvasL, posL, 'L', calRef.current);
+      drawNeedle(canvasR, posR, 'R', calRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationRef.current) {
@@ -410,16 +264,23 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     <div className="w-full">
       <div className="flex items-end justify-center gap-2 mb-1">
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">L</span>
-        <canvas ref={canvasRef} className="w-[328px] h-[88px]" />
+        <canvas ref={canvasLRef} className="w-[156px] h-[80px]" />
+        <canvas ref={canvasRRef} className="w-[156px] h-[80px]" />
         <span className="text-[12px] font-black text-yellow-600 tracking-wider">R</span>
       </div>
 
-      <div className="flex justify-center">
+      <div className="text-center">
+        <span className="text-[7px] text-yellow-600/40">
+          ANSI C16.5 · ζ=0.80 · ωn=21 rad/s · Rise 300ms
+        </span>
+      </div>
+
+      <div className="flex justify-center mt-1">
         <button
           onClick={() => setShowCalibration(!showCalibration)}
           className="text-[8px] text-yellow-700/50 hover:text-yellow-600 transition"
         >
-          ANSI C16.5 Calibrar
+          Calibrar
         </button>
       </div>
 
@@ -440,7 +301,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
               <span className="text-[8px] text-yellow-400">{calibration.inputGain.toFixed(2)}×</span>
             </div>
             <div>
-              <label className="text-[9px] text-yellow-500 block mb-1">Damping (Needle) - 300ms rise</label>
+              <label className="text-[9px] text-yellow-500 block mb-1">Damping</label>
               <input
                 type="range"
                 min="0.1"
@@ -453,22 +314,9 @@ export function VUMeter({ vuMeterData, isPlaying }) {
               <span className="text-[8px] text-yellow-400">{calibration.damping.toFixed(2)}</span>
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-white/10">
-            <label className="text-[9px] text-yellow-500 block mb-1">Offset (px) - Ajuste vertical</label>
-            <input
-              type="range"
-              min="-5"
-              max="10"
-              step="1"
-              value={calibration.offset}
-              onChange={(e) => saveCalibration({ ...calibration, offset: Number(e.target.value) })}
-              className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
-            />
-            <span className="text-[8px] text-yellow-400">{calibration.offset}px</span>
-          </div>
           <div className="mt-2 text-[8px] text-yellow-600/50 space-y-1">
             <p>ANSI C16.5-1942: 0 VU = -18 dBFS</p>
-            <p>Peak: -0.5 dBFS | Rise: 300ms | Overshoot: 1.5%</p>
+            <p>Rise: 300ms | Overshoot: ~1.5%</p>
           </div>
           <div className="mt-3 flex justify-between items-center">
             <button
