@@ -69,19 +69,15 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   }, []);
 
   useEffect(() => {
-    const setupCanvas = (canvasRef) => {
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const dpr = window.devicePixelRatio || 1;
-        const W = canvas.offsetWidth * dpr;
-        const H = canvas.offsetHeight * dpr;
-        canvas.width = W;
-        canvas.height = H;
-      }
+    const setupCanvas = (canvas) => {
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
     };
 
-    setupCanvas(canvasLRef);
-    setupCanvas(canvasRRef);
+    if (canvasLRef.current) setupCanvas(canvasLRef.current);
+    if (canvasRRef.current) setupCanvas(canvasRRef.current);
   }, []);
 
   const saveCalibration = useCallback((newCal) => {
@@ -110,11 +106,10 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return ball.pos;
   };
 
-  const drawNeedle = (canvas, posNorm, bgImg) => {
+  const drawFrame = (canvas, posNorm, bgImg) => {
     const ctx = canvas.getContext('2d');
     const W = canvas.width;
     const H = canvas.height;
-    const dpr = window.devicePixelRatio || 1;
 
     ctx.clearRect(0, 0, W, H);
 
@@ -145,9 +140,9 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     grad.addColorStop(1, c2);
 
     ctx.shadowColor = glow;
-    ctx.shadowBlur = 10 * dpr;
+    ctx.shadowBlur = 10;
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 2.2 * dpr;
+    ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -203,8 +198,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      drawNeedle(canvasL, posL, bgImageRef.current);
-      drawNeedle(canvasR, posR, bgImageRef.current);
+      drawFrame(canvasL, posL, bgImageRef.current);
+      drawFrame(canvasR, posR, bgImageRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
