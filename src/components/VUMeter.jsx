@@ -114,9 +114,9 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     const ey = cy - Math.cos(needAng) * len;
 
     let c1, c2, glow;
-    if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
-    else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
-    else { c1 = '#ffffff'; c2 = '#ffffff'; glow = 'rgba(255,255,255,0.3)'; }
+    if (pos >= vuToPos(0)) { c1 = '#ff0000'; c2 = '#ff3333'; glow = 'rgba(255,0,0,0.9)'; }
+    else if (pos >= vuToPos(-3)) { c1 = '#ff1111'; c2 = '#ff4444'; glow = 'rgba(255,50,50,0.7)'; }
+    else { c1 = '#ff2222'; c2 = '#ff5555'; glow = 'rgba(255,80,80,0.5)'; }
 
     const grad = ctx.createLinearGradient(cx, cy, ex, ey);
     grad.addColorStop(0, c1);
