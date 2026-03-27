@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
+import vuLImg from '../assets/images/vu/vu-l.png';
+import vuRImg from '../assets/images/vu/vu-r.png';
 
 const STORAGE_KEY = 'raregroove_vu_calibration';
 
@@ -18,7 +20,6 @@ const DEFAULTS = {
 
 export function VUMeter({ vuMeterData, isPlaying }) {
   const [showCalibration, setShowCalibration] = useState(false);
-  const [bgImage, setBgImage] = useState(null);
   const [calibration, setCalibration] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -37,7 +38,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     R: new Float32Array(ANSI.RMS_FRAMES),
     idx: 0,
   });
-  const targetRef = useRef({ L: 0, R: 0 });
+  const targetRef = useRef({ L: 0, R: 0   });
 
   const canvasLRef = useRef(null);
   const canvasRRef = useRef(null);
@@ -45,7 +46,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   const lastTimeRef = useRef(null);
   const calRef = useRef(calibration);
   const isPlayingRef = useRef(isPlaying);
-  const bgImageRef = useRef(null);
 
   useEffect(() => {
     calRef.current = calibration;
@@ -54,20 +54,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
-
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setBgImage(img);
-      bgImageRef.current = img;
-      console.log('[VUMeter] Fundo carregado!', img.src);
-    };
-    img.onerror = (e) => {
-      console.warn('[VUMeter] Fundo não disponível, usando fallback');
-      setBgImage(null);
-    };
-    img.src = '/images/vu/base.png';
-  }, []);
 
   useEffect(() => {
     const setupCanvas = (canvas) => {
@@ -107,19 +93,12 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return ball.pos;
   };
 
-  const drawFrame = (canvas, posNorm, bgImg) => {
+  const drawNeedle = (canvas, posNorm) => {
     const ctx = canvas.getContext('2d');
     const W = canvas.width;
     const H = canvas.height;
 
     ctx.clearRect(0, 0, W, H);
-
-    if (bgImg && bgImg.complete) {
-      ctx.drawImage(bgImg, 0, 0, W, H);
-    } else {
-      ctx.fillStyle = '#1a1510';
-      ctx.fillRect(0, 0, W, H);
-    }
 
     const cx = W * 0.5;
     const cy = H * 1.18;
@@ -202,8 +181,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      drawFrame(canvasL, posL, bgImageRef.current);
-      drawFrame(canvasR, posR, bgImageRef.current);
+      drawNeedle(canvasL, posL);
+      drawNeedle(canvasR, posR);
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -215,15 +194,31 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [vuMeterData, isPlaying, bgImage]);
+  }, [vuMeterData, isPlaying]);
 
   return (
     <div className="w-full">
       <div className="flex items-end justify-center gap-2 mb-1">
-        <span className="text-[12px] font-black text-yellow-600 tracking-wider">L</span>
-        <canvas ref={canvasLRef} className="w-[156px] h-[80px]" />
-        <canvas ref={canvasRRef} className="w-[156px] h-[80px]" />
-        <span className="text-[12px] font-black text-yellow-600 tracking-wider">R</span>
+        <span className="text-[12px] font-black text-yellow-600 tracking-wider z-10">L</span>
+        <canvas 
+          ref={canvasLRef} 
+          className="w-[156px] h-[80px]"
+          style={{ 
+            backgroundImage: `url(${vuLImg})`,
+            backgroundSize: '100% 100%',
+            backgroundColor: 'transparent'
+          }}
+        />
+        <canvas 
+          ref={canvasRRef} 
+          className="w-[156px] h-[80px]"
+          style={{ 
+            backgroundImage: `url(${vuRImg})`,
+            backgroundSize: '100% 100%',
+            backgroundColor: 'transparent'
+          }}
+        />
+        <span className="text-[12px] font-black text-yellow-600 tracking-wider z-10">R</span>
       </div>
 
       <div className="text-center">
