@@ -60,10 +60,10 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     img.onload = () => {
       setBgImage(img);
       bgImageRef.current = img;
-      console.log('[VUMeter] Fundo carregado!');
+      console.log('[VUMeter] Fundo carregado!', img.src);
     };
-    img.onerror = () => {
-      console.error('[VUMeter] Falha ao carregar o fundo');
+    img.onerror = (e) => {
+      console.error('[VUMeter] Falha ao carregar:', img.src, e);
     };
     img.src = '/images/vu/base.png';
   }, []);
