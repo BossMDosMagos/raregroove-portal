@@ -50,17 +50,6 @@ export function useAudioEngine() {
   
   const animationFrameRef = useRef(null);
   const isLoopRunningRef = useRef(false);
-  
-  const audioContextRef = useRef(null);
-  const analyserLeftRef = useRef(null);
-  const analyserRightRef = useRef(null);
-  const splitterRef = useRef(null);
-  const masterGainRef = useRef(null);
-  const preAmpRef = useRef(null);
-  const eqFiltersRef = useRef([]);
-  const mediaElementRef = useRef(null);
-  const mediaSourceRef = useRef(null);
-  const isConnectedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -81,41 +70,27 @@ export function useAudioEngine() {
   const panRef = useRef(0);
   const loopModeRef = useRef('none');
   const shuffleRef = useRef(false);
+  const preAmpRef = useRef(null);
+  const eqFiltersRef = useRef([]);
+  const masterGainRef = useRef(null);
+  const isInitializedRef = useRef(false);
 
   const initAudioContext = useCallback(() => {
-    if (isReady) return;
+    if (isInitializedRef.current) return;
 
     Howler.autoSuspend = false;
     Howler.volume(0.8);
 
-    let ctx = Howler.ctx;
-    if (!ctx) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      Howler.ctx = ctx;
-    }
+    const ctx = Howler.ctx;
+    if (!ctx) return;
 
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
 
-    audioContextRef.current = ctx;
-
     masterGainRef.current = ctx.createGain();
     masterGainRef.current.gain.value = 0.8;
     masterGainRef.current.connect(ctx.destination);
-
-    splitterRef.current = ctx.createChannelSplitter(2);
-    
-    analyserLeftRef.current = ctx.createAnalyser();
-    analyserRightRef.current = ctx.createAnalyser();
-    analyserLeftRef.current.fftSize = ANSI.FFT_SIZE;
-    analyserLeftRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
-    analyserRightRef.current.fftSize = ANSI.FFT_SIZE;
-    analyserRightRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
-
-    masterGainRef.current.connect(splitterRef.current);
-    splitterRef.current.connect(analyserLeftRef.current, 0);
-    splitterRef.current.connect(analyserRightRef.current, 1);
 
     preAmpRef.current = ctx.createGain();
     preAmpRef.current.gain.value = 1;
@@ -142,66 +117,50 @@ export function useAudioEngine() {
     preAmpRef.current.connect(eqFiltersRef.current[0]);
     eqFiltersRef.current[eqFiltersRef.current.length - 1].connect(masterGainRef.current);
 
+    isInitializedRef.current = true;
     setIsReady(true);
-  }, [isReady]);
-
-  const connectMediaSource = useCallback(() => {
-    if (isConnectedRef.current) return;
-    if (!audioContextRef.current || !mediaElementRef.current) return;
-
-    try {
-      if (mediaSourceRef.current) {
-        try { mediaSourceRef.current.disconnect(); } catch (e) {}
-      }
-      mediaSourceRef.current = audioContextRef.current.createMediaElementSource(mediaElementRef.current);
-      mediaSourceRef.current.connect(preAmpRef.current);
-      isConnectedRef.current = true;
-    } catch (e) {
-      console.log('[Audio] MediaSource error:', e.message);
-    }
   }, []);
 
   const startLoop = useCallback(() => {
     if (isLoopRunningRef.current) return;
     isLoopRunningRef.current = true;
 
+    const ctx = Howler.ctx;
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = ANSI.FFT_SIZE;
+    analyser.smoothingTimeConstant = ANSI.SMOOTHING;
+
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    const timeData = new Float32Array(analyser.fftSize);
+
+    if (masterGainRef.current) {
+      masterGainRef.current.connect(analyser);
+    }
+
     const loop = () => {
       if (!isLoopRunningRef.current) return;
 
-      const ctx = audioContextRef.current;
-      if (!ctx || ctx.state !== 'running') {
+      const currentCtx = Howler.ctx;
+      if (!currentCtx || currentCtx.state !== 'running') {
         animationFrameRef.current = requestAnimationFrame(loop);
         return;
       }
 
-      const analyserL = analyserLeftRef.current;
-      const analyserR = analyserRightRef.current;
-      
-      if (!analyserL || !analyserR) {
-        animationFrameRef.current = requestAnimationFrame(loop);
-        return;
-      }
+      analyser.getFloatTimeDomainData(timeData);
+      analyser.getByteFrequencyData(freqData);
 
-      const bufferL = new Float32Array(analyserL.fftSize);
-      const bufferR = new Float32Array(analyserR.fftSize);
-
-      analyserL.getFloatTimeDomainData(bufferL);
-      analyserR.getFloatTimeDomainData(bufferR);
-
-      const combinedTime = new Float32Array(bufferL.length + bufferR.length);
-      combinedTime.set(bufferL, 0);
-      combinedTime.set(bufferR, bufferL.length);
+      const combinedTime = new Float32Array(timeData.length);
+      combinedTime.set(timeData);
       setTimeDomainData(combinedTime);
 
-      const freqL = new Uint8Array(analyserL.frequencyBinCount);
-      const freqR = new Uint8Array(analyserR.frequencyBinCount);
-      analyserL.getByteFrequencyData(freqL);
-      analyserR.getByteFrequencyData(freqR);
-
-      const combinedFreq = new Uint8Array(freqL.length);
-      for (let i = 0; i < combinedFreq.length; i++) {
-        combinedFreq[i] = Math.max(freqL[i], freqR[i]);
-      }
+      const combinedFreq = new Uint8Array(freqData.length);
+      combinedFreq.set(freqData);
       setAnalyserData(combinedFreq);
 
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -225,10 +184,8 @@ export function useAudioEngine() {
     }
 
     initAudioContext();
-    isConnectedRef.current = false;
-    mediaElementRef.current = null;
 
-    const ctx = audioContextRef.current;
+    const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
@@ -236,7 +193,7 @@ export function useAudioEngine() {
     return new Promise((resolve, reject) => {
       const howl = new Howl({
         src: [url],
-        html5: true,
+        html5: false,
         format: ['mp3'],
         xhr: { withCredentials: false },
         volume: volumeRef.current,
@@ -246,17 +203,6 @@ export function useAudioEngine() {
         preload: true,
         onplay: () => {
           setIsPlaying(true);
-          
-          const element = howl._sounds[0]?._node;
-          if (element && element !== mediaElementRef.current) {
-            mediaElementRef.current = element;
-          }
-          
-          const currentCtx = audioContextRef.current;
-          if (currentCtx?.state === 'running' && mediaElementRef.current && !isConnectedRef.current) {
-            connectMediaSource();
-          }
-
           startLoop();
         },
         onpause: () => {
@@ -277,16 +223,6 @@ export function useAudioEngine() {
         onload: () => {
           const dur = howl.duration();
           setDuration(dur);
-          
-          const element = howl._sounds[0]?._node;
-          if (element) {
-            mediaElementRef.current = element;
-            const currentCtx = audioContextRef.current;
-            if (currentCtx?.state === 'running' && !isConnectedRef.current) {
-              connectMediaSource();
-            }
-          }
-          
           if (autoplay) {
             howl.play();
           }
@@ -304,10 +240,10 @@ export function useAudioEngine() {
       setCurrentTime(0);
       setDuration(0);
     });
-  }, [initAudioContext, startLoop, stopLoop, connectMediaSource]);
+  }, [initAudioContext, startLoop, stopLoop]);
 
   const play = useCallback(async () => {
-    const ctx = audioContextRef.current;
+    const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
@@ -315,16 +251,9 @@ export function useAudioEngine() {
     if (howlRef.current) {
       howlRef.current.play();
       setIsPlaying(true);
-      
-      const element = howlRef.current._sounds[0]?._node;
-      if (element && !isConnectedRef.current) {
-        mediaElementRef.current = element;
-        connectMediaSource();
-      }
-      
       startLoop();
     }
-  }, [startLoop, connectMediaSource]);
+  }, [startLoop]);
 
   const pause = useCallback(() => {
     if (!howlRef.current) return;
@@ -353,7 +282,7 @@ export function useAudioEngine() {
     volumeRef.current = vol;
     Howler.volume(vol);
     if (masterGainRef.current) {
-      masterGainRef.current.gain.setTargetAtTime(vol, audioContextRef.current.currentTime, 0.01);
+      masterGainRef.current.gain.setTargetAtTime(vol, Howler.ctx.currentTime, 0.01);
     }
     setVolumeState(vol);
   }, []);
@@ -367,7 +296,7 @@ export function useAudioEngine() {
     const dbValue = Math.max(-12, Math.min(12, value));
     const gain = dbToLinear(dbValue);
     if (preAmpRef.current) {
-      preAmpRef.current.gain.setTargetAtTime(gain, audioContextRef.current.currentTime, 0.01);
+      preAmpRef.current.gain.setTargetAtTime(gain, Howler.ctx.currentTime, 0.01);
     }
     setPreAmpState(dbValue);
   }, []);
@@ -376,7 +305,7 @@ export function useAudioEngine() {
     const dbValue = Math.max(-12, Math.min(12, value));
     const filter = eqFiltersRef.current.find(f => f.frequency.value === frequency);
     if (filter) {
-      filter.gain.setTargetAtTime(dbValue, audioContextRef.current.currentTime, 0.01);
+      filter.gain.setTargetAtTime(dbValue, Howler.ctx.currentTime, 0.01);
     }
     setEqBands(prev => ({ ...prev, [frequency]: dbValue }));
   }, []);
@@ -435,15 +364,11 @@ export function useAudioEngine() {
       howlRef.current.unload();
       howlRef.current = null;
     }
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch (e) {}
-      mediaSourceRef.current = null;
-    }
-    isConnectedRef.current = false;
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setIsReady(false);
+    isInitializedRef.current = false;
   }, [stopLoop]);
 
   useEffect(() => {
@@ -474,9 +399,8 @@ export function useAudioEngine() {
       };
     }
 
-    const halfLen = Math.floor(timeData.length / 2);
-    const leftData = timeData.slice(0, halfLen);
-    const rightData = timeData.slice(halfLen);
+    const leftData = timeData;
+    const rightData = timeData;
 
     const leftRMS = calculateRMS(leftData);
     const rightRMS = calculateRMS(rightData);
