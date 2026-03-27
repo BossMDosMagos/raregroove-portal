@@ -127,6 +127,7 @@ export function useAudioEngine() {
   const isInitializedRef = useRef(false);
 
   const startLoop = useCallback(() => {
+    console.log('[DEBUG] startLoop called, isLoopRunning:', isLoopRunningRef.current);
     if (isLoopRunningRef.current) return;
     isLoopRunningRef.current = true;
 
@@ -187,13 +188,16 @@ export function useAudioEngine() {
   const initAudioContext = useCallback(() => {
     if (isInitializedRef.current) return;
 
+    console.log('[DEBUG] initAudioContext called');
     Howler.autoSuspend = false;
     Howler.volume(0.8);
 
     const ctx = Howler.ctx;
+    console.log('[DEBUG] Howler.ctx in init:', ctx ? 'exists' : 'null', ctx?.state);
     if (!ctx) return;
 
     audioNodes = ensureAudioNodes();
+    console.log('[DEBUG] audioNodes:', audioNodes ? 'created' : 'null');
 
     if (ctx.state === 'suspended') {
       ctx.resume();
@@ -231,6 +235,7 @@ export function useAudioEngine() {
   }, []);
 
   const loadTrack = useCallback(async (url, autoplay = true) => {
+    console.log('[DEBUG] loadTrack called with url:', url);
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
@@ -255,10 +260,12 @@ export function useAudioEngine() {
         autoplay: false,
         preload: true,
         onplay: () => {
+          console.log('[DEBUG] onplay called');
           setIsPlaying(true);
           isPlayingRef.current = true;
           
           const ctx = Howler.ctx;
+          console.log('[DEBUG] Howler.ctx:', ctx ? 'exists' : 'null', ctx?.state);
           if (ctx?.state === 'suspended') {
             ctx.resume();
           }
