@@ -48,8 +48,9 @@ function calculatePeak(data) {
 export function useAudioEngine() {
   const howlRef = useRef(null);
   
-  const animationFrameRef = useRef(null);
+  const requestRef = useRef(null);
   const isLoopRunningRef = useRef(false);
+  const analyserRef = useRef(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -84,6 +85,7 @@ export function useAudioEngine() {
     const ctx = Howler.ctx;
     if (!ctx) return;
 
+    if (ctx.state === 'closed') return;
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
@@ -123,57 +125,77 @@ export function useAudioEngine() {
 
   const startLoop = useCallback(() => {
     if (isLoopRunningRef.current) return;
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+      requestRef.current = null;
+    }
     isLoopRunningRef.current = true;
 
     const ctx = Howler.ctx;
-    if (!ctx) return;
-
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+    if (!ctx || ctx.state === 'closed' || ctx.state === 'suspended') {
+      return;
     }
 
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = ANSI.FFT_SIZE;
-    analyser.smoothingTimeConstant = ANSI.SMOOTHING;
+    analyserRef.current = ctx.createAnalyser();
+    analyserRef.current.fftSize = ANSI.FFT_SIZE;
+    analyserRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
 
-    const freqData = new Uint8Array(analyser.frequencyBinCount);
-    const timeData = new Float32Array(analyser.fftSize);
+    const freqData = new Uint8Array(analyserRef.current.frequencyBinCount);
+    const timeData = new Float32Array(analyserRef.current.fftSize);
 
     if (masterGainRef.current) {
-      masterGainRef.current.connect(analyser);
+      masterGainRef.current.connect(analyserRef.current);
     }
 
     const loop = () => {
       if (!isLoopRunningRef.current) return;
 
       const currentCtx = Howler.ctx;
-      if (!currentCtx || currentCtx.state !== 'running') {
-        animationFrameRef.current = requestAnimationFrame(loop);
+      if (!currentCtx || currentCtx.state === 'closed' || currentCtx.state === 'suspended') {
+        isLoopRunningRef.current = false;
         return;
       }
 
-      analyser.getFloatTimeDomainData(timeData);
-      analyser.getByteFrequencyData(freqData);
+      const analyser = analyserRef.current;
+      if (!analyser) {
+        isLoopRunningRef.current = false;
+        return;
+      }
 
-      const combinedTime = new Float32Array(timeData.length);
-      combinedTime.set(timeData);
-      setTimeDomainData(combinedTime);
+      try {
+        analyser.getFloatTimeDomainData(timeData);
+        analyser.getByteFrequencyData(freqData);
 
-      const combinedFreq = new Uint8Array(freqData.length);
-      combinedFreq.set(freqData);
-      setAnalyserData(combinedFreq);
+        const combinedTime = new Float32Array(timeData.length);
+        combinedTime.set(timeData);
+        setTimeDomainData(combinedTime);
 
-      animationFrameRef.current = requestAnimationFrame(loop);
+        const combinedFreq = new Uint8Array(freqData.length);
+        combinedFreq.set(freqData);
+        setAnalyserData(combinedFreq);
+      } catch (e) {
+        console.log('[Audio] Analyser error:', e.message);
+      }
+
+      if (isLoopRunningRef.current) {
+        requestRef.current = requestAnimationFrame(loop);
+      }
     };
 
-    animationFrameRef.current = requestAnimationFrame(loop);
+    requestRef.current = requestAnimationFrame(loop);
   }, []);
 
   const stopLoop = useCallback(() => {
     isLoopRunningRef.current = false;
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+      requestRef.current = null;
+    }
+    if (analyserRef.current) {
+      try {
+        analyserRef.current.disconnect();
+      } catch (e) {}
+      analyserRef.current = null;
     }
   }, []);
 
@@ -195,7 +217,7 @@ export function useAudioEngine() {
         src: [url],
         html5: false,
         format: ['mp3'],
-        xhr: { withCredentials: false },
+        xhr: { method: 'GET', withCredentials: false },
         volume: volumeRef.current,
         loop: loopModeRef.current === 'track',
         pool: 1,
@@ -281,7 +303,7 @@ export function useAudioEngine() {
     const vol = Math.max(0, Math.min(1, value));
     volumeRef.current = vol;
     Howler.volume(vol);
-    if (masterGainRef.current) {
+    if (masterGainRef.current && Howler.ctx && Howler.ctx.state !== 'closed') {
       masterGainRef.current.gain.setTargetAtTime(vol, Howler.ctx.currentTime, 0.01);
     }
     setVolumeState(vol);
@@ -295,7 +317,7 @@ export function useAudioEngine() {
   const setPreAmp = useCallback((value) => {
     const dbValue = Math.max(-12, Math.min(12, value));
     const gain = dbToLinear(dbValue);
-    if (preAmpRef.current) {
+    if (preAmpRef.current && Howler.ctx && Howler.ctx.state !== 'closed') {
       preAmpRef.current.gain.setTargetAtTime(gain, Howler.ctx.currentTime, 0.01);
     }
     setPreAmpState(dbValue);
@@ -304,7 +326,7 @@ export function useAudioEngine() {
   const setEqBand = useCallback((frequency, value) => {
     const dbValue = Math.max(-12, Math.min(12, value));
     const filter = eqFiltersRef.current.find(f => f.frequency.value === frequency);
-    if (filter) {
+    if (filter && Howler.ctx && Howler.ctx.state !== 'closed') {
       filter.gain.setTargetAtTime(dbValue, Howler.ctx.currentTime, 0.01);
     }
     setEqBands(prev => ({ ...prev, [frequency]: dbValue }));
