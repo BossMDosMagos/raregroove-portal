@@ -99,7 +99,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return ball.pos;
   };
 
-  const drawVU = (canvas, posNorm, ch, bgImg) => {
+  const drawNeedle = (canvas, posNorm, bgImg) => {
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.offsetWidth * dpr;
@@ -130,7 +130,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     let c1, c2, glow;
     if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
     else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
-    else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
+    else { c1 = '#ffffff'; c2 = '#ffffff'; glow = 'rgba(255,255,255,0.3)'; }
 
     const grad = ctx.createLinearGradient(cx, cy, ex, ey);
     grad.addColorStop(0, c1);
@@ -146,17 +146,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     ctx.lineTo(ex, ey);
     ctx.stroke();
     ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#DAA520';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#5a5550';
-    ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(ch, 7 * dpr, 6 * dpr);
   };
 
   useEffect(() => {
@@ -206,8 +195,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      drawVU(canvasL, posL, 'L', bgImageRef.current);
-      drawVU(canvasR, posR, 'R', bgImageRef.current);
+      drawNeedle(canvasL, posL, bgImageRef.current);
+      drawNeedle(canvasR, posR, bgImageRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
