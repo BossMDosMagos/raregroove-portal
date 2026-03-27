@@ -112,9 +112,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
     if (bgImg && bgImg.complete) {
       ctx.drawImage(bgImg, 0, 0, W, H);
-    } else {
-      ctx.fillStyle = '#0b0b0b';
-      ctx.fillRect(0, 0, W, H);
     }
 
     const cx = W * 0.5;
