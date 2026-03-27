@@ -1,5 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 
+import vuBaseImage from '/images/vu/base vintage.png';
+
 const STORAGE_KEY = 'raregroove_vu_calibration';
 
 const ANSI = {
@@ -59,18 +61,35 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     const loadBg = async () => {
       try {
         const img = new Image();
-        img.src = '/images/vu/base vintage.png';
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
+          img.src = vuBaseImage;
         });
         setBgImage(img);
         bgImageRef.current = img;
-      } catch {
-        console.log('[VUMeter] Fundo não carregado');
+        console.log('[VUMeter] Fundo carregado com sucesso!');
+      } catch (error) {
+        console.error('[VUMeter] Falha ao carregar o fundo:', error);
       }
     };
     loadBg();
+  }, []);
+
+  useEffect(() => {
+    const setupCanvas = (canvasRef) => {
+      if (canvasRef.current) {
+        const canvas = canvasRef.current;
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.offsetWidth * dpr;
+        const H = canvas.offsetHeight * dpr;
+        canvas.width = W;
+        canvas.height = H;
+      }
+    };
+
+    setupCanvas(canvasLRef);
+    setupCanvas(canvasRRef);
   }, []);
 
   const saveCalibration = useCallback((newCal) => {
@@ -101,12 +120,9 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
   const drawNeedle = (canvas, posNorm, bgImg) => {
     const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
     const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth * dpr;
-    const H = canvas.offsetHeight * dpr;
-    
-    canvas.width = W;
-    canvas.height = H;
 
     ctx.clearRect(0, 0, W, H);
 
@@ -208,7 +224,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [vuMeterData, isPlaying]);
+  }, [vuMeterData, isPlaying, bgImage]);
 
   return (
     <div className="w-full">
