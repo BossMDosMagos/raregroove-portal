@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'raregroove_vu_calibration';
 
@@ -34,6 +34,7 @@ const DEFAULTS = {
 
 export function VUMeter({ vuMeterData, isPlaying }) {
   const [showCalibration, setShowCalibration] = useState(false);
+  const [vuBg, setVuBg] = useState(null);
   const [calibration, setCalibration] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -60,6 +61,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   const lastTimeRef = useRef(null);
   const calRef = useRef(calibration);
   const isPlayingRef = useRef(isPlaying);
+  const vuBgRef = useRef(null);
 
   useEffect(() => {
     calRef.current = calibration;
@@ -68,6 +70,24 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    const loadBg = async () => {
+      try {
+        const img = new Image();
+        img.src = '/images/vu/base vintage.png';
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        setVuBg(img);
+        vuBgRef.current = img;
+      } catch {
+        console.log('[VUMeter] Fundo vintage não carregado, usando fallback');
+      }
+    };
+    loadBg();
+  }, []);
 
   const saveCalibration = useCallback((newCal) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newCal));
@@ -98,7 +118,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return ball.pos;
   };
 
-  const drawNeedle = (canvas, posNorm, ch, cal) => {
+  const drawNeedle = (canvas, posNorm, ch, cal, bgImage) => {
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.offsetWidth * dpr;
@@ -108,8 +128,13 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     canvas.height = H;
 
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#0b0b0b';
-    ctx.fillRect(0, 0, W, H);
+
+    if (bgImage && bgImage.complete) {
+      ctx.drawImage(bgImage, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#1a1510';
+      ctx.fillRect(0, 0, W, H);
+    }
 
     const cx = W * 0.5;
     const cy = H * 1.18;
@@ -122,13 +147,13 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
     const ang = (vu) => ANG_L + vuToPos(vu) * range;
 
-    ctx.strokeStyle = 'rgba(180,20,20,0.18)';
+    ctx.strokeStyle = 'rgba(180,20,20,0.15)';
     ctx.lineWidth = 14 * dpr;
     ctx.beginPath();
     ctx.arc(cx, cy, arcR, ang(0), ANG_R);
     ctx.stroke();
 
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = '#2a2520';
     ctx.lineWidth = 1.5 * dpr;
     ctx.beginPath();
     ctx.arc(cx, cy, arcR, ANG_L, ANG_R);
@@ -144,7 +169,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const x2 = cx + Math.sin(a) * (arcR + 3 * dpr);
       const y2 = cy - Math.cos(a) * (arcR + 3 * dpr);
 
-      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#333' : '#555';
+      ctx.strokeStyle = isRed ? '#aa2222' : m.minor ? '#3a3530' : '#5a5550';
       ctx.lineWidth = m.minor ? 0.9 * dpr : 1.6 * dpr;
       ctx.beginPath();
       ctx.moveTo(x1, y1);
@@ -153,8 +178,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
       if (!m.minor) {
         const dist = arcR - tLen - 10 * dpr;
-        ctx.fillStyle = isRed ? '#993333' : '#4a4a4a';
-        ctx.font = `${7.5 * dpr}px Courier New`;
+        ctx.fillStyle = isRed ? '#993333' : '#6a6550';
+        ctx.font = `${7.5 * dpr}px 'Georgia', serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(m.label, cx + Math.sin(a) * dist, cy - Math.cos(a) * dist);
@@ -169,7 +194,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     let c1, c2, glow;
     if (pos >= vuToPos(0)) { c1 = '#cc0000'; c2 = '#ff5555'; glow = 'rgba(200,0,0,0.5)'; }
     else if (pos >= vuToPos(-3)) { c1 = '#b8860b'; c2 = '#FFD700'; glow = 'rgba(218,165,32,0.4)'; }
-    else { c1 = '#555'; c2 = '#ccc'; glow = 'transparent'; }
+    else { c1 = '#8a8070'; c2 = '#c0b8a8'; glow = 'transparent'; }
 
     const grad = ctx.createLinearGradient(cx, cy, ex, ey);
     grad.addColorStop(0, c1);
@@ -191,8 +216,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     ctx.arc(cx, cy, 4.5 * dpr, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#3a3a3a';
-    ctx.font = `bold ${9 * dpr}px Courier New`;
+    ctx.fillStyle = '#5a5550';
+    ctx.font = `bold ${9 * dpr}px 'Georgia', serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(ch, 7 * dpr, 6 * dpr);
@@ -245,8 +270,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      drawNeedle(canvasL, posL, 'L', calRef.current);
-      drawNeedle(canvasR, posR, 'R', calRef.current);
+      drawNeedle(canvasL, posL, 'L', calRef.current, vuBgRef.current);
+      drawNeedle(canvasR, posR, 'R', calRef.current, vuBgRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
