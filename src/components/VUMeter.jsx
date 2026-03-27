@@ -46,8 +46,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
   const calRef = useRef(calibration);
   const isPlayingRef = useRef(isPlaying);
   const bgImageRef = useRef(null);
-  const ctxLRef = useRef(null);
-  const ctxRRef = useRef(null);
 
   useEffect(() => {
     calRef.current = calibration;
@@ -63,22 +61,11 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         const img = new Image();
         img.src = '/images/vu/base vintage.png';
         await new Promise((resolve, reject) => {
-          img.onload = () => {
-            setBgImage(img);
-            bgImageRef.current = img;
-            resolve();
-          };
+          img.onload = resolve;
           img.onerror = reject;
         });
-        
-        if (canvasLRef.current) {
-          ctxLRef.current = canvasLRef.current.getContext('2d');
-        }
-        if (canvasRRef.current) {
-          ctxRRef.current = canvasRRef.current.getContext('2d');
-        }
-        
-        drawBackgrounds();
+        setBgImage(img);
+        bgImageRef.current = img;
       } catch {
         console.log('[VUMeter] Fundo não carregado');
       }
@@ -112,26 +99,20 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     return ball.pos;
   };
 
-  const drawBackgrounds = () => {
-    const img = bgImageRef.current;
-    if (!img || !img.complete) return;
-
-    [canvasLRef.current, canvasRRef.current].forEach(canvas => {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      const W = 156 * dpr;
-      const H = 80 * dpr;
-      canvas.width = W;
-      canvas.height = H;
-      ctx.drawImage(img, 0, 0, W, H);
-    });
-  };
-
-  const drawNeedle = (ctx, canvas, posNorm) => {
+  const drawNeedle = (canvas, posNorm, bgImg) => {
+    const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    const W = 156 * dpr;
-    const H = 80 * dpr;
+    const W = canvas.offsetWidth * dpr;
+    const H = canvas.offsetHeight * dpr;
+    
+    canvas.width = W;
+    canvas.height = H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (bgImg && bgImg.complete) {
+      ctx.drawImage(bgImg, 0, 0, W, H);
+    }
 
     const cx = W * 0.5;
     const cy = H * 1.18;
@@ -214,23 +195,8 @@ export function VUMeter({ vuMeterData, isPlaying }) {
       const posL = stepBall('L', targetL, dt);
       const posR = stepBall('R', targetR, dt);
 
-      const ctxL = canvasL.getContext('2d');
-      const ctxR = canvasR.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      const W = 156 * dpr;
-      const H = 80 * dpr;
-
-      ctxL.clearRect(0, 0, W, H);
-      ctxR.clearRect(0, 0, W, H);
-
-      const img = bgImageRef.current;
-      if (img && img.complete) {
-        ctxL.drawImage(img, 0, 0, W, H);
-        ctxR.drawImage(img, 0, 0, W, H);
-      }
-
-      drawNeedle(ctxL, canvasL, posL);
-      drawNeedle(ctxR, canvasR, posR);
+      drawNeedle(canvasL, posL, bgImageRef.current);
+      drawNeedle(canvasR, posR, bgImageRef.current);
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -242,7 +208,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [vuMeterData, isPlaying, bgImage]);
+  }, [vuMeterData, isPlaying]);
 
   return (
     <div className="w-full">
