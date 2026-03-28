@@ -24,14 +24,11 @@ const emptyFormData = {
 };
 
 async function searchDiscogs(query, limit = 20) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
-
   const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({ query, type: 'search', limit }),
@@ -44,14 +41,11 @@ async function searchDiscogs(query, limit = 20) {
 }
 
 async function getReleaseDetails(releaseId) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
-
   const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({ type: 'release', releaseId }),
