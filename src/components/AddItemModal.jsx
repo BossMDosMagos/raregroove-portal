@@ -45,7 +45,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         file: null,
         discogsId: itemToEdit.metadata?.grooveflix?.discogsId || '',
         discogsMasterId: itemToEdit.metadata?.grooveflix?.discogsMasterId || '',
-        description: itemToEdit.description || itemToEdit.metadata?.description || '',
+        description: itemToEdit.metadata?.description || '',
       });
     } else {
       setFormData(emptyFormData);
@@ -106,7 +106,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         allow_sale: Boolean(formData.allow_sale),
         allow_swap: Boolean(formData.allow_swap),
         seller_id: user.id,
-        description: formData.description || '',
         metadata: {
           source: 'catalog',
           grooveflix: {
@@ -115,6 +114,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
             discogsMasterId: formData.discogsMasterId || null,
           },
           coverUrlThumbnail: formData.coverUrlThumbnail || null,
+          description: formData.description || null,
         }
       };
 
