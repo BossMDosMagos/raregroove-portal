@@ -314,36 +314,37 @@ const KnobPanel = ({
       
         <VolumeKnob />
       
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex items-center gap-4">
-          <SmallKnob 
-            id="bass" 
-            value={bassValue} 
-            min={-12} 
-            max={12} 
-            label="BASS"
-            bands={BASS_BANDS}
-          />
-          <SmallKnob 
-            id="mid" 
-            value={midValue} 
-            min={-12} 
-            max={12} 
-            label="MID"
-            bands={MID_BANDS}
-          />
-          <SmallKnob 
-            id="treble" 
-            value={trebleValue} 
-            min={-12} 
-            max={12} 
-            label="TREBLE"
-            bands={TREBLE_BANDS}
-          />
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-4">
+            <SmallKnob 
+              id="bass" 
+              value={bassValue} 
+              min={-12} 
+              max={12} 
+              label="BASS"
+              bands={BASS_BANDS}
+            />
+            <SmallKnob 
+              id="mid" 
+              value={midValue} 
+              min={-12} 
+              max={12} 
+              label="MID"
+              bands={MID_BANDS}
+            />
+            <SmallKnob 
+              id="treble" 
+              value={trebleValue} 
+              min={-12} 
+              max={12} 
+              label="TREBLE"
+              bands={TREBLE_BANDS}
+            />
+          </div>
         </div>
-      </div>
       
-      <div className="flex-1" />
+        <div className="flex-1" />
+      </div>
     </div>
   );
 };
