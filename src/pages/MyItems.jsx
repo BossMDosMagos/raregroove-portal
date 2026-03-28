@@ -30,7 +30,12 @@ export default function MyItems() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const filtered = (data || []).filter(item => item.metadata?.source === 'catalog');
+      const filtered = (data || []).filter(item => {
+        if (item.metadata?.source === 'catalog') return true;
+        if (item.metadata?.source === 'grooveflix') return false;
+        if (item.metadata?.grooveflix?.isAlbum === true) return false;
+        return true;
+      });
       setItems(filtered);
     } catch (error) {
       toast.error(t('myItems.toast.loadError.title'), {
