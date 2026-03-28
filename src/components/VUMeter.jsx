@@ -250,50 +250,6 @@ export function VUMeter({ vuMeterData, isPlaying }) {
         />
         <span className="text-[12px] font-black text-yellow-600 tracking-wider z-10">R</span>
       </div>
-
-      <div className="text-center">
-        <span className="text-[7px] text-yellow-600/40">
-          ANSI C16.5 · ζ=0.80 · ωn=21 rad/s · Rise 300ms
-        </span>
-      </div>
-
-      <div className="flex justify-center mt-1">
-        <button
-          onClick={() => setShowCalibration(!showCalibration)}
-          className="text-[8px] text-yellow-700/50 hover:text-yellow-600 transition"
-        >
-          Calibrar
-        </button>
-      </div>
-
-      {showCalibration && (
-        <div className="mt-2 p-3 bg-black/90 rounded-lg border border-yellow-600/40">
-          <div>
-            <label className="text-[9px] text-yellow-500 block mb-1">Input Gain (×dB)</label>
-            <input
-              type="range"
-              min="0.1"
-              max="5"
-              step="0.05"
-              value={calibration.inputGain}
-              onChange={(e) => saveCalibration({ ...calibration, inputGain: Number(e.target.value) })}
-              className="w-full h-2 bg-gray-800 rounded appearance-none cursor-pointer accent-yellow-500"
-            />
-            <span className="text-[8px] text-yellow-400">{calibration.inputGain.toFixed(2)}×</span>
-          </div>
-          <div className="mt-2 text-[8px] text-yellow-600/50">
-            <p>ANSI C16.5-1942: 0 VU = -18 dBFS</p>
-          </div>
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={() => setShowCalibration(false)}
-              className="px-4 py-1 text-[9px] bg-yellow-600 hover:bg-yellow-500 text-black rounded font-bold"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
