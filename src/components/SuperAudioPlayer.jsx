@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Square,
-  Repeat, Repeat1, Shuffle, Disc3
+  Repeat, Repeat1, Shuffle, Disc3, Minus
 } from 'lucide-react';
 import { useAudioEngine, ANSI } from '../hooks/useAudioEngine';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
@@ -61,6 +61,7 @@ export function SuperAudioPlayer() {
   const [selectedPreset, setSelectedPreset] = useState('Flat');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
   const [showEq, setShowEq] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const {
     isPlaying,
@@ -308,6 +309,17 @@ export function SuperAudioPlayer() {
     return null;
   }
 
+  if (isMinimized) {
+    return (
+      <button
+        onClick={() => setIsMinimized(false)}
+        className="fixed bottom-4 right-4 z-[99999] w-14 h-14 bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-full shadow-2xl shadow-yellow-500/20 flex items-center justify-center hover:bg-black/95 hover:scale-105 transition-all"
+      >
+        <Disc3 className={`w-6 h-6 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
+      </button>
+    );
+  }
+
   return (
     <div 
       className="fixed bottom-4 right-4 z-[99999] w-[400px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden"
@@ -332,6 +344,9 @@ export function SuperAudioPlayer() {
           </button>
           <button onClick={handleStop} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/50">
             <Square className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setIsMinimized(true)} className="w-7 h-7 rounded bg-white/10 hover:bg-yellow-500/30 flex items-center justify-center text-white/50 hover:text-yellow-400 transition-colors">
+            <Minus className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
