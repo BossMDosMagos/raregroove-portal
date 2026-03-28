@@ -154,7 +154,7 @@ export function AudioControlsPanel({
               3D
             </span>
           </div>
-          <div className="overflow-hidden h-5">
+          <div className="overflow-hidden h-24">
             <div 
               className="flex whitespace-nowrap"
               style={{
