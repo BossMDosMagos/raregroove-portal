@@ -312,28 +312,25 @@ export function SuperAudioPlayer() {
       className="fixed bottom-4 right-4 z-[99999] w-[400px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden"
     >
       <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
-        <div 
-          className="w-8 h-8 flex items-center justify-center text-xs font-bold"
-          style={{ color: '#1a1a1a' }}
-        >
-          {isPlaying ? '[>]' : '[ ]'}
+        <div className="w-9 h-9 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+          <Disc3 className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
           <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || 'Pronto'}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={handlePrev} className="w-7 h-7 border flex items-center justify-center text-[10px] font-bold" style={{ color: '#1a1a1a', borderColor: '#1a1a1a', backgroundColor: 'transparent' }}>
-            [&lt;-]
+          <button onClick={handlePrev} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70">
+            <SkipBack className="w-3.5 h-3.5" />
           </button>
-          <button onClick={handlePlayPause} className="w-8 h-8 border flex items-center justify-center text-[10px] font-bold" style={{ color: '#1a1a1a', borderColor: '#1a1a1a', backgroundColor: '#8ca3a3' }}>
-            {isPlaying ? '[||]' : '[>]'}
+          <button onClick={handlePlayPause} className="w-9 h-9 rounded-lg bg-yellow-500 hover:bg-yellow-400 flex items-center justify-center text-black transition">
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
-          <button onClick={handleNext} className="w-7 h-7 border flex items-center justify-center text-[10px] font-bold" style={{ color: '#1a1a1a', borderColor: '#1a1a1a', backgroundColor: 'transparent' }}>
-            [->]
+          <button onClick={handleNext} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70">
+            <SkipForward className="w-3.5 h-3.5" />
           </button>
-          <button onClick={handleStop} className="w-7 h-7 border flex items-center justify-center text-[10px] font-bold" style={{ color: '#1a1a1a', borderColor: '#1a1a1a', backgroundColor: 'transparent' }}>
-            [X]
+          <button onClick={handleStop} className="w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/50">
+            <Square className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
