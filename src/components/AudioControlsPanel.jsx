@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import dotMatrixFont from '../assets/fonts/5x7-dot-matrix.otf';
 
 const FONT_FAMILY = '"5x7DotMatrix", monospace';
-const LCD_BG = '#8ca3a3';
-const LCD_FG = '#1a1a1a';
-const LCD_LIGHT = '#a8b8b8';
+const LCD_BG = '#2a2520';
+const LCD_FG = '#d4a84b';
+const LCD_LIGHT = '#e8c97a';
 
 export function AudioControlsPanel({ 
   currentTrack, 
@@ -119,7 +119,7 @@ export function AudioControlsPanel({
       style={{
         backgroundColor: lcdBgColor,
         imageRendering: 'pixelated',
-        boxShadow: `inset 0 0 20px rgba(0,0,0,0.4), inset -2px -2px 4px rgba(0,0,0,0.2), inset 1px 1px 2px rgba(255,255,255,0.1)`,
+        boxShadow: `inset 0 0 15px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,220,150,0.15)`,
         border: `2px solid ${LCD_LIGHT}`,
         fontFamily: FONT_FAMILY,
       }}
@@ -146,15 +146,15 @@ export function AudioControlsPanel({
                 0deg,
                 transparent,
                 transparent 1px,
-                rgba(0,0,0,0.02) 1px,
-                rgba(0,0,0,0.02) 2px
+                rgba(212,168,75,0.03) 1px,
+                rgba(212,168,75,0.03) 2px
               ),
               repeating-linear-gradient(
                 90deg,
                 transparent,
                 transparent 1px,
-                rgba(0,0,0,0.02) 1px,
-                rgba(0,0,0,0.02) 2px
+                rgba(212,168,75,0.03) 1px,
+                rgba(212,168,75,0.03) 2px
               )
             `,
           }}
