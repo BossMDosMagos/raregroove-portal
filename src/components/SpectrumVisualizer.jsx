@@ -14,6 +14,10 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
     const ctxL = canvasL.getContext('2d');
     const ctxR = canvasR.getContext('2d');
 
+    const AMPLITUDE = 3.5;
+    const PIXEL_SIZE = 3;
+    const GLOW_INTENSITY = 1.5;
+
     const drawOscilloscope = (ctx, timeData, freqData, label) => {
       const w = ctx.canvas.width;
       const h = ctx.canvas.height;
@@ -22,23 +26,23 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       ctx.fillStyle = '#0a0f0a';
       ctx.fillRect(0, 0, w, h);
 
-      ctx.strokeStyle = '#1a2f1a';
+      ctx.strokeStyle = '#1a3f1a';
       ctx.lineWidth = 1;
-      ctx.setLineDash([2, 4]);
+      ctx.setLineDash([4, 8]);
       ctx.beginPath();
       ctx.moveTo(0, midY);
       ctx.lineTo(w, midY);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      for (let y = midY - 10; y > 4; y -= 10) {
+      for (let y = midY - 12; y > 2; y -= 12) {
         ctx.strokeStyle = '#152515';
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
         ctx.stroke();
       }
-      for (let y = midY + 10; y < h - 4; y += 10) {
+      for (let y = midY + 12; y < h - 2; y += 12) {
         ctx.strokeStyle = '#152515';
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -46,52 +50,72 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         ctx.stroke();
       }
 
-      const pixelSize = 2;
-
-      const drawWave = (data, color, glowColor, opacity) => {
+      const drawWave = (data, isPrimary) => {
         if (!data || data.length === 0) return;
-        
-        ctx.globalAlpha = opacity;
 
-        for (let x = 0; x < w; x += pixelSize) {
+        const color = isPrimary ? '#00ffb3' : '#00aa77';
+        const glowColor = isPrimary ? 'rgba(0, 255, 179, 0.5)' : 'rgba(0, 170, 119, 0.3)';
+
+        if (isPrimary) {
+          ctx.shadowColor = '#00ffb3';
+          ctx.shadowBlur = 8 * GLOW_INTENSITY;
+        }
+
+        ctx.fillStyle = glowColor;
+        for (let x = 0; x < w; x += PIXEL_SIZE) {
           const dataIdx = Math.floor((x / w) * data.length);
-          const sample = (data[dataIdx] || 128) / 128 - 1;
-          const amplitude = freqData && freqData.length > 0 
-            ? (freqData[Math.floor((x / w) * freqData.length)] / 255) * 0.6 + 0.4
-            : 0.6;
-          const y = midY + sample * midY * 0.9 * amplitude;
+          let sample = (data[dataIdx] || 128) / 128 - 1;
+          
+          const freqAmplitude = freqData && freqData.length > 0 
+            ? (freqData[Math.floor((x / w) * freqData.length)] / 255) * 0.5 + 0.5
+            : 1;
+          
+          const amplitude = Math.min(freqAmplitude * AMPLITUDE, 4);
+          sample *= amplitude;
+          
+          const y = midY + sample * (h / 2 - 4);
 
-          ctx.fillStyle = glowColor;
-          ctx.fillRect(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize - 1, pixelSize, pixelSize + 2);
+          ctx.fillRect(
+            Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
+            Math.floor(y / PIXEL_SIZE) * PIXEL_SIZE,
+            PIXEL_SIZE,
+            PIXEL_SIZE * 2
+          );
 
-          ctx.fillStyle = color;
-          ctx.fillRect(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, pixelSize, pixelSize);
-
-          if (sample > 0.3) {
-            ctx.fillStyle = glowColor;
-            ctx.fillRect(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize - pixelSize, pixelSize, pixelSize);
-          } else if (sample < -0.3) {
-            ctx.fillStyle = glowColor;
-            ctx.fillRect(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize + pixelSize, pixelSize, pixelSize);
+          if (sample > 0.5) {
+            ctx.fillRect(
+              Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
+              Math.floor((y - PIXEL_SIZE) / PIXEL_SIZE) * PIXEL_SIZE,
+              PIXEL_SIZE,
+              PIXEL_SIZE
+            );
+          }
+          if (sample < -0.5) {
+            ctx.fillRect(
+              Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
+              Math.floor((y + PIXEL_SIZE) / PIXEL_SIZE) * PIXEL_SIZE,
+              PIXEL_SIZE,
+              PIXEL_SIZE
+            );
           }
         }
 
-        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
       };
 
       if (timeData && timeData.length > 0) {
-        drawWave(timeData, '#00ffb3', 'rgba(0, 255, 179, 0.3)', 1);
+        drawWave(timeData, true);
       } else {
         const syntheticWave = new Uint8Array(w);
         for (let i = 0; i < w; i++) {
-          const t = (i / w) * Math.PI * 6 + phaseRef.current;
+          const t = (i / w) * Math.PI * 8 + phaseRef.current;
           const freq = freqData && freqData.length > 0 
-            ? (freqData[Math.floor((i / w) * freqData.length)] / 255)
-            : 0.5;
-          const wave = (Math.sin(t) * 0.4 + Math.sin(t * 2.3) * 0.2 + Math.sin(t * 0.7) * 0.2) * freq;
+            ? (freqData[Math.floor((i / w) * freqData.length)] / 255) * 0.6 + 0.4
+            : 0.3;
+          const wave = (Math.sin(t) * 0.5 + Math.sin(t * 2.7) * 0.2 + Math.sin(t * 0.5) * 0.15) * freq;
           syntheticWave[i] = Math.floor(((wave + 1) / 2) * 255);
         }
-        drawWave(syntheticWave, '#00ffb3', 'rgba(0, 255, 179, 0.3)', 0.7);
+        drawWave(syntheticWave, false);
       }
 
       ctx.fillStyle = '#d4a84b';
@@ -103,8 +127,9 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       if (!isPlaying) {
         drawOscilloscope(ctxL, null, spectrumL, '◄ L ►');
         drawOscilloscope(ctxR, null, spectrumR, '◄ R ►');
+        phaseRef.current += 0.03;
       } else {
-        phaseRef.current += 0.08;
+        phaseRef.current += 0.05;
         drawOscilloscope(ctxL, timeDomainL, spectrumL, '◄ L ►');
         drawOscilloscope(ctxR, timeDomainR, spectrumR, '◄ R ►');
       }
@@ -128,7 +153,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
           width={340}
           height={48}
           className="flex-1 h-12"
-          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a2f1a' }}
+          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a3f1a' }}
         />
       </div>
       <div className="flex items-center gap-2">
@@ -138,7 +163,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
           width={340}
           height={48}
           className="flex-1 h-12"
-          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a2f1a' }}
+          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a3f1a' }}
         />
       </div>
     </div>
