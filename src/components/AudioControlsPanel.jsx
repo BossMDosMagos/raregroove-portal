@@ -119,7 +119,7 @@ export function AudioControlsPanel({
       style={{
         backgroundColor: lcdBgColor,
         imageRendering: 'pixelated',
-        boxShadow: `inset 0 0 30px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,255,255,0.2)`,
+        boxShadow: `inset 0 0 20px rgba(0,0,0,0.4), inset -2px -2px 4px rgba(0,0,0,0.2), inset 1px 1px 2px rgba(255,255,255,0.1)`,
         border: `2px solid ${LCD_LIGHT}`,
         fontFamily: FONT_FAMILY,
       }}

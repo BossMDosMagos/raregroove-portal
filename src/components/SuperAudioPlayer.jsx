@@ -309,28 +309,18 @@ export function SuperAudioPlayer() {
 
   return (
     <div 
-      className="fixed bottom-4 right-4 z-[99999] w-[420px] overflow-hidden"
-      style={{
-        backgroundColor: '#8ca3a3',
-        border: '3px solid #a8b8b8',
-        boxShadow: 'inset 0 0 30px rgba(0,0,0,0.3), 4px 4px 0 rgba(0,0,0,0.2)',
-        imageRendering: 'pixelated',
-      }}
+      className="fixed bottom-4 right-4 z-[99999] w-[400px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden"
     >
-      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '2px solid #1a1a1a' }}>
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
         <div 
           className="w-8 h-8 flex items-center justify-center text-xs font-bold"
           style={{ color: '#1a1a1a' }}
         >
           {isPlaying ? '[>]' : '[ ]'}
         </div>
-        <div className="flex-1">
-          <p className="text-[10px] font-bold truncate" style={{ color: '#1a1a1a' }}>
-            {currentTrack?.title || 'GROOVEFLIX'}
-          </p>
-          <p className="text-[8px] truncate" style={{ color: '#1a1a1a', opacity: 0.7 }}>
-            {currentTrack?.artist || 'Select Track'}
-          </p>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-xs font-bold truncate">{currentTrack?.title || (debug ? `... ${debug}` : 'Grooveflix')}</p>
+          <p className="text-white/50 text-[10px] truncate">{currentTrack?.artist || 'Pronto'}</p>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={handlePrev} className="w-7 h-7 border flex items-center justify-center text-[10px] font-bold" style={{ color: '#1a1a1a', borderColor: '#1a1a1a', backgroundColor: 'transparent' }}>
@@ -348,7 +338,7 @@ export function SuperAudioPlayer() {
         </div>
       </div>
 
-      <div className="px-3 pt-2 pb-1" style={{ backgroundColor: '#8ca3a3' }}>
+      <div className="px-3 pt-2 pb-1 bg-gradient-to-b from-black/80 to-transparent">
         <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
 
