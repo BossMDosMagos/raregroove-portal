@@ -287,6 +287,12 @@ export function SuperAudioPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getVolumeDb = () => {
+    if (volume <= 0) return '-∞';
+    const db = 20 * Math.log10(volume);
+    return db.toFixed(1);
+  };
+
   const getLoopIcon = () => {
     switch (loopMode) {
       case 'track': return <Repeat1 className="w-4 h-4" />;
