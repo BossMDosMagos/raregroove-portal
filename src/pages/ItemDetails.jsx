@@ -72,6 +72,10 @@ export default function ItemDetails() {
         }
       }
 
+      if (itemData?.metadata?.description) {
+        itemData.description = itemData.metadata.description;
+      }
+
       setItem(itemData);
 
       // Verificar wishlist
