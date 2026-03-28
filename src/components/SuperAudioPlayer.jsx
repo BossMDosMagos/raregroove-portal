@@ -8,8 +8,6 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { VUMeter } from './VUMeter';
-import { DigitalDisplay } from './DigitalDisplay';
-import playerBg from '../assets/images/player/fundo_ouro.jpg';
 
 const EQ_PRESETS = {
   Flat: { preAmp: 0, bands: { 32: 0, 64: 0, 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
@@ -302,15 +300,8 @@ export function SuperAudioPlayer() {
   }
 
   return (
-    <div 
-      className="fixed bottom-4 right-4 z-[99999] w-[450px] h-[352px] overflow-hidden shadow-2xl shadow-black/50"
-      style={{
-        backgroundImage: `url(${playerBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div className="flex items-center gap-3 px-4 pt-3 pb-2 border-b border-white/10 bg-black/40">
+    <div className="fixed bottom-4 right-4 z-[99999] w-[400px] bg-black/90 backdrop-blur-xl border border-yellow-500/40 rounded-2xl shadow-2xl shadow-yellow-500/20 overflow-hidden">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-white/10 bg-gradient-to-r from-black/90 to-yellow-900/10">
         <div className="w-9 h-9 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
           <Disc3 className={`w-5 h-5 text-yellow-400 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }} />
         </div>
