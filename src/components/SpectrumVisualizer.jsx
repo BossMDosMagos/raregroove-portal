@@ -74,14 +74,14 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, isPlaying }) {
   return (
     <div className="flex flex-col gap-px px-2">
       <canvas
-        ref={canvasL}
+        ref={canvasLRef}
         width={280}
         height={40}
         className="w-full h-10 rounded-t-sm"
         style={{ imageRendering: 'pixelated' }}
       />
       <canvas
-        ref={canvasR}
+        ref={canvasRRef}
         width={280}
         height={40}
         className="w-full h-10 rounded-b-sm"
