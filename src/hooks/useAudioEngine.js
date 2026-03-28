@@ -81,6 +81,8 @@ export function useAudioEngine() {
   const [isReady, setIsReady] = useState(false);
   const [analyserData, setAnalyserData] = useState(new Uint8Array(128));
   const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
+  const [spectrumL, setSpectrumL] = useState(new Uint8Array(64));
+  const [spectrumR, setSpectrumR] = useState(new Uint8Array(64));
   
   const volumeRef = useRef(0.8);
   const panRef = useRef(0);
@@ -203,6 +205,17 @@ export function useAudioEngine() {
         combinedFreq[i] = Math.max(freqL[i], freqR[i]);
       }
       setAnalyserData(combinedFreq);
+      
+      const reducedL = new Uint8Array(64);
+      const reducedR = new Uint8Array(64);
+      const stepL = Math.floor(freqL.length / 64);
+      const stepR = Math.floor(freqR.length / 64);
+      for (let i = 0; i < 64; i++) {
+        reducedL[i] = freqL[i * stepL] || 0;
+        reducedR[i] = freqR[i * stepR] || 0;
+      }
+      setSpectrumL(reducedL);
+      setSpectrumR(reducedR);
     } catch (e) {
       console.log('[Audio] Analyser read error:', e.message);
     }
@@ -512,7 +525,7 @@ export function useAudioEngine() {
   return {
     isPlaying, currentTime, duration, volume, pan, preAmp, eqBands,
     loopMode, shuffle, isReady, analyserData, timeDomainData,
-    eqFrequencies: EQ_FREQUENCIES, vuMeterData,
+    eqFrequencies: EQ_FREQUENCIES, vuMeterData, spectrumL, spectrumR,
     loadTrack, play, pause, stop, seek, setVolume, setPan, setPreAmp,
     setEqBand, toggleLoop, toggleShuffle, getNextTrack, getPrevTrack,
     dispose, initAudioContext,

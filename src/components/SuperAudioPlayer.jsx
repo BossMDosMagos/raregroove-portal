@@ -78,6 +78,8 @@ export function SuperAudioPlayer() {
     timeDomainData,
     eqFrequencies,
     vuMeterData,
+    spectrumL,
+    spectrumR,
     loadTrack,
     play,
     pause,
@@ -361,6 +363,9 @@ export function SuperAudioPlayer() {
         eqBands={eqBands}
         handleEqBand={setEqBand}
         getVolumeDb={getVolumeDb}
+        spectrumL={spectrumL}
+        spectrumR={spectrumR}
+        isPlaying={isPlaying}
       />
 
       <div className="px-3 pb-3">

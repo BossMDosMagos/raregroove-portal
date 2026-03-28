@@ -1,9 +1,13 @@
 import { useState, useCallback, useRef } from 'react';
+import { SpectrumVisualizer } from './SpectrumVisualizer';
 
 const KnobPanel = ({ 
   volume, handleVolumeChange, 
   eqBands, handleEqBand,
-  getVolumeDb 
+  getVolumeDb,
+  spectrumL,
+  spectrumR,
+  isPlaying
 }) => {
   const [dragging, setDragging] = useState(null);
   const startPosRef = useRef(0);
@@ -290,16 +294,25 @@ const KnobPanel = ({
 
   return (
     <div 
-      className="flex items-end justify-center gap-6 px-4 py-3"
+      className="px-4 py-3"
       style={{
         background: 'linear-gradient(180deg, rgba(25,25,25,0.95) 0%, rgba(15,15,15,0.98) 100%)',
         borderTop: '1px solid rgba(255,200,0,0.15)',
         borderBottom: '1px solid rgba(0,0,0,0.8)',
       }}
     >
-      <div className="flex-1" />
+      <div className="flex items-center justify-center mb-3">
+        <SpectrumVisualizer 
+          spectrumL={spectrumL} 
+          spectrumR={spectrumR} 
+          isPlaying={isPlaying}
+        />
+      </div>
       
-      <VolumeKnob />
+      <div className="flex items-end justify-center gap-6">
+        <div className="flex-1" />
+      
+        <VolumeKnob />
       
       <div className="flex flex-col items-center gap-3">
         <div className="flex items-center gap-4">
