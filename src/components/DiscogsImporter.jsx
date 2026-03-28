@@ -9,14 +9,11 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisf
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
 
 async function searchDiscogs(query, limit = 20) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
-
   const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({ query, type: 'search', limit }),
@@ -35,14 +32,11 @@ async function searchDiscogs(query, limit = 20) {
 }
 
 async function getReleaseDetails(releaseId) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || SUPABASE_ANON_KEY;
-
   const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({ type: 'release', releaseId }),
