@@ -4,10 +4,9 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
   const canvasLRef = useRef(null);
   const canvasRRef = useRef(null);
   const animRef = useRef(null);
-  const smoothedLRef = useRef(null);
-  const smoothedRRef = useRef(null);
+  const prevLRef = useRef(null);
+  const prevRRef = useRef(null);
   const phaseRef = useRef(0);
-  const lastAudioRef = useRef(0);
 
   useEffect(() => {
     const canvasL = canvasLRef.current;
@@ -17,51 +16,15 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
     const ctxL = canvasL.getContext('2d');
     const ctxR = canvasR.getContext('2d');
 
-    const AMPLITUDE = 3.5;
-    const PIXEL_SIZE = 4;
-    const LERP_FACTOR = 0.06;
-    const STEP = 4;
-    const NOISE_GATE = 0.02;
-    const AVG_WINDOW = 4;
-
-    const initSmoothed = (length) => {
-      const arr = new Float32Array(length);
-      const midVal = 128;
-      arr.fill(midVal);
-      return arr;
-    };
-
-    const calculateAverage = (data, start, end) => {
-      let sum = 0;
-      let count = 0;
-      for (let i = start; i < end && i < data.length; i++) {
-        sum += data[i];
-        count++;
-      }
-      return count > 0 ? sum / count : 128;
-    };
-
-    const drawFlatLine = (ctx, midY, color) => {
-      const w = ctx.canvas.width;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, midY);
-      ctx.lineTo(w, midY);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    };
-
-    const drawOscilloscope = (ctx, timeData, freqData, label, smoothedData) => {
+    const draw = (ctx, data, prevData, midY, label) => {
       const w = ctx.canvas.width;
       const h = ctx.canvas.height;
-      const midY = h / 2;
-
+      
+      ctx.clearRect(0, 0, w, h);
+      
       ctx.fillStyle = '#0a0f0a';
       ctx.fillRect(0, 0, w, h);
-
+      
       ctx.strokeStyle = '#1a3f1a';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 8]);
@@ -70,7 +33,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       ctx.lineTo(w, midY);
       ctx.stroke();
       ctx.setLineDash([]);
-
+      
       for (let y = midY - 12; y > 2; y -= 12) {
         ctx.strokeStyle = '#152515';
         ctx.beginPath();
@@ -85,145 +48,88 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         ctx.lineTo(w, y);
         ctx.stroke();
       }
-
-      let hasAudio = false;
-      let avgLevel = 0;
-
-      if (timeData && timeData.length > 0) {
-        let sum = 0;
-        for (let i = 0; i < timeData.length; i++) {
-          sum += Math.abs((timeData[i] / 128) - 1);
-        }
-        avgLevel = sum / timeData.length;
-        hasAudio = avgLevel > NOISE_GATE;
-      }
-
-      lastAudioRef.current = hasAudio ? Date.now() : lastAudioRef.current;
-
-      if (!hasAudio) {
-        if (smoothedData) {
-          smoothedData.fill(128);
-        }
-        drawFlatLine(ctx, midY, '#00aa77');
+      
+      if (!data || data.length === 0) {
+        ctx.strokeStyle = '#00aa77';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, midY);
+        ctx.lineTo(w, midY);
+        ctx.stroke();
         ctx.fillStyle = '#d4a84b';
         ctx.font = '6px monospace';
         ctx.fillText(label + ' ◼', 3, 8);
-        return smoothedData;
+        return prevData;
       }
-
-      if (!smoothedData || smoothedData.length === 0) {
-        smoothedData = initSmoothed(timeData?.length || 256);
-      }
-
-      const data = timeData;
-      if (!data || data.length === 0) {
-        drawFlatLine(ctx, midY, '#00ffb3');
-        ctx.fillStyle = '#d4a84b';
-        ctx.font = '6px monospace';
-        ctx.fillText(label, 3, 8);
-        return smoothedData;
-      }
-
-      if (smoothedData.length !== data.length) {
-        smoothedData = initSmoothed(data.length);
-      }
-
-      const color = '#00ffb3';
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = PIXEL_SIZE;
+      
+      const GAIN = 2.5;
+      const LERP = 0.2;
+      
+      ctx.strokeStyle = '#00ffb3';
+      ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.shadowColor = '#00ffb3';
-      ctx.shadowBlur = 10;
-
+      ctx.shadowBlur = 6;
+      
       ctx.beginPath();
-
-      let firstPoint = true;
-      let prevX = 0;
-      let prevSmoothY = midY;
-
-      for (let x = 0; x < w; x += STEP) {
-        const avgStart = Math.floor((x / w) * data.length);
-        const avgEnd = Math.min(avgStart + AVG_WINDOW, data.length);
-        const avgSample = calculateAverage(data, avgStart, avgEnd);
+      
+      for (let i = 0; i < w; i++) {
+        const dataIdx = Math.floor((i / w) * data.length);
+        let v = (data[dataIdx] || 128) / 128.0;
         
-        let sample = (avgSample / 128) - 1;
-
-        const freqIdx = Math.floor((x / w) * (freqData?.length || 1));
-        const freqAmplitude = freqData && freqData.length > 0
-          ? (freqData[freqIdx] / 255) * 0.5 + 0.5
-          : 1;
-
-        const amplitude = Math.min(freqAmplitude * AMPLITUDE, 4);
-        sample *= amplitude;
-
-        const targetY = midY + sample * (h / 2 - 4);
-
-        smoothedData[avgStart] = smoothedData[avgStart] + (targetY - smoothedData[avgStart]) * LERP_FACTOR;
-
-        const smoothY = smoothedData[avgStart];
-
-        if (firstPoint) {
-          ctx.moveTo(x, smoothY);
-          firstPoint = false;
-        } else {
-          const cpX = (prevX + x) / 2;
-          const cpY = (prevSmoothY + smoothY) / 2;
-          ctx.quadraticCurveTo(prevX, prevSmoothY, cpX, cpY);
+        if (Math.abs(v - 1) < 0.005) v = 1;
+        
+        const y = midY + (v - 1) * midY * GAIN;
+        
+        let finalY = y;
+        if (prevData && prevData[i] !== undefined) {
+          finalY = prevData[i] + (y - prevData[i]) * LERP;
         }
-
-        prevX = x;
-        prevSmoothY = smoothY;
+        
+        if (prevData) prevData[i] = finalY;
+        
+        if (i === 0) {
+          ctx.moveTo(i, finalY);
+        } else {
+          ctx.lineTo(i, finalY);
+        }
       }
-
-      ctx.lineTo(w, prevSmoothY);
+      
       ctx.stroke();
       ctx.shadowBlur = 0;
-
+      
       ctx.fillStyle = '#d4a84b';
       ctx.font = '6px monospace';
       ctx.fillText(label + ' ●', 3, 8);
-
-      return smoothedData;
+      
+      return prevData || new Float32Array(w);
     };
 
     const animate = () => {
-      const now = Date.now();
-      const timeSinceLastAudio = now - lastAudioRef.current;
-
-      if (!isPlaying || timeSinceLastAudio > 500) {
-        if (animRef.current) {
-          cancelAnimationFrame(animRef.current);
-          animRef.current = null;
+      const midY = 24;
+      
+      if (!isPlaying) {
+        phaseRef.current += 0.03;
+        
+        const syntheticL = new Uint8Array(512);
+        const syntheticR = new Uint8Array(512);
+        for (let i = 0; i < 512; i++) {
+          const t = (i / 512) * Math.PI * 6 + phaseRef.current;
+          const wave = Math.sin(t) * 0.1 + Math.sin(t * 2) * 0.05;
+          syntheticL[i] = Math.floor(((wave + 1) / 2) * 255);
+          syntheticR[i] = Math.floor(((wave + 1) / 2) * 255);
         }
-        if (canvasL && canvasR) {
-          drawFlatLine(ctxL, 24, '#00aa77');
-          ctxL.fillStyle = '#d4a84b';
-          ctxL.font = '6px monospace';
-          ctxL.fillText('◄ L ► ◼', 3, 8);
-          drawFlatLine(ctxR, 24, '#00aa77');
-          ctxR.fillStyle = '#d4a84b';
-          ctxR.font = '6px monospace';
-          ctxR.fillText('◄ R ► ◼', 3, 8);
-        }
-        return;
+        
+        prevLRef.current = draw(ctxL, syntheticL, prevLRef.current, midY, '◄ L ►');
+        prevRRef.current = draw(ctxR, syntheticR, prevRRef.current, midY, '◄ R ►');
+      } else {
+        prevLRef.current = draw(ctxL, timeDomainL, prevLRef.current, midY, '◄ L ►');
+        prevRRef.current = draw(ctxR, timeDomainR, prevRRef.current, midY, '◄ R ►');
       }
-
-      phaseRef.current += 0.02;
-
-      if (!animRef.current) {
-        animRef.current = requestAnimationFrame(animate);
-      }
-
-      smoothedLRef.current = drawOscilloscope(ctxL, timeDomainL, spectrumL, '◄ L ►', smoothedLRef.current);
-      smoothedRRef.current = drawOscilloscope(ctxR, timeDomainR, spectrumR, '◄ R ►', smoothedRRef.current);
-
+      
       animRef.current = requestAnimationFrame(animate);
     };
-
-    smoothedLRef.current = initSmoothed(256);
-    smoothedRRef.current = initSmoothed(256);
 
     animate();
 
@@ -233,7 +139,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         animRef.current = null;
       }
     };
-  }, [spectrumL, spectrumR, timeDomainL, timeDomainR, isPlaying]);
+  }, [timeDomainL, timeDomainR, isPlaying]);
 
   return (
     <div className="flex flex-col gap-0.5 px-2 py-1" style={{ backgroundColor: '#0a0f0a', borderRadius: '4px' }}>
