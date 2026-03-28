@@ -3,8 +3,7 @@ import { X, Upload, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
-import { DiscogsImporter } from './DiscogsImporter.jsx';
-import { useDiscogs } from '../contexts/DiscogsContext.jsx';
+import { DiscogsSearch } from './DiscogsSearch.jsx';
 
 const emptyFormData = {
   title: '',
@@ -26,25 +25,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   if (!isOpen) return null;
 
   const { t } = useI18n();
-  const { importedData, clearImportedData } = useDiscogs();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
-
-  useEffect(() => {
-    if (importedData) {
-      setFormData(prev => ({
-        ...prev,
-        title: importedData.title || prev.title,
-        artist: importedData.artist || prev.artist,
-        year: importedData.year || prev.year,
-        genre: importedData.genre || prev.genre,
-        image_url: importedData.coverUrl || importedData.coverUrlThumbnail || prev.image_url,
-        coverUrlThumbnail: importedData.coverUrlThumbnail || importedData.coverUrl || prev.coverUrlThumbnail,
-        discogsId: importedData.discogsId || prev.discogsId,
-        discogsMasterId: importedData.discogsMasterId || prev.discogsMasterId,
-      }));
-    }
-  }, [importedData]);
 
   useEffect(() => {
     if (itemToEdit) {
@@ -65,9 +47,22 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       });
     } else {
       setFormData(emptyFormData);
-      clearImportedData();
     }
   }, [itemToEdit, isOpen]);
+
+  const handleDiscogsImport = (data) => {
+    setFormData(prev => ({
+      ...prev,
+      title: data.title || prev.title,
+      artist: data.artist || prev.artist,
+      year: data.year || prev.year,
+      genre: data.genre || prev.genre,
+      image_url: data.image_url || prev.image_url,
+      coverUrlThumbnail: data.coverUrlThumbnail || prev.coverUrlThumbnail,
+      discogsId: data.discogsId || prev.discogsId,
+      discogsMasterId: data.discogsMasterId || prev.discogsMasterId,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -135,7 +130,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         });
       }
 
-      clearImportedData();
       if (onRefresh) onRefresh();
       onClose();
     } catch (error) {
@@ -159,7 +153,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          <DiscogsImporter />
+          <DiscogsSearch onImport={handleDiscogsImport} />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
