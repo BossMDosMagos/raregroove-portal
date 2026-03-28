@@ -337,130 +337,131 @@ export function SuperAudioPlayer() {
         <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
 
-      <div className="px-3 pb-2">
-        <DigitalDisplay 
-          currentTrack={currentTrack}
-          loopMode={loopMode}
-          shuffle={shuffle}
-          showEq={showEq}
-        />
-      </div>
-
       <div className="px-3 pb-3">
         <div 
-          className="rounded overflow-hidden border border-white/10"
+          className="rounded overflow-hidden"
           style={{
             backgroundColor: '#0a0a0a',
-            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.9)',
+            boxShadow: 'inset 0 0 20px rgba(0,0,0,0.9), inset 2px 2px 4px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,255,255,0.1)',
           }}
         >
-          <div 
-            className="px-3 py-2 border-b border-white/10"
-            style={{
-              backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 3px)`,
-            }}
-          >
-            <div className="flex items-center justify-between text-[9px] text-yellow-400/80 font-mono mb-1">
-              <span>{formatTime(currentTime)}</span>
-              <span className="px-1.5 py-0.5 bg-yellow-600/20 rounded text-yellow-400 font-bold">{currentQueueIndex + 1}/{queue.length}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
+          <DigitalDisplay 
+            currentTrack={currentTrack}
+            loopMode={loopMode}
+            shuffle={shuffle}
+            showEq={showEq}
+          />
+
+          <div className="border-t border-white/10">
             <div 
-              className="h-1.5 bg-black/50 rounded-full cursor-pointer"
-              onClick={handleSeek}
+              className="px-3 py-2 border-b border-white/10"
+              style={{
+                backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 3px)`,
+              }}
             >
+              <div className="flex items-center justify-between text-[9px] text-yellow-400/80 font-mono mb-1">
+                <span>{formatTime(currentTime)}</span>
+                <span className="px-1.5 py-0.5 bg-yellow-600/20 rounded text-yellow-400 font-bold">{currentQueueIndex + 1}/{queue.length}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
               <div 
-                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full"
-                style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="px-3 py-2 border-b border-white/10">
-            <div className="flex items-center gap-2 mb-2">
-              <button onClick={toggleShuffle} className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${shuffle ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
-                SHF
-              </button>
-              <button onClick={toggleLoop} className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${loopMode !== 'none' ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
-                RPT
-              </button>
-              <button onClick={() => setShowEq(!showEq)} className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${showEq ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
-                EQ
-              </button>
-              <div className="flex-1 flex items-center gap-2 ml-2">
-                <span className="text-[8px] text-white/40 w-6">VOL</span>
-                <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="flex-1 h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500" />
-                <span className="text-[8px] text-yellow-400/80 w-8 text-right font-mono">{getVolumeDb()}dB</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[8px] text-white/40 w-6">PRE</span>
-                <input type="range" min="-12" max="12" step="0.5" value={preAmp} onChange={handlePreAmpChange} className="w-16 h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500" />
-                <span className="text-[8px] text-yellow-400/80 w-8 text-right font-mono">{preAmp > 0 ? '+' : ''}{preAmp.toFixed(1)}</span>
+                className="h-1.5 bg-black/50 rounded-full cursor-pointer"
+                onClick={handleSeek}
+              >
+                <div 
+                  className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full"
+                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                />
               </div>
             </div>
 
-            {showEq && (
-              <div className="mt-2 pt-2 border-t border-white/10">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[8px] text-yellow-400/80 font-bold">EQUALIZER</span>
-                  <button
-                    onClick={() => setShowPresetMenu(!showPresetMenu)}
-                    className="px-2 py-0.5 text-[8px] bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded transition"
-                  >
-                    {selectedPreset}
-                  </button>
+            <div className="px-3 py-2 border-b border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={toggleShuffle} className={`w-6 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${shuffle ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
+                  SHF
+                </button>
+                <button onClick={toggleLoop} className={`w-6 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${loopMode !== 'none' ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
+                  RPT
+                </button>
+                <button onClick={() => setShowEq(!showEq)} className={`w-6 h-5 rounded flex items-center justify-center text-[8px] font-bold transition ${showEq ? 'bg-yellow-500/40 text-yellow-300' : 'text-white/30'}`}>
+                  EQ
+                </button>
+                <div className="flex-1 flex items-center gap-2 ml-2">
+                  <span className="text-[8px] text-white/40 w-6">VOL</span>
+                  <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="flex-1 h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500" />
+                  <span className="text-[8px] text-yellow-400/80 w-8 text-right font-mono">{getVolumeDb()}dB</span>
                 </div>
-                
-                <div className="flex items-end justify-between gap-1 h-16 px-1">
-                  {eqFrequencies.map((freq) => (
-                    <div key={freq} className="flex flex-col items-center flex-1">
-                      <div className="relative w-3 h-full flex flex-col justify-end">
-                        <div 
-                          className="w-full bg-gradient-to-t from-yellow-600 to-yellow-400 rounded-sm transition-all"
-                          style={{ 
-                            height: `${Math.abs(eqBands[freq]) * 3}px`,
-                            minHeight: '2px'
-                          }}
-                        />
-                        <div className="absolute left-0 right-0 top-1/2 h-px bg-white/20" />
-                      </div>
-                      <span className="text-[6px] text-white/40 mt-0.5">{freq >= 1000 ? `${freq/1000}k` : freq}</span>
-                      <input
-                        type="range"
-                        min="-12"
-                        max="12"
-                        step="1"
-                        value={eqBands[freq]}
-                        onChange={(e) => handleEqChange(freq, parseInt(e.target.value))}
-                        className="w-full h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500 mt-0.5"
-                        style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-                      />
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-white/40 w-6">PRE</span>
+                  <input type="range" min="-12" max="12" step="0.5" value={preAmp} onChange={handlePreAmpChange} className="w-16 h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500" />
+                  <span className="text-[8px] text-yellow-400/80 w-8 text-right font-mono">{preAmp > 0 ? '+' : ''}{preAmp.toFixed(1)}</span>
                 </div>
+              </div>
 
-                {showPresetMenu && (
-                  <div className="mt-2 bg-black/80 border border-yellow-600/30 rounded p-1">
-                    <div className="grid grid-cols-4 gap-1">
-                      {Object.keys(EQ_PRESETS).map((presetName) => (
-                        <button
-                          key={presetName}
-                          onClick={() => {
-                            applyPreset(presetName);
-                            setShowPresetMenu(false);
-                          }}
-                          className={`px-2 py-1 text-[8px] rounded transition ${
-                            selectedPreset === presetName ? 'bg-yellow-600/40 text-yellow-300' : 'text-white/60 hover:bg-white/10'
-                          }`}
-                        >
-                          {presetName}
-                        </button>
-                      ))}
-                    </div>
+              {showEq && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[8px] text-yellow-400/80 font-bold">EQUALIZER</span>
+                    <button
+                      onClick={() => setShowPresetMenu(!showPresetMenu)}
+                      className="px-2 py-0.5 text-[8px] bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded transition"
+                    >
+                      {selectedPreset}
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                  
+                  <div className="flex items-end justify-between gap-1 h-16 px-1">
+                    {eqFrequencies.map((freq) => (
+                      <div key={freq} className="flex flex-col items-center flex-1">
+                        <div className="relative w-3 h-full flex flex-col justify-end">
+                          <div 
+                            className="w-full bg-gradient-to-t from-yellow-600 to-yellow-400 rounded-sm transition-all"
+                            style={{ 
+                              height: `${Math.abs(eqBands[freq]) * 3}px`,
+                              minHeight: '2px'
+                            }}
+                          />
+                          <div className="absolute left-0 right-0 top-1/2 h-px bg-white/20" />
+                        </div>
+                        <span className="text-[6px] text-white/40 mt-0.5">{freq >= 1000 ? `${freq/1000}k` : freq}</span>
+                        <input
+                          type="range"
+                          min="-12"
+                          max="12"
+                          step="1"
+                          value={eqBands[freq]}
+                          onChange={(e) => handleEqChange(freq, parseInt(e.target.value))}
+                          className="w-full h-1 bg-black/50 rounded-full appearance-none cursor-pointer accent-yellow-500 mt-0.5"
+                          style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {showPresetMenu && (
+                    <div className="mt-2 bg-black/80 border border-yellow-600/30 rounded p-1">
+                      <div className="grid grid-cols-4 gap-1">
+                        {Object.keys(EQ_PRESETS).map((presetName) => (
+                          <button
+                            key={presetName}
+                            onClick={() => {
+                              applyPreset(presetName);
+                              setShowPresetMenu(false);
+                            }}
+                            className={`px-2 py-1 text-[8px] rounded transition ${
+                              selectedPreset === presetName ? 'bg-yellow-600/40 text-yellow-300' : 'text-white/60 hover:bg-white/10'
+                            }`}
+                          >
+                            {presetName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
