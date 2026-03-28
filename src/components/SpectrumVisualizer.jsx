@@ -4,6 +4,8 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
   const canvasLRef = useRef(null);
   const canvasRRef = useRef(null);
   const animRef = useRef(null);
+  const smoothedLRef = useRef(null);
+  const smoothedRRef = useRef(null);
   const phaseRef = useRef(0);
 
   useEffect(() => {
@@ -15,10 +17,17 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
     const ctxR = canvasR.getContext('2d');
 
     const AMPLITUDE = 3.5;
-    const PIXEL_SIZE = 3;
-    const GLOW_INTENSITY = 1.5;
+    const PIXEL_SIZE = 4;
+    const LERP_FACTOR = 0.15;
+    const STEP = 3;
 
-    const drawOscilloscope = (ctx, timeData, freqData, label) => {
+    const initSmoothed = (length) => {
+      const arr = new Float32Array(length);
+      arr.fill(128);
+      return arr;
+    };
+
+    const drawOscilloscope = (ctx, timeData, freqData, label, smoothedData) => {
       const w = ctx.canvas.width;
       const h = ctx.canvas.height;
       const midY = h / 2;
@@ -50,55 +59,80 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         ctx.stroke();
       }
 
+      if (!smoothedData || smoothedData.length === 0) {
+        smoothedData = initSmoothed(timeData?.length || w);
+      }
+
+      if (timeData && timeData.length > 0) {
+        if (smoothedData.length !== timeData.length) {
+          smoothedData = initSmoothed(timeData.length);
+        }
+      }
+
       const drawWave = (data, isPrimary) => {
-        if (!data || data.length === 0) return;
+        if (!data || data.length === 0) {
+          const syntheticWave = new Uint8Array(Math.floor(w / STEP));
+          for (let i = 0; i < syntheticWave.length; i++) {
+            const t = (i / syntheticWave.length) * Math.PI * 4 + phaseRef.current;
+            const wave = Math.sin(t) * 0.2 + Math.sin(t * 2) * 0.1;
+            syntheticWave[i] = Math.floor(((wave + 1) / 2) * 255);
+          }
+          data = syntheticWave;
+        }
+
+        if (smoothedData.length !== data.length) {
+          smoothedData = initSmoothed(data.length);
+        }
 
         const color = isPrimary ? '#00ffb3' : '#00aa77';
-        const glowColor = isPrimary ? 'rgba(0, 255, 179, 0.5)' : 'rgba(0, 170, 119, 0.3)';
 
-        if (isPrimary) {
-          ctx.shadowColor = '#00ffb3';
-          ctx.shadowBlur = 8 * GLOW_INTENSITY;
-        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = PIXEL_SIZE;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = '#00ffb3';
+        ctx.shadowBlur = isPrimary ? 12 : 6;
 
-        ctx.fillStyle = glowColor;
-        for (let x = 0; x < w; x += PIXEL_SIZE) {
+        ctx.beginPath();
+
+        let firstPoint = true;
+        let prevX = 0;
+        let prevY = midY;
+        let prevSmoothY = midY;
+
+        for (let x = 0; x < w; x += STEP) {
           const dataIdx = Math.floor((x / w) * data.length);
           let sample = (data[dataIdx] || 128) / 128 - 1;
-          
-          const freqAmplitude = freqData && freqData.length > 0 
+
+          const freqAmplitude = freqData && freqData.length > 0
             ? (freqData[Math.floor((x / w) * freqData.length)] / 255) * 0.5 + 0.5
             : 1;
-          
+
           const amplitude = Math.min(freqAmplitude * AMPLITUDE, 4);
           sample *= amplitude;
-          
-          const y = midY + sample * (h / 2 - 4);
 
-          ctx.fillRect(
-            Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
-            Math.floor(y / PIXEL_SIZE) * PIXEL_SIZE,
-            PIXEL_SIZE,
-            PIXEL_SIZE * 2
-          );
+          const targetY = midY + sample * (h / 2 - 4);
 
-          if (sample > 0.5) {
-            ctx.fillRect(
-              Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
-              Math.floor((y - PIXEL_SIZE) / PIXEL_SIZE) * PIXEL_SIZE,
-              PIXEL_SIZE,
-              PIXEL_SIZE
-            );
+          smoothedData[dataIdx] = smoothedData[dataIdx] + (targetY - smoothedData[dataIdx]) * LERP_FACTOR;
+
+          const smoothY = smoothedData[dataIdx];
+
+          if (firstPoint) {
+            ctx.moveTo(x, smoothY);
+            firstPoint = false;
+          } else {
+            const cpX = (prevX + x) / 2;
+            const cpY = (prevSmoothY + smoothY) / 2;
+            ctx.quadraticCurveTo(prevX, prevSmoothY, cpX, cpY);
           }
-          if (sample < -0.5) {
-            ctx.fillRect(
-              Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE,
-              Math.floor((y + PIXEL_SIZE) / PIXEL_SIZE) * PIXEL_SIZE,
-              PIXEL_SIZE,
-              PIXEL_SIZE
-            );
-          }
+
+          prevX = x;
+          prevY = targetY;
+          prevSmoothY = smoothY;
         }
+
+        ctx.lineTo(w, prevSmoothY);
+        ctx.stroke();
 
         ctx.shadowBlur = 0;
       };
@@ -106,32 +140,26 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       if (timeData && timeData.length > 0) {
         drawWave(timeData, true);
       } else {
-        const syntheticWave = new Uint8Array(w);
-        for (let i = 0; i < w; i++) {
-          const t = (i / w) * Math.PI * 8 + phaseRef.current;
-          const freq = freqData && freqData.length > 0 
-            ? (freqData[Math.floor((i / w) * freqData.length)] / 255) * 0.6 + 0.4
-            : 0.3;
-          const wave = (Math.sin(t) * 0.5 + Math.sin(t * 2.7) * 0.2 + Math.sin(t * 0.5) * 0.15) * freq;
-          syntheticWave[i] = Math.floor(((wave + 1) / 2) * 255);
-        }
-        drawWave(syntheticWave, false);
+        drawWave(null, false);
       }
 
       ctx.fillStyle = '#d4a84b';
       ctx.font = '6px monospace';
+      ctx.shadowBlur = 0;
       ctx.fillText(label, 3, 8);
+
+      return smoothedData;
     };
 
     const animate = () => {
       if (!isPlaying) {
-        drawOscilloscope(ctxL, null, spectrumL, '◄ L ►');
-        drawOscilloscope(ctxR, null, spectrumR, '◄ R ►');
-        phaseRef.current += 0.03;
+        phaseRef.current += 0.02;
+        smoothedLRef.current = drawOscilloscope(ctxL, null, spectrumL, '◄ L ►', smoothedLRef.current);
+        smoothedRRef.current = drawOscilloscope(ctxR, null, spectrumR, '◄ R ►', smoothedRRef.current);
       } else {
-        phaseRef.current += 0.05;
-        drawOscilloscope(ctxL, timeDomainL, spectrumL, '◄ L ►');
-        drawOscilloscope(ctxR, timeDomainR, spectrumR, '◄ R ►');
+        phaseRef.current += 0.03;
+        smoothedLRef.current = drawOscilloscope(ctxL, timeDomainL, spectrumL, '◄ L ►', smoothedLRef.current);
+        smoothedRRef.current = drawOscilloscope(ctxR, timeDomainR, spectrumR, '◄ R ►', smoothedRRef.current);
       }
 
       animRef.current = requestAnimationFrame(animate);
