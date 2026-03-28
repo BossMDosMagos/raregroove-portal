@@ -1024,6 +1024,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             formats: metadata.formats || null,
             tracklist: tracklist || [],
             description: metadata.description || null,
+            isAlbum: true,
           },
         },
       };
@@ -1051,6 +1052,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
         formats: metadata.formats || item?.metadata?.grooveflix?.formats || null,
         tracklist: tracklist?.length > 0 ? tracklist : (item?.metadata?.grooveflix?.tracklist || []),
         description: metadata.description || item?.metadata?.grooveflix?.description || null,
+        isAlbum: true,
       };
 
       if (files.folder && files.folder.length > 0) {
