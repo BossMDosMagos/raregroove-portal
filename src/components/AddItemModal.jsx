@@ -105,6 +105,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         seller_id: user.id,
         metadata: {
           grooveflix: {
+            isAlbum: false,
             discogsId: formData.discogsId || null,
             discogsMasterId: formData.discogsMasterId || null,
           },
