@@ -135,7 +135,7 @@ export function VUMeter({ vuMeterData, isPlaying }) {
 
     const ledX = W * 0.88;
     const ledY = H * 0.12;
-    const ledR = W * 0.042;
+    const ledR = W * 0.021;
 
     let ledColor, ledGlow;
     if (pos >= vuToPos(0)) {
@@ -150,16 +150,16 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     }
 
     ctx.beginPath();
-    ctx.arc(ledX, ledY, ledR + 1.5, 0, Math.PI * 2);
+    ctx.arc(ledX, ledY, ledR + 1, 0, Math.PI * 2);
     ctx.strokeStyle = '#c0c0c0';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(ledX, ledY, ledR, 0, Math.PI * 2);
     ctx.fillStyle = ledColor;
     ctx.shadowColor = ledGlow;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 4;
     ctx.fill();
     ctx.shadowBlur = 0;
   };
