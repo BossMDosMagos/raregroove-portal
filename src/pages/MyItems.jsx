@@ -114,11 +114,11 @@ export default function MyItems() {
       const { error } = await supabase.from('items').delete().eq('id', deleteConfirmData.id);
       
       if (error) {
-        // Se for erro de integridade referencial (FK)
+        console.error('Delete error:', error);
         if (error.code === '23503') {
           throw new Error(t('myItems.errors.fkBlocked'));
         }
-        throw error;
+        throw new Error(`Erro ao deletar: ${error.message}`);
       }
 
       toast.success(t('myItems.toast.deleted.title'), {
