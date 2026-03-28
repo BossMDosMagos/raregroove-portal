@@ -19,6 +19,7 @@ const emptyFormData = {
   file: null,
   discogsId: '',
   discogsMasterId: '',
+  description: '',
 };
 
 export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit }) {
@@ -44,6 +45,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         file: null,
         discogsId: itemToEdit.metadata?.grooveflix?.discogsId || '',
         discogsMasterId: itemToEdit.metadata?.grooveflix?.discogsMasterId || '',
+        description: itemToEdit.description || itemToEdit.metadata?.description || '',
       });
     } else {
       setFormData(emptyFormData);
@@ -61,6 +63,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       coverUrlThumbnail: data.coverUrlThumbnail || prev.coverUrlThumbnail,
       discogsId: data.discogsId || prev.discogsId,
       discogsMasterId: data.discogsMasterId || prev.discogsMasterId,
+      description: data.description || prev.description,
     }));
   };
 
@@ -103,6 +106,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         allow_sale: Boolean(formData.allow_sale),
         allow_swap: Boolean(formData.allow_swap),
         seller_id: user.id,
+        description: formData.description || '',
         metadata: {
           source: 'catalog',
           grooveflix: {
@@ -187,6 +191,16 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                 <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
                   value={formData.genre}
                   onChange={e => setFormData({...formData, genre: e.target.value})} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Sobre a Relíquia</label>
+                <textarea 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all resize-none"
+                  rows={3}
+                  value={formData.description}
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  placeholder="Informações sobre a relíquia..."
+                />
               </div>
               <div>
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.price')}</label>

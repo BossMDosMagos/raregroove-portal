@@ -94,6 +94,7 @@ export function DiscogsSearch({ onImport }) {
     const albumTitle = fullDetails.title || selected.title;
     const coverUrl = fullDetails.images?.[0]?.uri || fullDetails.images?.[0]?.uri150 || selected.thumb || '';
     const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
+    const description = fullDetails.notes || fullDetails.formats?.[0]?.descriptions?.join(', ') || '';
 
     onImport({
       title: albumTitle,
@@ -104,6 +105,7 @@ export function DiscogsSearch({ onImport }) {
       coverUrlThumbnail: fullDetails.images?.[0]?.uri150 || coverUrl,
       discogsId: selected.id,
       discogsMasterId: fullDetails.master_id,
+      description: description,
     });
 
     toast.success('Dados importados do Discogs!', {
