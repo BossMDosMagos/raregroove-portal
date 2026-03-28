@@ -80,6 +80,8 @@ export function SuperAudioPlayer() {
     vuMeterData,
     spectrumL,
     spectrumR,
+    timeDomainBytesL,
+    timeDomainBytesR,
     loadTrack,
     play,
     pause,
@@ -365,6 +367,8 @@ export function SuperAudioPlayer() {
         getVolumeDb={getVolumeDb}
         spectrumL={spectrumL}
         spectrumR={spectrumR}
+        timeDomainL={timeDomainBytesL}
+        timeDomainR={timeDomainBytesR}
         isPlaying={isPlaying}
       />
 

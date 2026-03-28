@@ -83,6 +83,8 @@ export function useAudioEngine() {
   const [timeDomainData, setTimeDomainData] = useState(new Float32Array(256));
   const [spectrumL, setSpectrumL] = useState(new Uint8Array(64));
   const [spectrumR, setSpectrumR] = useState(new Uint8Array(64));
+  const [timeDomainBytesL, setTimeDomainBytesL] = useState(new Uint8Array(512));
+  const [timeDomainBytesR, setTimeDomainBytesR] = useState(new Uint8Array(512));
   
   const volumeRef = useRef(0.8);
   const panRef = useRef(0);
@@ -194,6 +196,13 @@ export function useAudioEngine() {
       combinedTime.set(dataLRef.current, 0);
       combinedTime.set(dataRRef.current, dataLRef.current.length);
       setTimeDomainData(combinedTime);
+
+      const timeBytesL = new Uint8Array(dataLRef.current.length);
+      const timeBytesR = new Uint8Array(dataRRef.current.length);
+      analyserLRef.current.getByteTimeDomainData(timeBytesL);
+      analyserRRef.current.getByteTimeDomainData(timeBytesR);
+      setTimeDomainBytesL(timeBytesL);
+      setTimeDomainBytesR(timeBytesR);
 
       const freqL = new Uint8Array(analyserLRef.current.frequencyBinCount);
       const freqR = new Uint8Array(analyserRRef.current.frequencyBinCount);
@@ -526,6 +535,7 @@ export function useAudioEngine() {
     isPlaying, currentTime, duration, volume, pan, preAmp, eqBands,
     loopMode, shuffle, isReady, analyserData, timeDomainData,
     eqFrequencies: EQ_FREQUENCIES, vuMeterData, spectrumL, spectrumR,
+    timeDomainBytesL, timeDomainBytesR,
     loadTrack, play, pause, stop, seek, setVolume, setPan, setPreAmp,
     setEqBand, toggleLoop, toggleShuffle, getNextTrack, getPrevTrack,
     dispose, initAudioContext,

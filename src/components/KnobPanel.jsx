@@ -7,6 +7,8 @@ const KnobPanel = ({
   getVolumeDb,
   spectrumL,
   spectrumR,
+  timeDomainL,
+  timeDomainR,
   isPlaying
 }) => {
   const [dragging, setDragging] = useState(null);
@@ -304,7 +306,9 @@ const KnobPanel = ({
       <div className="flex items-center justify-center mb-3">
         <SpectrumVisualizer 
           spectrumL={spectrumL} 
-          spectrumR={spectrumR} 
+          spectrumR={spectrumR}
+          timeDomainL={timeDomainL}
+          timeDomainR={timeDomainR}
           isPlaying={isPlaying}
         />
       </div>
