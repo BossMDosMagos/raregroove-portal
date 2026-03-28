@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { VUMeter } from './VUMeter';
 import { AudioControlsPanel } from './AudioControlsPanel';
+import KnobPanel from './KnobPanel';
 
 const EQ_PRESETS = {
   Flat: { preAmp: 0, bands: { 32: 0, 64: 0, 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
@@ -338,6 +339,14 @@ export function SuperAudioPlayer() {
       <div className="px-3 pt-2 pb-1 bg-gradient-to-b from-black/80 to-transparent">
         <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
+
+      <KnobPanel 
+        volume={volume}
+        handleVolumeChange={handleVolumeChange}
+        eqBands={eqBands}
+        handleEqBand={setEqBand}
+        getVolumeDb={getVolumeDb}
+      />
 
       <div className="px-3 pb-3">
         <AudioControlsPanel 
