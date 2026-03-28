@@ -16,7 +16,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, isPlaying }) {
     const draw = () => {
       const w = canvasL.width;
       const h = canvasL.height;
-      const barCount = spectrumL?.length || 64;
+      const barCount = 64;
       const barWidth = (w / barCount) * 0.7;
       const gap = (w / barCount) * 0.3;
 
@@ -25,14 +25,16 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, isPlaying }) {
 
       const drawBars = (ctx, spectrum, isTop) => {
         if (!spectrum || spectrum.length === 0) {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.fillRect(0, isTop ? h - 2 : 0, w, 2);
+          ctx.fillStyle = '#2a2520';
+          for (let i = 0; i < barCount; i++) {
+            ctx.fillRect(i * (barWidth + gap), isTop ? h - 3 : 0, barWidth, 3);
+          }
           return;
         }
 
         for (let i = 0; i < spectrum.length; i++) {
           const value = spectrum[i] / 255;
-          const barHeight = value * h * 0.9;
+          const barHeight = Math.max(2, value * h * 0.95);
           
           const gradient = ctx.createLinearGradient(0, isTop ? h : 0, 0, isTop ? h - barHeight : barHeight);
           gradient.addColorStop(0, '#ffd700');
@@ -46,13 +48,6 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, isPlaying }) {
           } else {
             ctx.fillRect(i * (barWidth + gap), 0, barWidth, barHeight);
           }
-        }
-
-        ctx.fillStyle = '#2a2520';
-        if (isTop) {
-          ctx.fillRect(0, h - 2, w, 2);
-        } else {
-          ctx.fillRect(0, 0, w, 2);
         }
       };
 
@@ -72,21 +67,27 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, isPlaying }) {
   }, [spectrumL, spectrumR]);
 
   return (
-    <div className="flex flex-col gap-px px-2">
-      <canvas
-        ref={canvasLRef}
-        width={280}
-        height={40}
-        className="w-full h-10 rounded-t-sm"
-        style={{ imageRendering: 'pixelated' }}
-      />
-      <canvas
-        ref={canvasRRef}
-        width={280}
-        height={40}
-        className="w-full h-10 rounded-b-sm"
-        style={{ imageRendering: 'pixelated' }}
-      />
+    <div className="flex flex-col gap-0.5 px-2 py-1" style={{ backgroundColor: '#1a1a1a', borderRadius: '4px' }}>
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[6px] font-mono" style={{ color: '#d4a84b' }}>L</span>
+        <canvas
+          ref={canvasLRef}
+          width={320}
+          height={24}
+          className="flex-1 h-6"
+          style={{ display: 'block', imageRendering: 'pixelated' }}
+        />
+      </div>
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[6px] font-mono" style={{ color: '#d4a84b' }}>R</span>
+        <canvas
+          ref={canvasRRef}
+          width={320}
+          height={24}
+          className="flex-1 h-6"
+          style={{ display: 'block', imageRendering: 'pixelated' }}
+        />
+      </div>
     </div>
   );
 }
