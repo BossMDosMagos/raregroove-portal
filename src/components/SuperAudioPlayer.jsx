@@ -8,6 +8,7 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { VUMeter } from './VUMeter';
+import { DigitalDisplay } from './DigitalDisplay';
 
 const EQ_PRESETS = {
   Flat: { preAmp: 0, bands: { 32: 0, 64: 0, 125: 0, 250: 0, 500: 0, 1000: 0, 2000: 0, 4000: 0, 8000: 0, 16000: 0 } },
@@ -347,6 +348,15 @@ export function SuperAudioPlayer() {
 
       <div className="px-4 py-3 bg-gradient-to-b from-amber-950/20 to-transparent">
         <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
+      </div>
+
+      <div className="px-4 pb-3">
+        <DigitalDisplay 
+          currentTrack={currentTrack}
+          loopMode={loopMode}
+          shuffle={shuffle}
+          showEq={showEq}
+        />
       </div>
 
       <div className="px-4 py-2">
