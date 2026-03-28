@@ -123,7 +123,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
           style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
         });
       } else {
-        const { error: insertError } = supabase.from('items').insert([payload]);
+        const { error: insertError } = await supabase.from('items').insert([payload]);
         if (insertError) throw insertError;
         toast.success(t('addItem.toast.created.title'), {
           style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
