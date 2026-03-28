@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 
 const BG_COLORS = ['#0a0a0a', '#0d1a0d', '#0d0d1a', '#1a0d0d', '#0d1a1a', '#1a1a0d'];
 const TEXT_COLORS = ['#00ff00', '#00ffff', '#ff6600', '#ffff00', '#ff00ff', '#00ff88'];
@@ -6,9 +6,17 @@ const TEXT_COLORS = ['#00ff00', '#00ffff', '#ff6600', '#ffff00', '#ff00ff', '#00
 export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
   const [bgColorIndex, setBgColorIndex] = useState(0);
   const [textColorIndex, setTextColorIndex] = useState(0);
+  const [textWidth, setTextWidth] = useState(0);
+  const textRef = useRef(null);
 
   const bgColor = BG_COLORS[bgColorIndex];
   const textColor = TEXT_COLORS[textColorIndex];
+
+  useEffect(() => {
+    if (textRef.current) {
+      setTextWidth(textRef.current.offsetWidth);
+    }
+  }, [currentTrack, textColor]);
 
   const nowPlayingText = useMemo(() => {
     if (!currentTrack) return 'GROOVEFLIX READY...';
@@ -16,14 +24,10 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
     if (currentTrack.title) parts.push(currentTrack.title);
     if (currentTrack.artist) parts.push(currentTrack.artist);
     if (currentTrack.album) parts.push(currentTrack.album);
-    return parts.length > 0 ? parts.join('  //  ') + '  //  ' + parts[0] + '  //  ' : 'GROOVEFLIX READY...';
+    return parts.length > 0 ? parts.join('  //  ') : 'GROOVEFLIX READY...';
   }, [currentTrack]);
 
-  const duration = useMemo(() => {
-    if (!nowPlayingText) return '0s';
-    const charsPerSecond = 20;
-    return `${Math.ceil(nowPlayingText.length / charsPerSecond)}s`;
-  }, [nowPlayingText]);
+  const duration = textWidth > 0 ? `${textWidth / 30}s` : '10s';
 
   return (
     <div className="flex items-center gap-1">
@@ -43,7 +47,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
       </div>
 
       <div 
-        className="relative flex-1 h-10 rounded overflow-hidden border border-zinc-700"
+        className="relative flex-1 h-8 rounded overflow-hidden border border-zinc-700"
         style={{
           backgroundColor: bgColor,
           boxShadow: `inset 0 0 15px rgba(0,0,0,1), 0 0 1px rgba(255,255,255,0.1)`,
@@ -56,10 +60,10 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
           }}
         />
 
-        <div className="relative w-full h-full flex items-center">
-          <div className="flex items-center gap-2 px-2 whitespace-nowrap">
+        <div className="relative w-full h-full flex items-center overflow-hidden">
+          <div className="flex items-center gap-2 px-2 shrink-0 z-10 bg-inherit">
             <span 
-              className="text-[9px] font-bold tracking-wider"
+              className="text-[8px] font-bold tracking-wider"
               style={{ 
                 color: loopMode !== 'none' ? '#00ff00' : '#1a1a1a',
                 textShadow: loopMode !== 'none' ? '0 0 6px #00ff00' : 'none',
@@ -69,7 +73,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
               RPT
             </span>
             <span 
-              className="text-[9px] font-bold tracking-wider"
+              className="text-[8px] font-bold tracking-wider"
               style={{ 
                 color: showEq ? '#00ffff' : '#1a1a1a',
                 textShadow: showEq ? '0 0 6px #00ffff' : 'none',
@@ -79,7 +83,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
               EQ
             </span>
             <span 
-              className="text-[9px] font-bold tracking-wider"
+              className="text-[8px] font-bold tracking-wider"
               style={{ 
                 color: shuffle ? '#ff6600' : '#1a1a1a',
                 textShadow: shuffle ? '0 0 6px #ff6600' : 'none',
@@ -92,14 +96,24 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
 
           <div className="flex-1 overflow-hidden relative">
             <div 
-              className="inline-flex"
+              className="flex whitespace-nowrap"
               style={{
-                animation: `scrollText ${duration} linear infinite`,
+                animation: `marquee ${duration} linear infinite`,
                 fontFamily: 'Courier New, monospace',
               }}
             >
               <span 
-                className="text-[11px] font-bold tracking-wider px-2"
+                ref={textRef}
+                className="text-[10px] font-bold tracking-wider px-2"
+                style={{ 
+                  color: textColor,
+                  textShadow: `0 0 8px ${textColor}`,
+                }}
+              >
+                {nowPlayingText}
+              </span>
+              <span 
+                className="text-[10px] font-bold tracking-wider px-2"
                 style={{ 
                   color: textColor,
                   textShadow: `0 0 8px ${textColor}`,
@@ -112,7 +126,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
         </div>
 
         <style>{`
-          @keyframes scrollText {
+          @keyframes marquee {
             0% { transform: translateX(0); }
             100% { transform: translateX(-50%); }
           }
