@@ -150,10 +150,13 @@ export function VUMeter({ vuMeterData, isPlaying }) {
     }
 
     ctx.beginPath();
-    ctx.arc(ledX, ledY, ledR + 2, 0, Math.PI * 2);
+    ctx.arc(ledX, ledY, ledR + 1.5, 0, Math.PI * 2);
     ctx.strokeStyle = '#c0c0c0';
     ctx.lineWidth = 1.5;
-    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(ledX, ledY, ledR, 0, Math.PI * 2);
     ctx.fillStyle = ledColor;
     ctx.shadowColor = ledGlow;
     ctx.shadowBlur = 6;
