@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import dotMatrixFont from '../assets/fonts/5x7-dot-matrix.otf';
 
 const BG_COLORS = ['#0a0a0a', '#0d1a0d', '#0d0d1a', '#1a0d0d', '#0d1a1a', '#1a1a0d'];
 const TEXT_COLORS = ['#00ff00', '#00ff41', '#00ffff', '#ff6600', '#ffff00', '#ff00ff', '#00ff88'];
+
+const FONT_FAMILY = '"5x7DotMatrix", monospace';
 
 export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
   const [bgColorIndex, setBgColorIndex] = useState(0);
@@ -47,7 +50,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
       </div>
 
       <div 
-        className="relative flex-1 h-9 rounded-[3px] overflow-hidden border border-zinc-600/30"
+        className="relative flex-1 h-12 rounded-[3px] overflow-hidden border border-zinc-600/30"
         style={{
           backgroundColor: bgColor,
           boxShadow: `
@@ -55,6 +58,7 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
             inset 2px 2px 4px rgba(0,0,0,0.5),
             0 0 1px rgba(255,255,255,0.05)
           `,
+          fontFamily: FONT_FAMILY,
         }}
       >
         <div 
@@ -83,38 +87,35 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
 
         <div className="relative w-full h-full flex items-center overflow-hidden">
           <div 
-            className="flex items-center gap-2 px-2 shrink-0 z-10 border-r border-zinc-700/30"
+            className="flex items-center gap-3 px-2 shrink-0 z-10 border-r border-zinc-700/30"
             style={{ backgroundColor: bgColor }}
           >
             <span 
-              className="font-bold tracking-[1px]"
               style={{ 
                 color: loopMode !== 'none' ? '#00ff41' : '#1a1a1a',
                 textShadow: loopMode !== 'none' ? `0 0 5px #00ff41, 1px 1px 0 rgba(0,0,0,0.2)` : '1px 1px 0 rgba(0,0,0,0.1)',
-                fontFamily: '"VT323", "Silkscreen", "Courier New", monospace',
-                fontSize: '11px',
+                fontFamily: FONT_FAMILY,
+                fontSize: '12px',
               }}
             >
               RPT
             </span>
             <span 
-              className="font-bold tracking-[1px]"
               style={{ 
                 color: showEq ? '#00ffff' : '#1a1a1a',
                 textShadow: showEq ? `0 0 5px #00ffff, 1px 1px 0 rgba(0,0,0,0.2)` : '1px 1px 0 rgba(0,0,0,0.1)',
-                fontFamily: '"VT323", "Silkscreen", "Courier New", monospace',
-                fontSize: '11px',
+                fontFamily: FONT_FAMILY,
+                fontSize: '12px',
               }}
             >
               EQ
             </span>
             <span 
-              className="font-bold tracking-[1px]"
               style={{ 
                 color: shuffle ? '#ff6600' : '#1a1a1a',
                 textShadow: shuffle ? `0 0 5px #ff6600, 1px 1px 0 rgba(0,0,0,0.2)` : '1px 1px 0 rgba(0,0,0,0.1)',
-                fontFamily: '"VT323", "Silkscreen", "Courier New", monospace',
-                fontSize: '11px',
+                fontFamily: FONT_FAMILY,
+                fontSize: '12px',
               }}
             >
               SHF
@@ -130,25 +131,21 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
             >
               <span 
                 ref={textRef}
-                className="font-bold tracking-[2px] px-2"
                 style={{ 
                   color: textColor,
                   textShadow: `0 0 8px ${textColor}, 1px 1px 0 rgba(0,0,0,0.15)`,
-                  fontFamily: '"VT323", "Silkscreen", "Courier New", monospace',
-                  fontSize: '16px',
-                  letterSpacing: '1px',
+                  fontFamily: FONT_FAMILY,
+                  fontSize: '18px',
                 }}
               >
                 {nowPlayingText}
               </span>
               <span 
-                className="font-bold tracking-[2px] px-2"
                 style={{ 
                   color: textColor,
                   textShadow: `0 0 8px ${textColor}, 1px 1px 0 rgba(0,0,0,0.15)`,
-                  fontFamily: '"VT323", "Silkscreen", "Courier New", monospace',
-                  fontSize: '16px',
-                  letterSpacing: '1px',
+                  fontFamily: FONT_FAMILY,
+                  fontSize: '18px',
                 }}
               >
                 {nowPlayingText}
@@ -158,7 +155,12 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
         </div>
 
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=VT323&family=Silkscreen:wght@400;700&display=swap');
+          @font-face {
+            font-family: '5x7DotMatrix';
+            src: url(${dotMatrixFont}) format('opentype');
+            font-weight: normal;
+            font-style: normal;
+          }
           
           @keyframes marquee {
             0% { transform: translateX(0); }
