@@ -6,7 +6,6 @@ const KnobPanel = ({
   getVolumeDb 
 }) => {
   const [dragging, setDragging] = useState(null);
-  const knobRefs = useRef({});
   const startPosRef = useRef(0);
   const startValRef = useRef(0);
 
@@ -54,46 +53,210 @@ const KnobPanel = ({
   const midValue = getAverage(MID_BANDS);
   const trebleValue = getAverage(TREBLE_BANDS);
 
-  const Knob = ({ id, value, min, max, label, size = 'small', bands }) => {
+  const VolumeKnob = () => {
+    const rotation = valueToRotation(volume, 0, 1);
+    const isActive = dragging === 'volume';
+    const ledCount = 12;
+    const ledThreshold = volume * ledCount;
+
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="relative" style={{ width: '140px', height: '140px' }}>
+          {Array.from({ length: ledCount }).map((_, i) => {
+            const angle = -135 + (i / (ledCount - 1)) * 270;
+            const radian = (angle * Math.PI) / 180;
+            const radius = 55;
+            const x = Math.sin(radian) * radius;
+            const y = -Math.cos(radian) * radius;
+            const isLit = i < ledThreshold;
+            
+            return (
+              <div
+                key={i}
+                className="absolute rounded-full transition-all duration-100"
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  backgroundColor: isLit ? '#ffcc00' : '#3a2a1a',
+                  boxShadow: isLit 
+                    ? '0 0 8px #ffcc00, 0 0 12px #ff8800' 
+                    : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+                  left: `calc(50% + ${x}px - 3px)`,
+                  top: `calc(50% + ${y}px - 3px)`,
+                }}
+              />
+            );
+          })}
+
+          <div 
+            className={`absolute cursor-grab ${isActive ? 'cursor-grabbing' : ''}`}
+            style={{
+              width: '100px',
+              height: '100px',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              filter: isActive ? 'brightness(1.15)' : 'none',
+            }}
+            onMouseDown={(e) => handleMouseDown(e, 'volume', volume, 0, 1, null)}
+          >
+            <div 
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: `conic-gradient(
+                  from 0deg,
+                  #b8860b 0deg,
+                  #ffd700 30deg,
+                  #daa520 60deg,
+                  #b8860b 90deg,
+                  #ffd700 120deg,
+                  #daa520 150deg,
+                  #b8860b 180deg,
+                  #ffd700 210deg,
+                  #daa520 240deg,
+                  #b8860b 270deg,
+                  #ffd700 300deg,
+                  #daa520 330deg,
+                  #b8860b 360deg
+                )`,
+                boxShadow: `
+                  0 4px 8px rgba(0,0,0,0.6),
+                  0 2px 4px rgba(0,0,0,0.4),
+                  inset 0 2px 4px rgba(255,255,255,0.3),
+                  inset 0 -2px 4px rgba(0,0,0,0.3)
+                `,
+              }}
+            />
+            <div 
+              className="absolute inset-[4px] rounded-full"
+              style={{
+                background: `conic-gradient(
+                  from 0deg,
+                  #8b6914 0deg,
+                  #c9a227 30deg,
+                  #b8940f 60deg,
+                  #8b6914 90deg,
+                  #c9a227 120deg,
+                  #b8940f 150deg,
+                  #8b6914 180deg,
+                  #c9a227 210deg,
+                  #b8940f 240deg,
+                  #8b6914 270deg,
+                  #c9a227 300deg,
+                  #b8940f 330deg,
+                  #8b6914 360deg
+                )`,
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.4)',
+              }}
+            />
+            <div 
+              className="absolute w-[3px] rounded-full"
+              style={{
+                height: '32px',
+                background: 'linear-gradient(to bottom, #fff8dc, #ffd700)',
+                boxShadow: '0 0 6px rgba(255,215,0,0.8)',
+                left: '50%',
+                top: '10px',
+                transform: `translateX(-50%) rotate(${rotation}deg)`,
+                transformOrigin: 'center bottom',
+              }}
+            />
+            <div 
+              className="absolute rounded-full"
+              style={{
+                width: '16px',
+                height: '16px',
+                background: 'radial-gradient(circle at 40% 40%, #2a1a0a, #0a0505)',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.8)',
+              }}
+            />
+          </div>
+        </div>
+        <span className="text-[7px] uppercase tracking-wider" style={{ color: '#d4a84b', fontFamily: 'monospace' }}>
+          VOLUME
+        </span>
+        <span className="text-[9px] font-mono" style={{ color: '#ffcc00', textShadow: '0 0 6px rgba(255,200,0,0.4)' }}>
+          {getVolumeDb()}dB
+        </span>
+      </div>
+    );
+  };
+
+  const SmallKnob = ({ id, value, min, max, label, bands }) => {
     const rotation = valueToRotation(value, min, max);
-    const isLarge = size === 'large';
     const isActive = dragging === id;
     
     return (
       <div className="flex flex-col items-center gap-1">
         <div 
-          ref={el => knobRefs.current[id] = el}
           className={`relative cursor-grab ${isActive ? 'cursor-grabbing' : ''}`}
           style={{
-            width: isLarge ? '56px' : '36px',
-            height: isLarge ? '56px' : '36px',
-            filter: isActive ? 'brightness(1.2)' : 'none',
+            width: '50px',
+            height: '50px',
+            filter: isActive ? 'brightness(1.15)' : 'none',
           }}
           onMouseDown={(e) => handleMouseDown(e, id, value, min, max, bands)}
         >
           <div 
             className="absolute inset-0 rounded-full"
             style={{
-              background: 'linear-gradient(145deg, #3a3a3a, #1a1a1a)',
-              boxShadow: isActive 
-                ? '0 0 10px rgba(255,200,0,0.5), inset 0 1px 1px rgba(255,255,255,0.15)' 
-                : '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)',
+              background: `conic-gradient(
+                from 0deg,
+                #b8860b 0deg,
+                #ffd700 30deg,
+                #daa520 60deg,
+                #b8860b 90deg,
+                #ffd700 120deg,
+                #daa520 150deg,
+                #b8860b 180deg,
+                #ffd700 210deg,
+                #daa520 240deg,
+                #b8860b 270deg,
+                #ffd700 300deg,
+                #daa520 330deg,
+                #b8860b 360deg
+              )`,
+              boxShadow: `
+                0 3px 6px rgba(0,0,0,0.6),
+                0 1px 3px rgba(0,0,0,0.4),
+                inset 0 2px 3px rgba(255,255,255,0.25),
+                inset 0 -2px 3px rgba(0,0,0,0.25)
+              `,
             }}
           />
           <div 
             className="absolute inset-[3px] rounded-full"
             style={{
-              background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+              background: `conic-gradient(
+                from 0deg,
+                #8b6914 0deg,
+                #c9a227 30deg,
+                #b8940f 60deg,
+                #8b6914 90deg,
+                #c9a227 120deg,
+                #b8940f 150deg,
+                #8b6914 180deg,
+                #c9a227 210deg,
+                #b8940f 240deg,
+                #8b6914 270deg,
+                #c9a227 300deg,
+                #b8940f 330deg,
+                #8b6914 360deg
+              )`,
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4)',
             }}
           />
           <div 
-            className="absolute w-1 rounded-full"
+            className="absolute w-[2px] rounded-full"
             style={{
-              height: isLarge ? '18px' : '11px',
-              background: 'linear-gradient(to bottom, #ffcc00, #ff8800)',
-              boxShadow: '0 0 4px rgba(255,200,0,0.5)',
+              height: '16px',
+              background: 'linear-gradient(to bottom, #fff8dc, #ffd700)',
+              boxShadow: '0 0 4px rgba(255,215,0,0.6)',
               left: '50%',
-              top: isLarge ? '8px' : '4px',
+              top: '5px',
               transform: `translateX(-50%) rotate(${rotation}deg)`,
               transformOrigin: 'center bottom',
             }}
@@ -101,13 +264,13 @@ const KnobPanel = ({
           <div 
             className="absolute rounded-full"
             style={{
-              width: isLarge ? '10px' : '6px',
-              height: isLarge ? '10px' : '6px',
-              background: '#0a0a0a',
+              width: '10px',
+              height: '10px',
+              background: 'radial-gradient(circle at 40% 40%, #2a1a0a, #0a0505)',
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
-              border: '1px solid #333',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
             }}
           />
         </div>
@@ -127,7 +290,7 @@ const KnobPanel = ({
 
   return (
     <div 
-      className="flex items-end justify-center gap-3 px-4 py-3"
+      className="flex items-end justify-center gap-6 px-4 py-3"
       style={{
         background: 'linear-gradient(180deg, rgba(25,25,25,0.95) 0%, rgba(15,15,15,0.98) 100%)',
         borderTop: '1px solid rgba(255,200,0,0.15)',
@@ -136,53 +299,38 @@ const KnobPanel = ({
     >
       <div className="flex-1" />
       
-      <Knob 
-        id="volume" 
-        value={volume} 
-        min={0} 
-        max={1} 
-        label="VOLUME" 
-        size="large"
-      />
+      <VolumeKnob />
       
-      <div className="flex items-center gap-4">
-        <Knob 
-          id="bass" 
-          value={bassValue} 
-          min={-12} 
-          max={12} 
-          label="BASS"
-          bands={BASS_BANDS}
-        />
-        <Knob 
-          id="mid" 
-          value={midValue} 
-          min={-12} 
-          max={12} 
-          label="MID"
-          bands={MID_BANDS}
-        />
-        <Knob 
-          id="treble" 
-          value={trebleValue} 
-          min={-12} 
-          max={12} 
-          label="TREBLE"
-          bands={TREBLE_BANDS}
-        />
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-4">
+          <SmallKnob 
+            id="bass" 
+            value={bassValue} 
+            min={-12} 
+            max={12} 
+            label="BASS"
+            bands={BASS_BANDS}
+          />
+          <SmallKnob 
+            id="mid" 
+            value={midValue} 
+            min={-12} 
+            max={12} 
+            label="MID"
+            bands={MID_BANDS}
+          />
+          <SmallKnob 
+            id="treble" 
+            value={trebleValue} 
+            min={-12} 
+            max={12} 
+            label="TREBLE"
+            bands={TREBLE_BANDS}
+          />
+        </div>
       </div>
       
-      <div className="flex-1 flex justify-end items-center">
-        <span 
-          className="text-[9px] font-mono"
-          style={{ 
-            color: '#ffcc00',
-            textShadow: '0 0 6px rgba(255,200,0,0.4)',
-          }}
-        >
-          {getVolumeDb()}dB
-        </span>
-      </div>
+      <div className="flex-1" />
     </div>
   );
 };
