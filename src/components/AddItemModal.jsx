@@ -270,7 +270,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
             {!showDiscogs ? (
               <button
                 type="button"
-                onClick={() => setShowDiscogs(true)}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDiscogs(true); }}
                 className="w-full py-3 bg-gradient-to-r from-fuchsia-500/20 to-purple-500/20 border border-fuchsia-500/30 rounded-xl text-fuchsia-300 font-bold text-xs uppercase tracking-widest hover:from-fuchsia-500/30 hover:to-purple-500/30 transition-all flex items-center justify-center gap-2"
               >
                 <Search size={14} />
@@ -280,11 +280,11 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
               <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
                 <div className="flex items-center justify-between">
                   <span className="text-fuchsia-400 text-xs font-bold uppercase tracking-wider">Busca Discogs</span>
-                  <button type="button" onClick={() => { setShowDiscogs(false); setDiscogsResults([]); setDiscogsSelected(null); }} className="text-white/40 hover:text-white text-xs">
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setShowDiscogs(false); setDiscogsResults([]); setDiscogsSelected(null); }} className="text-white/40 hover:text-white text-xs">
                     <X size={14} />
                   </button>
                 </div>
-                <form onSubmit={handleDiscogsSearch} className="flex gap-2">
+                <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); handleDiscogsSearch(e); }} className="flex gap-2">
                   <input
                     type="text"
                     value={discogsQuery}
