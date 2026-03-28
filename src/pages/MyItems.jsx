@@ -30,7 +30,7 @@ export default function MyItems() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const filtered = (data || []).filter(item => !item.metadata?.grooveflix?.isAlbum);
+      const filtered = (data || []).filter(item => item.metadata?.source === 'catalog');
       setItems(filtered);
     } catch (error) {
       toast.error(t('myItems.toast.loadError.title'), {

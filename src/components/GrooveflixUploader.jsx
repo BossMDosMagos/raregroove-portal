@@ -1026,6 +1026,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
             description: metadata.description || null,
             isAlbum: true,
           },
+          source: 'grooveflix',
         },
       };
 
@@ -1144,7 +1145,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
 
       const { error: updateError } = await supabase
         .from('items')
-        .update({ metadata: { ...item?.metadata, grooveflix: grooveflixData } })
+        .update({ metadata: { ...item?.metadata, source: 'grooveflix', grooveflix: grooveflixData } })
         .eq('id', itemId);
 
       if (updateError) throw updateError;

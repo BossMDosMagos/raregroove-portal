@@ -32,10 +32,9 @@ export default function Catalogo() {
       .order('created_at', { ascending: false });
     
     if (!error) {
-      const filtered = (data || []).filter(item => {
-        if (item.metadata?.grooveflix?.isAlbum === true) return false;
-        return true;
-      });
+      const filtered = (data || []).filter(item => 
+        item.metadata?.source === 'catalog'
+      );
       setItems(filtered);
     }
     setLoadingItems(false);

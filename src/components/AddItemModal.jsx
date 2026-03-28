@@ -104,6 +104,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         allow_swap: Boolean(formData.allow_swap),
         seller_id: user.id,
         metadata: {
+          source: 'catalog',
           grooveflix: {
             isAlbum: false,
             discogsId: formData.discogsId || null,

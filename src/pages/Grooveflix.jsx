@@ -94,7 +94,7 @@ export default function Grooveflix() {
 
       const allItems = data || [];
       const grooveflixItems = allItems.filter(item =>
-        item.metadata?.grooveflix?.category
+        item.metadata?.source === 'grooveflix' && item.metadata?.grooveflix?.category
       );
 
       setDebugInfo({
