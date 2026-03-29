@@ -165,46 +165,45 @@ export default function Grooveflix() {
         onSeek={seek}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-28 space-y-8" style={{ marginLeft: '280px', marginRight: '280px' }}>
-        <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
+      <div className="relative mx-auto px-4 md:px-6 pt-28 space-y-6" style={{ marginLeft: '280px', marginRight: '280px' }}>
+        <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 text-[10px] uppercase tracking-widest text-fuchsia-300">
                 <Sparkles className="w-3 h-3" /> HI-FI STREAMING
               </span>
             </div>
-            <h1 className="text-6xl md:text-7xl font-black tracking-tight">GROOVEFLIX<span className="text-fuchsia-400">.</span></h1>
-            <p className="mt-3 text-white/50">{t('grooveflix.subtitle')}</p>
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight">GROOVEFLIX<span className="text-fuchsia-400">.</span></h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => loadItems()}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition"
-            >
-              <RotateCw className="w-4 h-4" /> {t('grooveflix.reload')}
-            </button>
-            {isAdmin && (
+          <div className="flex flex-wrap items-center gap-2">
+            {CATEGORY_OPTIONS.map((cat) => (
               <button
-                onClick={() => setShowUploader(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition"
-              >
-                <Plus className="w-4 h-4" /> {t('grooveflix.upload')}
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-2 rounded-full text-xs uppercase tracking-widest border ${categoryFilter === cat ? 'bg-fuchsia-500/25 border-fuchsia-500 text-fuchsia-100' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>
+                {cat === 'all' ? t('grooveflix.filter.all') : cat}
               </button>
-            )}
+            ))}
+            
+            <div className="flex items-center gap-2 ml-4">
+              <button
+                onClick={() => loadItems()}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition"
+              >
+                <RotateCw className="w-4 h-4" /> {t('grooveflix.reload')}
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowUploader(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition"
+                >
+                  <Plus className="w-4 h-4" /> {t('grooveflix.upload')}
+                </button>
+              )}
+            </div>
           </div>
         </header>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {CATEGORY_OPTIONS.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-2 rounded-full text-xs uppercase tracking-widest border ${categoryFilter === cat ? 'bg-fuchsia-500/25 border-fuchsia-500 text-fuchsia-100' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>
-              {cat === 'all' ? t('grooveflix.filter.all') : cat}
-            </button>
-          ))}
-        </div>
 
         {loading ? (
           <div className="p-12 rounded-2xl bg-white/5 border border-white/10 text-center">
