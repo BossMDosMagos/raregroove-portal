@@ -8,36 +8,41 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
   const prevRRef = useRef(null);
   const isSilentRef = useRef(true);
 
-  const midY = 24;
-  const GAIN = 3.0;
-  const LERP = 0.25;
-  const NOISE_GATE = 0.01;
+  const midY = 28;
+  const GAIN = 3.6;
+  const LERP = 0.3;
+  const NOISE_GATE = 0.008;
+
+  const applyMotionBlur = (ctx, w, h) => {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, w, h);
+  };
 
   const clearCanvas = (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#0a0f0a';
+    ctx.fillStyle = '#020508';
     ctx.fillRect(0, 0, w, h);
   };
 
   const drawGrid = (ctx, w, h) => {
-    ctx.strokeStyle = '#1a3f1a';
+    ctx.strokeStyle = '#0a2a3a';
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 8]);
+    ctx.setLineDash([4, 12]);
     ctx.beginPath();
     ctx.moveTo(0, midY);
     ctx.lineTo(w, midY);
     ctx.stroke();
     ctx.setLineDash([]);
     
-    for (let y = midY - 12; y > 2; y -= 12) {
-      ctx.strokeStyle = '#152515';
+    for (let y = midY - 14; y > 2; y -= 14) {
+      ctx.strokeStyle = '#061820';
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
       ctx.stroke();
     }
-    for (let y = midY + 12; y < h - 2; y += 12) {
-      ctx.strokeStyle = '#152515';
+    for (let y = midY + 14; y < h - 2; y += 14) {
+      ctx.strokeStyle = '#061820';
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
@@ -46,37 +51,36 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
   };
 
   const drawSilentLine = (ctx, w, label) => {
-    ctx.strokeStyle = '#00aa77';
-    ctx.lineWidth = 1;
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
+    const gradient = ctx.createLinearGradient(0, midY, w, midY);
+    gradient.addColorStop(0, '#00ffff');
+    gradient.addColorStop(0.5, '#00aaff');
+    gradient.addColorStop(1, '#0044aa');
+    
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.moveTo(0, midY);
     ctx.lineTo(w, midY);
     ctx.stroke();
-    ctx.fillStyle = '#d4a84b';
+    
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#00ffff';
     ctx.font = '6px monospace';
-    ctx.fillText(label + ' ◼', 3, 8);
+    ctx.fillText(label + ' ◼', 3, 9);
   };
 
-  const drawActiveWave = (ctx, data, prevData, w, label) => {
-    ctx.strokeStyle = '#00ffb3';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.shadowColor = '#00ffb3';
-    ctx.shadowBlur = 4;
-    
-    ctx.beginPath();
-    
+  const drawNeonWave = (ctx, data, prevData, w, label) => {
     const newPrevData = new Float32Array(w);
     let isQuiet = true;
+    const points = [];
     
     for (let i = 0; i < w; i++) {
       const dataIdx = Math.floor((i / w) * data.length);
       let v = (data[dataIdx] || 128) / 128.0;
       
-      if (Math.abs(v - 1) < 0.003) v = 1;
+      if (Math.abs(v - 1) < 0.002) v = 1;
       
       const amplitude = v - 1;
       
@@ -92,20 +96,52 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       }
       
       newPrevData[i] = finalY;
-      
-      if (i === 0) {
-        ctx.moveTo(i, finalY);
-      } else {
-        ctx.lineTo(i, finalY);
-      }
+      points.push({ x: i, y: finalY });
     }
     
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    const drawPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      
+      for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      
+      if (points.length > 1) {
+        const last = points[points.length - 1];
+        ctx.lineTo(last.x, last.y);
+      }
+    };
     
-    ctx.fillStyle = '#d4a84b';
+    ctx.shadowBlur = 0;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.25)';
+    ctx.lineWidth = 12;
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 40;
+    drawPath();
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 5;
+    ctx.shadowBlur = 20;
+    drawPath();
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 0;
+    drawPath();
+    ctx.stroke();
+    
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#00ffff';
     ctx.font = '6px monospace';
-    ctx.fillText(label + ' ●', 3, 8);
+    ctx.fillText(label + ' ●', 3, 9);
     
     return { data: newPrevData, isQuiet };
   };
@@ -140,13 +176,13 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       
       isSilentRef.current = false;
       
-      clearCanvas(ctxL, w, h);
+      applyMotionBlur(ctxL, w, h);
       drawGrid(ctxL, w, h);
-      clearCanvas(ctxR, w, h);
+      applyMotionBlur(ctxR, w, h);
       drawGrid(ctxR, w, h);
       
-      const resultL = drawActiveWave(ctxL, timeDomainL, prevLRef.current, w, '◄ L ►');
-      const resultR = drawActiveWave(ctxR, timeDomainR, prevRRef.current, w, '◄ R ►');
+      const resultL = drawNeonWave(ctxL, timeDomainL, prevLRef.current, w, '◄ L ►');
+      const resultR = drawNeonWave(ctxR, timeDomainR, prevRRef.current, w, '◄ R ►');
       
       prevLRef.current = resultL.data;
       prevRRef.current = resultR.data;
@@ -215,25 +251,25 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
   }, [isStopped]);
 
   return (
-    <div className="flex flex-col gap-0.5 px-2 py-1" style={{ backgroundColor: '#0a0f0a', borderRadius: '4px' }}>
+    <div className="flex flex-col gap-1 px-2 py-1" style={{ backgroundColor: '#020508', borderRadius: '6px' }}>
       <div className="flex items-center gap-2">
-        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffb3' }}>CH1</span>
+        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffff' }}>CH1</span>
         <canvas
           ref={canvasLRef}
           width={340}
-          height={48}
-          className="flex-1 h-12"
-          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a3f1a' }}
+          height={56}
+          className="flex-1 h-14"
+          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '3px', border: '1px solid #0a2a3a' }}
         />
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffb3' }}>CH2</span>
+        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffff' }}>CH2</span>
         <canvas
           ref={canvasRRef}
           width={340}
-          height={48}
-          className="flex-1 h-12"
-          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '2px', border: '1px solid #1a3f1a' }}
+          height={56}
+          className="flex-1 h-14"
+          style={{ display: 'block', imageRendering: 'pixelated', borderRadius: '3px', border: '1px solid #0a2a3a' }}
         />
       </div>
     </div>
