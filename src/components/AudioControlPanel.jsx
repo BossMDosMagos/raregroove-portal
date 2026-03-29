@@ -60,7 +60,7 @@ export default function AudioControlPanel({
             <VolumeKnob 
               volume={volume || 0} 
               onVolumeChange={onVolumeChange || (() => {})} 
-              size={70}
+              size={150}
             />
           </div>
 
