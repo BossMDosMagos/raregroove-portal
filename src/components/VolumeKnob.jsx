@@ -121,7 +121,7 @@ export function VolumeKnob({
         }}
       />
 
-      <div className="absolute inset-2 rounded-full overflow-hidden" style={{
+      <div className="absolute inset-2 rounded-full overflow-hidden z-10" style={{
         background: '#0f0f0f',
       }}>
         {ledColors.map((colorKey, i) => {
