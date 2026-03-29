@@ -352,6 +352,7 @@ export function useAudioEngine() {
           
           if (autoplay) {
             howl.play();
+            window.dispatchEvent(new CustomEvent('grooveflix-play'));
           }
           resolve(howl);
         },
@@ -384,6 +385,8 @@ export function useAudioEngine() {
       ensureContextRunning();
       stopAnimLoop();
       animFrameRef.current = requestAnimationFrame(animLoop);
+      
+      window.dispatchEvent(new CustomEvent('grooveflix-play'));
     }
   }, [ensureContextRunning, stopAnimLoop, animLoop]);
 
@@ -393,6 +396,7 @@ export function useAudioEngine() {
     setIsPlaying(false);
     isPlayingRef.current = false;
     stopAnimLoop();
+    window.dispatchEvent(new CustomEvent('grooveflix-pause'));
   }, [stopAnimLoop]);
 
   const stop = useCallback(() => {
@@ -402,6 +406,7 @@ export function useAudioEngine() {
     isPlayingRef.current = false;
     setCurrentTime(0);
     stopAnimLoop();
+    window.dispatchEvent(new CustomEvent('grooveflix-stop'));
   }, [stopAnimLoop]);
 
   const seek = useCallback((time) => {
