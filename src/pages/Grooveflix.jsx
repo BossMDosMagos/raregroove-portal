@@ -144,11 +144,11 @@ export default function Grooveflix() {
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
       </div>
 
-      <div className="fixed top-20 left-8 z-50">
+      <div className="fixed top-20 left-[42px] z-50">
         <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
       </div>
 
-      <div className="fixed top-20 right-8 z-50">
+      <div className="fixed top-20 right-[42px] z-50">
         <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
       </div>
 
