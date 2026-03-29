@@ -318,7 +318,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           'Authorization': `Bearer ${token}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ item_id: item.id }),
+        body: JSON.stringify({ itemId: item.id }),
       });
 
       const result = await response.json();
