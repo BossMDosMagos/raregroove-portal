@@ -12,7 +12,6 @@ import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
 import { VUMeterRight } from '../components/VUMeterRight.jsx';
 import { useAudioEngine } from '../hooks/useAudioEngine.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
-import MixerPanel from '../components/MixerPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
