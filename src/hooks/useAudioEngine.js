@@ -85,6 +85,8 @@ export function useAudioEngine() {
   const [spectrumR, setSpectrumR] = useState(new Uint8Array(64));
   const [timeDomainBytesL, setTimeDomainBytesL] = useState(new Uint8Array(512));
   const [timeDomainBytesR, setTimeDomainBytesR] = useState(new Uint8Array(512));
+  const [bassDataL, setBassDataL] = useState(new Uint8Array(8));
+  const [bassDataR, setBassDataR] = useState(new Uint8Array(8));
   
   const volumeRef = useRef(0.8);
   const panRef = useRef(0);
@@ -225,6 +227,15 @@ export function useAudioEngine() {
       }
       setSpectrumL(reducedL);
       setSpectrumR(reducedR);
+      
+      const bassL = new Uint8Array(8);
+      const bassR = new Uint8Array(8);
+      for (let i = 0; i < 8; i++) {
+        bassL[i] = freqL[i] || 0;
+        bassR[i] = freqR[i] || 0;
+      }
+      setBassDataL(bassL);
+      setBassDataR(bassR);
     } catch (e) {
       console.log('[Audio] Analyser read error:', e.message);
     }
@@ -535,7 +546,7 @@ export function useAudioEngine() {
     isPlaying, currentTime, duration, volume, pan, preAmp, eqBands,
     loopMode, shuffle, isReady, analyserData, timeDomainData,
     eqFrequencies: EQ_FREQUENCIES, vuMeterData, spectrumL, spectrumR,
-    timeDomainBytesL, timeDomainBytesR,
+    timeDomainBytesL, timeDomainBytesR, bassDataL, bassDataR,
     loadTrack, play, pause, stop, seek, setVolume, setPan, setPreAmp,
     setEqBand, toggleLoop, toggleShuffle, getNextTrack, getPrevTrack,
     dispose, initAudioContext,
