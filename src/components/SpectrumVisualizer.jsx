@@ -1,12 +1,56 @@
 import { useRef, useEffect } from 'react';
 
-export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDomainR, isPlaying }) {
+export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDomainR, isPlaying, isStopped }) {
   const canvasLRef = useRef(null);
   const canvasRRef = useRef(null);
   const animRef = useRef(null);
   const prevLRef = useRef(null);
   const prevRRef = useRef(null);
-  const phaseRef = useRef(0);
+  const wasPlayingRef = useRef(false);
+
+  const resetToZero = (ctx, midY, label) => {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    ctx.fillStyle = '#0a0f0a';
+    ctx.fillRect(0, 0, w, h);
+    
+    ctx.strokeStyle = '#1a3f1a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(w, midY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    for (let y = midY - 12; y > 2; y -= 12) {
+      ctx.strokeStyle = '#152515';
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    for (let y = midY + 12; y < h - 2; y += 12) {
+      ctx.strokeStyle = '#152515';
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    
+    ctx.strokeStyle = '#00aa77';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(w, midY);
+    ctx.stroke();
+    ctx.fillStyle = '#d4a84b';
+    ctx.font = '6px monospace';
+    ctx.fillText(label + ' ◼', 3, 8);
+  };
 
   useEffect(() => {
     const canvasL = canvasLRef.current;
@@ -15,8 +59,9 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
 
     const ctxL = canvasL.getContext('2d');
     const ctxR = canvasR.getContext('2d');
+    const midY = 24;
 
-    const draw = (ctx, data, prevData, midY, label) => {
+    const draw = (ctx, data, prevData, label) => {
       const w = ctx.canvas.width;
       const h = ctx.canvas.height;
       
@@ -49,7 +94,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         ctx.stroke();
       }
       
-      if (!data || data.length === 0) {
+      if (!data || data.length === 0 || !isPlaying) {
         ctx.strokeStyle = '#00aa77';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -59,11 +104,11 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         ctx.fillStyle = '#d4a84b';
         ctx.font = '6px monospace';
         ctx.fillText(label + ' ◼', 3, 8);
-        return prevData;
+        return null;
       }
       
       const GAIN = 2.5;
-      const LERP = 0.2;
+      const LERP = 0.3;
       
       ctx.strokeStyle = '#00ffb3';
       ctx.lineWidth = 2;
@@ -73,6 +118,8 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       ctx.shadowBlur = 6;
       
       ctx.beginPath();
+      
+      const newPrevData = new Float32Array(w);
       
       for (let i = 0; i < w; i++) {
         const dataIdx = Math.floor((i / w) * data.length);
@@ -87,7 +134,7 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
           finalY = prevData[i] + (y - prevData[i]) * LERP;
         }
         
-        if (prevData) prevData[i] = finalY;
+        newPrevData[i] = finalY;
         
         if (i === 0) {
           ctx.moveTo(i, finalY);
@@ -103,35 +150,37 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
       ctx.font = '6px monospace';
       ctx.fillText(label + ' ●', 3, 8);
       
-      return prevData || new Float32Array(w);
+      return newPrevData;
     };
 
     const animate = () => {
-      const midY = 24;
-      
       if (!isPlaying) {
-        phaseRef.current += 0.03;
-        
-        const syntheticL = new Uint8Array(512);
-        const syntheticR = new Uint8Array(512);
-        for (let i = 0; i < 512; i++) {
-          const t = (i / 512) * Math.PI * 6 + phaseRef.current;
-          const wave = Math.sin(t) * 0.1 + Math.sin(t * 2) * 0.05;
-          syntheticL[i] = Math.floor(((wave + 1) / 2) * 255);
-          syntheticR[i] = Math.floor(((wave + 1) / 2) * 255);
+        if (wasPlayingRef.current) {
+          prevLRef.current = null;
+          prevRRef.current = null;
+          wasPlayingRef.current = false;
         }
         
-        prevLRef.current = draw(ctxL, syntheticL, prevLRef.current, midY, '◄ L ►');
-        prevRRef.current = draw(ctxR, syntheticR, prevRRef.current, midY, '◄ R ►');
-      } else {
-        prevLRef.current = draw(ctxL, timeDomainL, prevLRef.current, midY, '◄ L ►');
-        prevRRef.current = draw(ctxR, timeDomainR, prevRRef.current, midY, '◄ R ►');
+        resetToZero(ctxL, midY, '◄ L ►');
+        resetToZero(ctxR, midY, '◄ R ►');
+        
+        return;
       }
+      
+      wasPlayingRef.current = true;
+      
+      prevLRef.current = draw(ctxL, timeDomainL, prevLRef.current, '◄ L ►');
+      prevRRef.current = draw(ctxR, timeDomainR, prevRRef.current, '◄ R ►');
       
       animRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    if (isPlaying) {
+      animate();
+    } else {
+      resetToZero(ctxL, midY, '◄ L ►');
+      resetToZero(ctxR, midY, '◄ R ►');
+    }
 
     return () => {
       if (animRef.current) {
@@ -139,7 +188,28 @@ export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDoma
         animRef.current = null;
       }
     };
-  }, [timeDomainL, timeDomainR, isPlaying]);
+  }, [timeDomainL, timeDomainR, isPlaying, isStopped]);
+
+  useEffect(() => {
+    if (isStopped) {
+      prevLRef.current = null;
+      prevRRef.current = null;
+      
+      const canvasL = canvasLRef.current;
+      const canvasR = canvasRRef.current;
+      if (canvasL && canvasR) {
+        const ctxL = canvasL.getContext('2d');
+        const ctxR = canvasR.getContext('2d');
+        resetToZero(ctxL, 24, '◄ L ►');
+        resetToZero(ctxR, 24, '◄ R ►');
+      }
+      
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current);
+        animRef.current = null;
+      }
+    }
+  }, [isStopped]);
 
   return (
     <div className="flex flex-col gap-0.5 px-2 py-1" style={{ backgroundColor: '#0a0f0a', borderRadius: '4px' }}>

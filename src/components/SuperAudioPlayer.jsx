@@ -370,6 +370,7 @@ export function SuperAudioPlayer() {
         timeDomainL={timeDomainBytesL}
         timeDomainR={timeDomainBytesR}
         isPlaying={isPlaying}
+        currentTime={currentTime}
       />
 
       <div className="px-3 pb-3">

@@ -9,8 +9,10 @@ const KnobPanel = ({
   spectrumR,
   timeDomainL,
   timeDomainR,
-  isPlaying
+  isPlaying,
+  currentTime
 }) => {
+  const isStopped = currentTime === 0 && !isPlaying;
   const [dragging, setDragging] = useState(null);
   const startPosRef = useRef(0);
   const startValRef = useRef(0);
@@ -310,6 +312,7 @@ const KnobPanel = ({
           timeDomainL={timeDomainL}
           timeDomainR={timeDomainR}
           isPlaying={isPlaying}
+          isStopped={isStopped}
         />
       </div>
       
