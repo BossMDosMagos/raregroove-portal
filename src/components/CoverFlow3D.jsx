@@ -250,7 +250,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
             <div
               key={item.id}
               className={`album-cover ${position}`}
-              onClick={() => handleAlbumClick(index)}
+              onClick={() => position === 'active' ? setShowDetails(true) : handleAlbumClick(index)}
               style={{ 
                 left: '50%', 
                 marginLeft: '-140px',
@@ -358,12 +358,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
               Ouvir Álbum
             </button>
           )}
-          <button
-            onClick={() => setShowDetails(true)}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-full transition-all hover:scale-105"
-          >
-            Ver Detalhes
-          </button>
+
         </div>
 
         <div className="mt-4 text-white/30 text-sm">
