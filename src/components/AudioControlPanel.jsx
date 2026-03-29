@@ -57,6 +57,8 @@ export default function AudioControlPanel({
   );
 
   return (
+    <>
+    {/* Painel Esquerdo - Controles */}
     <div className="fixed bottom-4 left-4 z-50" style={{ perspective: '1000px' }}>
       <div 
         className="relative rounded-xl"
@@ -475,5 +477,39 @@ export default function AudioControlPanel({
         </div>
       </div>
     </div>
+
+    {/* Painel Direito - Area Reservada */}
+    <div className="fixed bottom-4 right-4 z-50" style={{ perspective: '1000px' }}>
+      <div 
+        className="relative rounded-xl"
+        style={{
+          background: 'linear-gradient(145deg, #1f1f1f, #151515)',
+          boxShadow: `
+            inset 0 2px 4px rgba(255,255,255,0.05),
+            inset 0 -2px 4px rgba(0,0,0,0.5),
+            0 10px 40px rgba(0,0,0,0.8),
+            0 0 60px rgba(0,255,255,0.1)
+          `,
+          padding: '16px',
+          width: '260px',
+          height: '520px',
+        }}
+      >
+        {/* Coroa dourada */}
+        <div className="absolute bottom-3 right-3 z-10">
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+            <path d="M9 0L11 5L16 3L14 8L18 12H0L4 8L2 3L7 5L9 0Z" fill="url(#goldGrad2)" />
+            <defs>
+              <linearGradient id="goldGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFD700" />
+                <stop offset="50%" stopColor="#FFA500" />
+                <stop offset="100%" stopColor="#FFD700" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+      </div>
+    </div>
+    </>
   );
 }
