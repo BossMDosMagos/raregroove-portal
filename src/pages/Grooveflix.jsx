@@ -11,6 +11,7 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
 import { VUMeterRight } from '../components/VUMeterRight.jsx';
 import { useAudioEngine } from '../hooks/useAudioEngine.js';
+import MixerPanel from '../components/MixerPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
@@ -47,7 +48,7 @@ export default function Grooveflix() {
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioPlaying } = useAudioEngine();
+  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume } = useAudioEngine();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -150,6 +151,13 @@ export default function Grooveflix() {
       <div className="fixed top-20 right-8 z-50">
         <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
       </div>
+
+      <MixerPanel 
+        vuMeterData={vuMeterData} 
+        isPlaying={isAudioPlaying} 
+        volume={volume}
+        onVolumeChange={(v) => setVolume(v)}
+      />
 
       <div className="relative max-w-[1200px] mx-auto px-4 md:px-6 pt-28 space-y-8">
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
