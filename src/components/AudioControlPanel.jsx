@@ -14,7 +14,7 @@ export default function AudioControlPanel({
       {/* Painel Esquerdo */}
       <div className="fixed top-20 left-4 z-50" style={{ perspective: '1000px' }}>
         <div 
-          className="relative rounded-xl"
+          className="relative flex flex-col rounded-xl"
           style={{
             background: 'linear-gradient(145deg, #1f1f1f, #151515)',
             boxShadow: `
@@ -43,17 +43,17 @@ export default function AudioControlPanel({
           </div>
 
           {/* VU Meter Esquerdo */}
-          <div className="mb-3">
+          <div className="flex justify-center mb-3">
             <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isPlaying} />
           </div>
 
           {/* Spectrum Esquerdo */}
-          <div className="mb-3">
+          <div className="flex justify-center mb-3">
             <SpectrumLeft timeDomainL={timeDomainBytesL} isPlaying={isPlaying} />
           </div>
 
           {/* Woofer Esquerdo */}
-          <div className="flex items-center justify-center mt-4">
+          <div className="flex items-center justify-center mt-auto mb-4">
             <VirtualWooferLeft />
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function AudioControlPanel({
       {/* Painel Direito */}
       <div className="fixed top-20 right-4 z-50" style={{ perspective: '1000px' }}>
         <div 
-          className="relative rounded-xl"
+          className="relative flex flex-col rounded-xl"
           style={{
             background: 'linear-gradient(145deg, #1f1f1f, #151515)',
             boxShadow: `
@@ -91,17 +91,17 @@ export default function AudioControlPanel({
           </div>
 
           {/* VU Meter Direito */}
-          <div className="mb-3">
+          <div className="flex justify-center mb-3">
             <VUMeterRight vuMeterData={vuMeterData} isPlaying={isPlaying} />
           </div>
 
           {/* Spectrum Direito */}
-          <div className="mb-3">
+          <div className="flex justify-center mb-3">
             <SpectrumRight timeDomainR={timeDomainBytesR} isPlaying={isPlaying} />
           </div>
 
           {/* Woofer Direito */}
-          <div className="flex items-center justify-center mt-4">
+          <div className="flex items-center justify-center mt-auto mb-4">
             <VirtualWooferRight />
           </div>
         </div>
