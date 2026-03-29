@@ -403,3 +403,18 @@ export function SpectrumRight({ timeDomainR, isPlaying }) {
     />
   );
 }
+
+export function SpectrumVisualizer({ spectrumL, spectrumR, timeDomainL, timeDomainR, isPlaying, isStopped }) {
+  return (
+    <div className="flex flex-col gap-1 px-2 py-1" style={{ backgroundColor: '#020508', borderRadius: '6px' }}>
+      <div className="flex items-center gap-2">
+        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffff' }}>CH1</span>
+        <SpectrumLeft timeDomainL={timeDomainL} isPlaying={isPlaying} />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[6px] font-mono w-6 text-right" style={{ color: '#00ffff' }}>CH2</span>
+        <SpectrumRight timeDomainR={timeDomainR} isPlaying={isPlaying} />
+      </div>
+    </div>
+  );
+}
