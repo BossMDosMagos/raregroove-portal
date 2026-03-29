@@ -324,10 +324,10 @@ export function useAudioEngine() {
           isPlayingRef.current = true;
           
           ensureContextRunning();
+          connectAnalysers();
           stopAnimLoop();
           animFrameRef.current = requestAnimationFrame(animLoop);
           
-          connectAnalysers();
           window.dispatchEvent(new CustomEvent('grooveflix-play'));
         },
         onpause: () => {
