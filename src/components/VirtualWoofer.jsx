@@ -80,7 +80,6 @@ function WooferBassSync(elements) {
 
     cone.style.transform = `scale(${scale.toFixed(4)}) translateZ(${tz.toFixed(2)}px)`;
 
-    const glowIntensity = (energy * 80).toFixed(0);
     cone.style.boxShadow =
       `inset 0 4px 12px rgba(0,0,0,0.7),` +
       `inset 0 -2px 8px rgba(255,215,0,${(energy * 0.25).toFixed(3)})`;
@@ -98,8 +97,6 @@ function WooferBassSync(elements) {
   }
 
   function loop() {
-    frameId = null;
-
     if (!analyserL || !analyserR || !freqDataL || !freqDataR) {
       frameId = requestAnimationFrame(loop);
       return;
@@ -132,8 +129,8 @@ function WooferBassSync(elements) {
       cancelAnimationFrame(frameId);
       frameId = null;
     }
-    coneL.style.transform = 'scale(1) translateZ(0)';
-    coneR.style.transform = 'scale(1) translateZ(0)';
+    if (coneL) coneL.style.transform = 'scale(1) translateZ(0)';
+    if (coneR) coneR.style.transform = 'scale(1) translateZ(0)';
     if (wooferL) {
       const ring = wooferL.querySelector('.woofer-ring');
       if (ring) ring.style.boxShadow = '';
@@ -172,54 +169,40 @@ function WooferBassSync(elements) {
 }
 
 export function VirtualWooferLeft() {
-  const wooferRef = useRef(null);
+  const coneLRef = useRef(null);
+  const wooferLRef = useRef(null);
 
   useEffect(() => {
-    const setupWoofer = () => {
-      const wooferL = document.getElementById('woofer-l');
-      const coneL = document.getElementById('cone-l');
-      if (!wooferL || !coneL) {
-        setTimeout(setupWoofer, 100);
-        return;
-      }
+    if (!coneLRef.current || !wooferLRef.current) return;
 
-      const woofer = WooferBassSync({
-        coneL,
-        coneR: document.getElementById('cone-r'),
-        wooferL,
-        wooferR: document.getElementById('woofer-r'),
-      });
+    const wooferMotor = WooferBassSync({
+      coneL: coneLRef.current,
+      coneR: document.getElementById('cone-r'),
+      wooferL: wooferLRef.current,
+      wooferR: document.getElementById('woofer-r'),
+    });
 
-      wooferRef.current = woofer;
+    const handlePlay = () => wooferMotor.attach();
+    const handleStop = () => wooferMotor.detach();
+    const handlePause = () => wooferMotor.detach();
 
-      const handlePlay = () => woofer.attach();
-      const handleStop = () => woofer.detach();
-      const handlePause = () => woofer.detach();
+    document.addEventListener('grooveflix-play', handlePlay);
+    document.addEventListener('grooveflix-stop', handleStop);
+    document.addEventListener('grooveflix-pause', handlePause);
 
-      document.addEventListener('grooveflix-play', handlePlay);
-      document.addEventListener('grooveflix-stop', handleStop);
-      document.addEventListener('grooveflix-pause', handlePause);
-
-      return () => {
-        document.removeEventListener('grooveflix-play', handlePlay);
-        document.removeEventListener('grooveflix-stop', handleStop);
-        document.removeEventListener('grooveflix-pause', handlePause);
-        woofer.detach();
-      };
-    };
-
-    const cleanup = setupWoofer();
     return () => {
-      if (cleanup && typeof cleanup === 'function') cleanup();
-      if (wooferRef.current) wooferRef.current.detach();
+      document.removeEventListener('grooveflix-play', handlePlay);
+      document.removeEventListener('grooveflix-stop', handleStop);
+      document.removeEventListener('grooveflix-pause', handlePause);
+      wooferMotor.detach();
     };
   }, []);
 
   return (
-    <div className="woofer" id="woofer-l">
+    <div className="woofer" id="woofer-l" ref={wooferLRef}>
       <div className="woofer-ring"></div>
       <div className="woofer-surround"></div>
-      <div className="woofer-cone" id="cone-l">
+      <div className="woofer-cone" id="cone-l" ref={coneLRef}>
         <div className="woofer-spider">
           <div className="woofer-dustcap"></div>
         </div>
@@ -230,11 +213,40 @@ export function VirtualWooferLeft() {
 }
 
 export function VirtualWooferRight() {
+  const coneRRef = useRef(null);
+  const wooferRRef = useRef(null);
+
+  useEffect(() => {
+    if (!coneRRef.current || !wooferRRef.current) return;
+
+    const wooferMotor = WooferBassSync({
+      coneL: document.getElementById('cone-l'),
+      coneR: coneRRef.current,
+      wooferL: document.getElementById('woofer-l'),
+      wooferR: wooferRRef.current,
+    });
+
+    const handlePlay = () => wooferMotor.attach();
+    const handleStop = () => wooferMotor.detach();
+    const handlePause = () => wooferMotor.detach();
+
+    document.addEventListener('grooveflix-play', handlePlay);
+    document.addEventListener('grooveflix-stop', handleStop);
+    document.addEventListener('grooveflix-pause', handlePause);
+
+    return () => {
+      document.removeEventListener('grooveflix-play', handlePlay);
+      document.removeEventListener('grooveflix-stop', handleStop);
+      document.removeEventListener('grooveflix-pause', handlePause);
+      wooferMotor.detach();
+    };
+  }, []);
+
   return (
-    <div className="woofer" id="woofer-r">
+    <div className="woofer" id="woofer-r" ref={wooferRRef}>
       <div className="woofer-ring"></div>
       <div className="woofer-surround"></div>
-      <div className="woofer-cone" id="cone-r">
+      <div className="woofer-cone" id="cone-r" ref={coneRRef}>
         <div className="woofer-spider">
           <div className="woofer-dustcap"></div>
         </div>
