@@ -144,14 +144,8 @@ export default function Grooveflix() {
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
       </div>
 
-      <div className="fixed top-20 left-8 z-50">
-        <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
-      </div>
-
-      <div className="fixed top-20 right-8 z-50">
-        <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
-      </div>
-
+      <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
+      <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
       <AudioControlPanel
         volume={volume}
         onVolumeChange={setVolume}
@@ -165,7 +159,7 @@ export default function Grooveflix() {
         onSeek={seek}
       />
 
-      <div className="relative max-w-[1200px] mx-auto px-4 md:px-6 pt-28 space-y-8">
+      <div className="relative mx-auto px-4 md:px-6 pt-28 space-y-8" style={{ marginLeft: '280px', marginRight: '280px' }}>
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-4">

@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, Volume2, Disc, Music, X, ListMusic, Building, Calendar, Globe, Tag, Disc3, Trash2, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, X, Trash2, Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-const getImageProxyUrl = (discogsUrl) => {
-  if (!discogsUrl) return null;
-  return `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
-};
 
 const PLACEHOLDER_SVG = `data:image/svg+xml,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
@@ -20,25 +15,17 @@ const PLACEHOLDER_SVG = `data:image/svg+xml,${encodeURIComponent(`
       <stop offset="50%" style="stop-color:%23262626"/>
       <stop offset="100%" style="stop-color:%231a1a1a"/>
     </linearGradient>
-    <radialGradient id="shine" cx="30%" cy="30%" r="50%">
-      <stop offset="0%" style="stop-color:%23444;stop-opacity:1"/>
-      <stop offset="100%" style="stop-color:%23222;stop-opacity:1"/>
-    </radialGradient>
   </defs>
-  <rect width="500" height="500" fill="#0a0a0a"/>
-  <circle cx="250" cy="250" r="200" fill="url(#vinyl)" stroke="#333" stroke-width="2"/>
-  <circle cx="250" cy="250" r="160" fill="none" stroke="#222" stroke-width="1"/>
-  <circle cx="250" cy="250" r="120" fill="none" stroke="#222" stroke-width="1"/>
-  <circle cx="250" cy="250" r="80" fill="none" stroke="#222" stroke-width="1"/>
-  <circle cx="250" cy="250" r="60" fill="#1a1a1a" stroke="#d4af37" stroke-width="2"/>
-  <circle cx="250" cy="250" r="15" fill="#d4af37"/>
-  <text x="250" y="440" text-anchor="middle" font-family="Arial Black" font-size="24" fill="#d4af37">RARE GROOVE</text>
+  <rect width="500" height="500" fill="%230a0a0a"/>
+  <circle cx="250" cy="250" r="200" fill="url(%23vinyl)" stroke="%23333" stroke-width="2"/>
+  <circle cx="250" cy="250" r="60" fill="%231a1a1a" stroke="%23d4af37" stroke-width="2"/>
+  <circle cx="250" cy="250" r="15" fill="%23d4af37"/>
+  <text x="250" y="440" text-anchor="middle" font-family="Arial Black" font-size="24" fill="%23d4af37">RARE GROOVE</text>
 </svg>
 `)}`;
 
 const fetchProxiedImage = async (discogsUrl) => {
   if (!discogsUrl) return PLACEHOLDER_SVG;
-  
   try {
     const proxyUrl = `${SUPABASE_URL}/functions/v1/discogs-search/image-proxy?url=${encodeURIComponent(discogsUrl)}`;
     const response = await fetch(proxyUrl, {
@@ -47,16 +34,7 @@ const fetchProxiedImage = async (discogsUrl) => {
         'apikey': SUPABASE_ANON_KEY,
       },
     });
-    
-    if (!response.ok) {
-      return PLACEHOLDER_SVG;
-    }
-    
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.startsWith('image/')) {
-      return PLACEHOLDER_SVG;
-    }
-    
+    if (!response.ok) return PLACEHOLDER_SVG;
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch {
@@ -69,10 +47,9 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const [coverUrls, setCoverUrls] = useState({});
   const [showSuperCard, setShowSuperCard] = useState(false);
   const [activeTrackIndex, setActiveTrackIndex] = useState(null);
-  const [dominantColor, setDominantColor] = useState('#0a0a0a');
+  const [loadedImages, setLoadedImages] = useState({});
   
-  const abortControllerRef = useRef(null);
-  
+  const containerRef = useRef(null);
   const { playAlbum, currentTrack, isPlaying } = useAudioPlayer() || {};
 
   const focusedItem = items[focusedIndex];
@@ -81,50 +58,10 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   const audioFiles = Array.isArray(grooveflixData.audio_files) ? grooveflixData.audio_files : [];
 
   const sortedTracklist = Array.isArray(rawTracklist) ? [...rawTracklist].sort((a, b) => {
-    const discA = a.discNumber || 1;
-    const discB = b.discNumber || 1;
-    
-    const isNumericA = typeof discA === 'number';
-    const isNumericB = typeof discB === 'number';
-    
-    if (isNumericA && isNumericB) {
-      if (discA !== discB) return discA - discB;
-    } else if (isNumericA && !isNumericB) {
-      return -1;
-    } else if (!isNumericA && isNumericB) {
-      return 1;
-    } else {
-      const strA = String(discA).toLowerCase();
-      const strB = String(discB).toLowerCase();
-      if (strA !== strB) return strA.localeCompare(strB);
-    }
-    
     const trackA = a.trackNumber || parseInt(a.position?.split('-')[1]) || 0;
     const trackB = b.trackNumber || parseInt(b.position?.split('-')[1]) || 0;
     return trackA - trackB;
   }) : [];
-
-  const groupedTracks = sortedTracklist.reduce((acc, track) => {
-    const discKey = track.discNumber || 1;
-    const keyStr = String(discKey);
-    if (!acc[keyStr]) {
-      acc[keyStr] = {
-        label: keyStr,
-        tracks: []
-      };
-    }
-    acc[keyStr].tracks.push(track);
-    return acc;
-  }, {});
-
-  const discKeys = Object.keys(groupedTracks || {}).sort((a, b) => {
-    const isNumericA = /^\d+$/.test(a);
-    const isNumericB = /^\d+$/.test(b);
-    if (isNumericA && isNumericB) return parseInt(a) - parseInt(b);
-    if (isNumericA && !isNumericB) return -1;
-    if (!isNumericA && isNumericB) return 1;
-    return a.localeCompare(b);
-  });
 
   useEffect(() => {
     if (focusedItem && onUpdateFocus) {
@@ -134,58 +71,11 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   }, [focusedIndex, focusedItem]);
 
   useEffect(() => {
-    const url = coverUrls[focusedItem?.id];
-    if (!url) {
-      setDominantColor('#0a0a0a');
-      return;
-    }
-    
-    let cancelled = false;
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.src = url;
-    
-    img.onload = () => {
-      if (cancelled) return;
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 50;
-        canvas.height = 50;
-        ctx.drawImage(img, 0, 0, 50, 50);
-        const imageData = ctx.getImageData(0, 0, 50, 50).data;
-        let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < imageData.length; i += 16) {
-          r += imageData[i];
-          g += imageData[i + 1];
-          b += imageData[i + 2];
-          count++;
-        }
-        if (count > 0) {
-          setDominantColor(`rgb(${Math.floor((r/count)*0.15)}, ${Math.floor((g/count)*0.15)}, ${Math.floor((b/count)*0.15)})`);
-        }
-      } catch (e) {
-        setDominantColor('#0a0a0a');
-      }
-    };
-    
-    img.onerror = () => {
-      if (cancelled) return;
-      setDominantColor('#0a0a0a');
-    };
-    
-    return () => {
-      cancelled = true;
-    };
-  }, [focusedItem?.id, coverUrls[focusedItem?.id]]);
-
-  useEffect(() => {
     if (items.length === 0) return;
 
     const loadCover = async (item) => {
       if (coverUrls[item.id]) return;
       
-      const coverPath = item.metadata?.grooveflix?.cover_path;
       const discogsCover = item.metadata?.grooveflix?.coverUrl;
 
       if (discogsCover) {
@@ -197,37 +87,19 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         }
         return;
       }
-
-      if (coverPath) {
-        try {
-          const url = await getPresignedUrl(coverPath, 'cover');
-          setCoverUrls(prev => ({ ...prev, [item.id]: url }));
-          return;
-        } catch {
-          // Ignore presign errors
-        }
-      }
       
       setCoverUrls(prev => ({ ...prev, [item.id]: PLACEHOLDER_SVG }));
     };
 
-    items.slice(0, 7).forEach(loadCover);
+    items.slice(0, 15).forEach(loadCover);
   }, [items.length]);
 
   const getPresignedUrl = async (filePath, type = 'audio') => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token || SUPABASE_ANON_KEY;
       const userId = session?.user?.id;
-
-      if (!userId) {
-        throw new Error('missing_userId');
-      }
+      if (!userId) throw new Error('missing_userId');
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/b2-presign`, {
         method: 'POST',
@@ -237,34 +109,29 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           'apikey': SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ file_path: filePath, userId, type }),
-        signal: abortControllerRef.current.signal,
       });
 
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       return data.url;
-    } catch (e) {
-      if (e.name === 'AbortError') {
-        return null;
-      }
-      throw e;
+    } catch {
+      return null;
     }
   };
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     setFocusedIndex(prev => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setFocusedIndex(prev => Math.min(items.length - 1, prev + 1));
-  };
+  }, [items.length]);
 
   const handlePlayAlbum = useCallback(() => {
     if (!focusedItem || audioFiles.length === 0) {
       toast.error('Este álbum não tem arquivos de áudio');
       return;
     }
-
     if (playAlbum) {
       playAlbum({
         ...focusedItem,
@@ -276,13 +143,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
   }, [focusedItem, audioFiles, playAlbum, rawTracklist]);
 
   const handlePlayTrack = useCallback((track, index) => {
-    if (!focusedItem || audioFiles.length === 0) {
-      toast.error('Este álbum não tem arquivos de áudio');
-      return;
-    }
-
+    if (!focusedItem || audioFiles.length === 0) return;
     setActiveTrackIndex(index);
-
     if (playAlbum) {
       playAlbum({
         ...focusedItem,
@@ -290,27 +152,26 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         tracklist: rawTracklist,
       }, index);
     }
-  }, [focusedItem, audioFiles, playAlbum]);
+  }, [focusedItem, audioFiles, playAlbum, rawTracklist]);
 
-  const handleCoverClick = (e) => {
+  const handleCardClick = (e, index) => {
     e.stopPropagation();
+    setFocusedIndex(index);
+  };
+
+  const handleCoverExpand = () => {
     setShowSuperCard(true);
   };
 
-  const handleCloseSuperCard = (e) => {
-    if (e) e.stopPropagation();
+  const handleCloseSuperCard = () => {
     setShowSuperCard(false);
   };
 
   const handleDeleteAlbum = useCallback(async (item) => {
-    if (!confirm(`Tem certeza que deseja deletar "${item.title}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
+    if (!confirm(`Deletar "${item.title}"?`)) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
       const response = await fetch(`${SUPABASE_URL}/functions/v1/grooveflix-delete`, {
         method: 'POST',
         headers: {
@@ -320,17 +181,13 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
         },
         body: JSON.stringify({ itemId: item.id }),
       });
-
       const result = await response.json();
-
       if (result.error) {
         toast.error(result.error);
         return;
       }
-
-      toast.success('Álbum deletado com sucesso!');
+      toast.success('Álbum deletado!');
       handleCloseSuperCard();
-      
       if (typeof onAlbumDeleted === 'function') {
         onAlbumDeleted(item.id);
       }
@@ -339,18 +196,15 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     }
   }, [SUPABASE_URL, SUPABASE_ANON_KEY]);
 
-  const handleCardClick = useCallback((e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setShowSuperCard(true);
-  }, []);
+  const handleImageLoad = (itemId) => {
+    setLoadedImages(prev => ({ ...prev, [itemId]: true }));
+  };
 
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <Disc className="w-20 h-20 text-white/20 mb-4" />
+        <Disc3 className="w-20 h-20 text-white/20 mb-4" />
         <p className="text-xl font-bold text-white/60 mb-2">Nenhum álbum encontrado</p>
-        <p className="text-white/40 mb-6">Adicione álbuns para começar</p>
         {isAdmin && (
           <button
             onClick={onOpenUploader}
@@ -363,195 +217,255 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
     );
   }
 
+  const getTransform = (index) => {
+    const diff = index - focusedIndex;
+    if (diff === 0) {
+      return {
+        transform: 'perspective(2000px) rotateY(0deg) translateZ(100px) scale(1)',
+        opacity: 1,
+        zIndex: 10,
+      };
+    } else if (diff < 0) {
+      const absDiff = Math.abs(diff);
+      const rotate = Math.min(absDiff * 30, 70);
+      const translateZ = Math.max(-absDiff * 80, -200);
+      const scale = Math.max(1 - absDiff * 0.1, 0.7);
+      return {
+        transform: `perspective(2000px) rotateY(${rotate}deg) translateZ(${translateZ}px) scale(${scale})`,
+        opacity: Math.max(0.5 - absDiff * 0.15, 0.2),
+        zIndex: 10 - absDiff,
+      };
+    } else {
+      const absDiff = Math.abs(diff);
+      const rotate = Math.min(-absDiff * 30, -70);
+      const translateZ = Math.max(-absDiff * 80, -200);
+      const scale = Math.max(1 - absDiff * 0.1, 0.7);
+      return {
+        transform: `perspective(2000px) rotateY(${rotate}deg) translateZ(${translateZ}px) scale(${scale})`,
+        opacity: Math.max(0.5 - absDiff * 0.15, 0.2),
+        zIndex: 10 - absDiff,
+      };
+    }
+  };
+
+  const visibleItems = [];
+  for (let i = Math.max(0, focusedIndex - 5); i <= Math.min(items.length - 1, focusedIndex + 5); i++) {
+    visibleItems.push({ index: i, item: items[i] });
+  }
+
   return (
-    <div className="relative w-full" style={{ background: `radial-gradient(ellipse at center, ${dominantColor} 0%, #0a0a0a 70%)`, zIndex: 1 }}>
+    <div className="relative w-full" style={{ background: '#000000', minHeight: '600px' }}>
       <style>{`
-        @keyframes flipIn { 0% { transform: perspective(1000px) rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: perspective(1000px) rotateY(0deg) scale(1); opacity: 1; } }
-        .super-card-animate { animation: flipIn 0.4s ease-out forwards; }
+        .coverflow-item {
+          transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.5s ease-out;
+          transform-style: preserve-3d;
+          will-change: transform, opacity;
+        }
+        .coverflow-reflection {
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%);
+          -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%);
+        }
+        .metal-floor {
+          background: linear-gradient(to bottom, #0a0a0a 0%, #151515 50%, #1a1a1a 100%);
+          box-shadow: inset 0 20px 60px rgba(0,0,0,0.8);
+        }
+        @media (max-width: 768px) {
+          .coverflow-container {
+            perspective: 1200px !important;
+          }
+        }
       `}</style>
-      <div className="relative h-[400px] overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative">
-            {coverUrls[focusedItem?.id] ? (
+
+      {/* Coverflow Container */}
+      <div 
+        ref={containerRef}
+        className="relative flex flex-col items-center justify-center py-8"
+        style={{ 
+          minHeight: '520px',
+          perspective: '2000px',
+          perspectiveOrigin: 'center center',
+        }}
+      >
+        {/* Álbuns em Carrossel */}
+        <div 
+          className="relative flex items-center justify-center"
+          style={{ 
+            height: '380px',
+            width: '100%',
+            maxWidth: '1000px',
+          }}
+        >
+          {visibleItems.map(({ index, item }) => {
+            const style = getTransform(index);
+            const coverUrl = coverUrls[item.id] || PLACEHOLDER_SVG;
+            const isCenter = index === focusedIndex;
+            const isLoaded = loadedImages[item.id];
+            
+            return (
               <div
-                onClick={handleCardClick}
-                onClickCapture={handleCardClick}
-                className="w-[350px] h-[350px] rounded-2xl overflow-hidden shadow-2xl transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 cursor-pointer"
+                key={item.id}
+                className="absolute coverflow-item cursor-pointer"
                 style={{
-                  backgroundImage: `url(${coverUrls[focusedItem.id]})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
+                  ...style,
+                  left: '50%',
+                  marginLeft: '-125px',
                 }}
-                role="button"
-                tabIndex={0}
-                aria-label="Ver detalhes do álbum"
-                onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
-              />
-            ) : (
-              <div
-                onClick={handleCardClick}
-                onClickCapture={handleCardClick}
-                className="w-[350px] h-[350px] rounded-2xl bg-gradient-to-br from-yellow-500/20 to-black flex items-center justify-center transition-transform hover:scale-[1.02] hover:shadow-yellow-500/30 cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label="Ver detalhes do álbum"
-                onKeyDown={(e) => e.key === 'Enter' && handleCardClick(e)}
+                onClick={(e) => handleCardClick(e, index)}
               >
-                <Disc className="w-24 h-24 text-white/30" />
+                {/* Capa do Álbum */}
+                <div 
+                  className="relative"
+                  style={{ width: '250px', height: '250px' }}
+                >
+                  {/* Loading placeholder */}
+                  {!isLoaded && (
+                    <div 
+                      className="absolute inset-0 bg-gray-900 rounded-lg animate-pulse"
+                      style={{ width: '250px', height: '250px' }}
+                    />
+                  )}
+                  
+                  <img
+                    src={coverUrl}
+                    alt={item.title}
+                    className="rounded-lg shadow-2xl"
+                    style={{ 
+                      width: '250px', 
+                      height: '250px',
+                      objectFit: 'cover',
+                      display: isLoaded ? 'block' : 'none',
+                      border: isCenter ? '2px solid rgba(255,255,255,0.3)' : '2px solid rgba(255,255,255,0.1)',
+                      boxShadow: isCenter 
+                        ? '0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(0,255,255,0.1)' 
+                        : '0 10px 30px rgba(0,0,0,0.6)',
+                    }}
+                    onLoad={() => handleImageLoad(item.id)}
+                    draggable={false}
+                  />
+                  
+                  {/* Reflexo Espelhado */}
+                  <div 
+                    className="absolute left-0 right-0 coverflow-reflection"
+                    style={{ 
+                      top: '250px',
+                      height: '120px',
+                      transform: 'scaleY(-1)',
+                    }}
+                  >
+                    <img
+                      src={coverUrl}
+                      alt=""
+                      className="rounded-lg"
+                      style={{ 
+                        width: '250px', 
+                        height: '120px',
+                        objectFit: 'cover',
+                        opacity: 0.3,
+                        filter: 'blur(2px)',
+                      }}
+                      draggable={false}
+                    />
+                  </div>
+
+                  {/* Piso Metálico */}
+                  <div 
+                    className="absolute metal-floor rounded-b-lg"
+                    style={{ 
+                      top: '370px',
+                      left: 0,
+                      right: 0,
+                      height: '30px',
+                      background: 'linear-gradient(to bottom, #0a0a0a 0%, #151515 100%)',
+                    }}
+                  />
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full flex items-center justify-between px-4">
-            <button
-              onClick={handlePrev}
-              disabled={focusedIndex === 0}
-              className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition disabled:opacity-30"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={focusedIndex === items.length - 1}
-              className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition disabled:opacity-30"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
+        {/* Controles de Navegação */}
+        <div className="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
+          <button
+            onClick={handlePrev}
+            disabled={focusedIndex === 0}
+            className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed pointer-events-auto"
+            style={{ boxShadow: '0 0 20px rgba(0,255,255,0.2)' }}
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={focusedIndex === items.length - 1}
+            className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-black/80 hover:border-white/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed pointer-events-auto"
+            style={{ boxShadow: '0 0 20px rgba(0,255,255,0.2)' }}
+          >
+            <ChevronRight className="w-8 h-8" />
+          </button>
         </div>
 
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          {items.map((_, i) => (
+        {/* Indicadores */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          {items.slice(0, Math.min(items.length, 12)).map((_, i) => (
             <button
               key={i}
               onClick={() => setFocusedIndex(i)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === focusedIndex ? 'bg-yellow-400 w-6' : 'bg-white/30'
+              className={`transition-all ${
+                i === focusedIndex 
+                  ? 'w-8 h-2 rounded-full bg-white' 
+                  : 'w-2 h-2 rounded-full bg-white/30 hover:bg-white/50'
               }`}
             />
           ))}
+          {items.length > 12 && (
+            <span className="text-white/40 text-xs ml-1">+{items.length - 12}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Título e Info do Álbum Central */}
+      <div className="text-center py-6 px-4">
+        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+          {focusedItem?.title || 'Sem título'}
+        </h2>
+        <p className="text-yellow-400 text-lg mt-1 font-medium">
+          {focusedItem?.artist || 'Desconhecido'}
+        </p>
+        <div className="flex items-center justify-center gap-3 mt-3">
+          {grooveflixData.year && (
+            <span className="px-3 py-1 bg-white/10 rounded-full text-white/60 text-sm">
+              {grooveflixData.year}
+            </span>
+          )}
+          {grooveflixData.genre && (
+            <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-yellow-300 text-sm">
+              {grooveflixData.genre}
+            </span>
+          )}
         </div>
         
+        {/* Botão Ver Detalhes */}
         <button
-          onClick={() => {
-            setShowSuperCard(true);
-          }}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 px-6 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full shadow-lg shadow-yellow-500/30 transition-all hover:scale-105"
+          onClick={handleCoverExpand}
+          className="mt-4 px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold rounded-full shadow-lg shadow-yellow-500/30 transition-all hover:scale-105"
         >
           VER DETALHES
         </button>
-      </div>
 
-      <div className="mt-6 text-center">
-        <h2 className="text-2xl font-black text-white">{focusedItem?.title || 'Sem título'}</h2>
-        <p className="text-yellow-400 mt-1">{focusedItem?.artist || 'Desconhecido'}</p>
-
-        {grooveflixData.labels && (
-          <p className="text-white/40 text-sm mt-2">{grooveflixData.labels}</p>
-        )}
-
-        {grooveflixData.year && (
-          <span className="inline-block mt-2 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
-            {grooveflixData.year}
-          </span>
-        )}
-      </div>
-
-      {sortedTracklist.length > 0 && (
-        <div className="mt-6 bg-white/5 rounded-xl p-4">
-          <div className="flex items-center justify-between text-yellow-400 text-sm font-bold mb-3">
-            <div className="flex items-center gap-2">
-              <ListMusic className="w-4 h-4" />
-              {sortedTracklist.length} faixas
-              {discKeys.length > 1 && (
-                <span className="text-xs text-white/40 ml-2">({discKeys.length} discos)</span>
-              )}
-            </div>
-          </div>
-          <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
-            {(discKeys || []).map((discKey) => {
-              const discTracks = groupedTracks[discKey]?.tracks || [];
-              
-              const isNumericDisc = /^\d+$/.test(discKey);
-              let discLabel;
-              if (discKeys.length === 1) {
-                discLabel = null;
-              } else if (isNumericDisc) {
-                discLabel = `CD ${parseInt(discKey)}`;
-              } else {
-                discLabel = discKey.toUpperCase();
-              }
-              
-              return (
-                <div key={discKey}>
-                  {discLabel && (
-                    <div className="flex items-center gap-2 py-2 border-b border-white/10 mb-2">
-                      <Disc3 className="w-4 h-4 text-yellow-400" />
-                      <span className="text-yellow-300 font-bold text-sm">{discLabel}</span>
-                      <span className="text-white/40 text-xs">({discTracks.length} faixas)</span>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    {(discTracks || []).map((track, i) => {
-                      const globalIndex = sortedTracklist.indexOf(track);
-                      const isActive = activeTrackIndex === globalIndex;
-                      const isTrackPlaying = isActive && isPlaying;
-                      
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => handlePlayTrack(track, globalIndex)}
-                          disabled={audioFiles.length === 0}
-                          className={`w-full flex items-center gap-3 text-sm p-2 rounded-lg transition-all text-left ${
-                            isActive 
-                              ? 'bg-yellow-500/30 border border-yellow-500/50' 
-                              : 'hover:bg-white/5 border border-transparent'
-                          } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        >
-                          <span className={`w-6 text-center ${isActive ? 'text-yellow-300' : 'text-white/30'}`}>
-                            {isTrackPlaying ? (
-                              <span className="flex items-center justify-center">
-                                <span className="w-1.5 h-3 bg-yellow-400 rounded-sm animate-pulse" style={{ animationDelay: '0ms' }}></span>
-                                <span className="w-1.5 h-4 bg-yellow-400 rounded-sm animate-pulse mx-0.5" style={{ animationDelay: '150ms' }}></span>
-                                <span className="w-1.5 h-2 bg-yellow-400 rounded-sm animate-pulse" style={{ animationDelay: '300ms' }}></span>
-                              </span>
-                            ) : (
-                              track.trackNumber || track.position || i + 1
-                            )}
-                          </span>
-                          <span className={`flex-1 truncate ${isActive ? 'text-white' : 'text-white/80'}`}>
-                            {track.title}
-                          </span>
-                          <span className="text-white/40 text-xs">{track.duration}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {audioFiles.length > 0 && (
-        <div className="mt-6 flex justify-center">
+        {/* Botão Play se tiver áudio */}
+        {audioFiles.length > 0 && (
           <button
             onClick={handlePlayAlbum}
-            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-yellow-500/30 transition"
+            className="mt-3 ml-3 px-6 py-3 bg-cyan-500/20 border border-cyan-500/50 hover:bg-cyan-500/30 text-cyan-300 font-bold rounded-full transition-all hover:scale-105"
+            style={{ boxShadow: '0 0 20px rgba(0,255,255,0.2)' }}
           >
-            <Play className="w-6 h-6" />
-            Ouvir Álbum
+            <Play className="w-5 h-5 inline mr-2" />
+            OUvir
           </button>
-        </div>
-      )}
-
-      <div className="mt-8 text-center text-white/30 text-sm">
-        {focusedIndex + 1} de {items.length} álbuns
+        )}
       </div>
 
+      {/* Modal de Detalhes */}
       {showSuperCard && (
         <div 
           className="fixed inset-0 flex items-center justify-center p-4 bg-black/95"
@@ -559,12 +473,13 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
           style={{ zIndex: 99999 }}
         >
           <div 
-            className="w-full max-w-3xl max-h-[90vh] bg-gray-900 rounded-2xl overflow-hidden border-2 border-yellow-500 shadow-2xl"
+            className="w-full max-w-4xl max-h-[90vh] bg-gray-900 rounded-2xl overflow-hidden border border-white/10"
             onClick={(e) => e.stopPropagation()}
             style={{ zIndex: 100000 }}
           >
-            <div className="flex gap-6 p-6 overflow-y-auto max-h-[90vh]">
-              <div className="w-48 h-48 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden shadow-lg shadow-yellow-500/10">
+            <div className="flex flex-col md:flex-row gap-6 p-6 overflow-y-auto max-h-[90vh]">
+              {/* Capa */}
+              <div className="w-full md:w-64 h-64 md:h-64 flex-shrink-0 bg-black rounded-xl overflow-hidden shadow-2xl">
                 {coverUrls[focusedItem?.id] ? (
                   <img 
                     src={coverUrls[focusedItem.id]} 
@@ -578,6 +493,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                 )}
               </div>
 
+              {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -588,15 +504,14 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
                     {isAdmin && (
                       <button
                         onClick={() => handleDeleteAlbum(focusedItem)}
-                        className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition"
-                        title="Deletar álbum"
+                        className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 transition"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     )}
                     <button
                       onClick={handleCloseSuperCard}
-                      className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition"
+                      className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 transition"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -605,115 +520,45 @@ export default function CoverFlow3D({ items, onUpdateFocus, onOpenUploader, isAd
 
                 <div className="flex flex-wrap gap-2 mt-3">
                   {grooveflixData.year && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
-                      <Calendar className="w-3 h-3" />
-                      {grooveflixData.year}
-                    </span>
-                  )}
-                  {grooveflixData.country && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
-                      <Globe className="w-3 h-3" />
-                      {grooveflixData.country}
-                    </span>
-                  )}
-                  {grooveflixData.labels && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded text-xs text-white/60">
-                      <Building className="w-3 h-3" />
-                      {grooveflixData.labels}
-                    </span>
+                    <span className="px-2 py-1 bg-white/10 rounded text-xs text-white/60">{grooveflixData.year}</span>
                   )}
                   {grooveflixData.genre && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-xs text-yellow-300">
-                      <Tag className="w-3 h-3" />
-                      {grooveflixData.genre}
-                    </span>
+                    <span className="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-300">{grooveflixData.genre}</span>
                   )}
                 </div>
 
-                {grooveflixData.formats && (
-                  <p className="text-xs text-white/40 mt-2">
-                    Formato: {grooveflixData.formats}
-                  </p>
-                )}
-
-                {grooveflixData.description && (
-                  <div className="mt-4 p-3 bg-white/5 rounded-lg">
-                    <p className="text-xs text-white/50 font-medium uppercase tracking-wider mb-1">Notas</p>
-                    <p className="text-sm text-white/70 whitespace-pre-wrap">{grooveflixData.description}</p>
-                  </div>
-                )}
-
                 {sortedTracklist.length > 0 && (
                   <div className="mt-4">
-                    <div className="flex items-center gap-2 text-yellow-400 text-sm font-bold mb-3">
-                      <ListMusic className="w-4 h-4" />
-                      Tracklist ({sortedTracklist.length} faixas)
-                      {discKeys.length > 1 && (
-                        <span className="text-xs text-white/40 ml-2">({discKeys.length} discos)</span>
-                      )}
-                    </div>
-                    <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
-                      {(discKeys || []).map((discKey) => {
-                        const discTracks = groupedTracks[discKey]?.tracks || [];
-                        const isNumeric = /^\d+$/.test(discKey);
-                        const discNum = isNumeric ? parseInt(discKey, 10) : null;
-                        const discLabel = discKeys.length > 1
-                          ? (isNumeric 
-                              ? (discNum === 1 ? 'CD 1' : `CD ${discNum}`)
-                              : discKey.toUpperCase())
-                          : null;
-                        
-                        return (
-                          <div key={discKey}>
-                            {discLabel && (
-                              <div className="flex items-center gap-2 py-1.5 border-b border-white/10 mb-1">
-                                <Disc3 className="w-3.5 h-3.5 text-yellow-400" />
-                                <span className="text-yellow-300 font-bold text-xs">{discLabel}</span>
-                                <span className="text-white/30 text-xs">({discTracks.length} faixas)</span>
-                              </div>
-                            )}
-                            {(discTracks || []).map((track, i) => {
-                              const globalIndex = sortedTracklist.indexOf(track);
-                              return (
-                                <button
-                                  key={i}
-                                  onClick={() => {
-                                    if (audioFiles.length > 0) {
-                                      handlePlayTrack(track, globalIndex);
-                                      handleCloseSuperCard();
-                                    }
-                                  }}
-                                  disabled={audioFiles.length === 0}
-                                  className={`w-full flex items-center gap-3 text-sm p-1.5 rounded hover:bg-white/5 text-left ${
-                                    audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                                  }`}
-                                >
-                                  <span className="w-6 text-white/30 text-center">{track.trackNumber || track.position || i + 1}</span>
-                                  <span className="flex-1 text-white/80 truncate">{track.title}</span>
-                                  <span className="text-white/40 text-xs">{track.duration}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                    <h3 className="text-yellow-400 text-sm font-bold mb-2">{sortedTracklist.length} faixas</h3>
+                    <div className="max-h-60 overflow-y-auto space-y-1 pr-2">
+                      {sortedTracklist.slice(0, 15).map((track, i) => (
+                        <button
+                          key={i}
+                          onClick={() => audioFiles.length > 0 && handlePlayTrack(track, i)}
+                          disabled={audioFiles.length === 0}
+                          className={`w-full flex items-center gap-3 text-sm p-2 rounded text-left transition ${
+                            activeTrackIndex === i 
+                              ? 'bg-cyan-500/30 border border-cyan-500/50 text-white' 
+                              : 'hover:bg-white/5 text-white/70'
+                          } ${audioFiles.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          <span className="w-6 text-center text-white/30">{i + 1}</span>
+                          <span className="flex-1 truncate">{track.title}</span>
+                          <span className="text-white/40 text-xs">{track.duration}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {audioFiles.length > 0 && (
-                  <div className="mt-6 flex justify-center">
-                    <button
-                      onClick={() => {
-                        handlePlayAlbum();
-                        handleCloseSuperCard();
-                      }}
-                      className="flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-yellow-500/30 transition"
-                    >
-                      <Play className="w-5 h-5" />
-                      Ouvir Álbum
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => { handlePlayAlbum(); handleCloseSuperCard(); }}
+                    className="mt-4 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-full font-bold hover:shadow-lg transition"
+                  >
+                    <Play className="w-5 h-5" />
+                    Ouvir Álbum
+                  </button>
                 )}
               </div>
             </div>
