@@ -99,81 +99,80 @@ export function VolumeKnob({
   const knobRotation = angle;
 
   return (
-    <div className="flex flex-col items-center">
+    <div 
+      ref={containerRef}
+      className="relative select-none cursor-pointer"
+      style={{ 
+        width: size, 
+        height: size,
+        touchAction: 'none'
+      }}
+      onMouseDown={handleMouseDown}
+      onTouchStart={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onTouchMove={(e) => {
+        if (!isDragging || !containerRef.current) return;
+        const touch = e.touches[0];
+        const rect = containerRef.current.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const deltaX = touch.clientX - centerX;
+        const deltaY = touch.clientY - centerY;
+        const newAngle = Math.atan2(deltaX, -deltaY) * (180 / Math.PI);
+        updateVolume(newAngle);
+      }}
+      onTouchEnd={() => setIsDragging(false)}
+    >
       <div 
-        ref={containerRef}
-        className="relative select-none cursor-pointer"
-        style={{ 
-          width: size, 
-          height: size,
-          touchAction: 'none'
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
+          boxShadow: `
+            inset 3px 3px 6px rgba(0, 0, 0, 0.8),
+            inset -2px -2px 4px rgba(60, 60, 60, 0.2),
+            0 4px 15px rgba(0, 0, 0, 0.5),
+            0 0 30px rgba(0, 255, 255, 0.1)
+          `,
         }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onTouchMove={(e) => {
-          if (!isDragging || !containerRef.current) return;
-          const touch = e.touches[0];
-          const rect = containerRef.current.getBoundingClientRect();
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
-          const deltaX = touch.clientX - centerX;
-          const deltaY = touch.clientY - centerY;
-          const newAngle = Math.atan2(deltaX, -deltaY) * (180 / Math.PI);
-          updateVolume(newAngle);
-        }}
-        onTouchEnd={() => setIsDragging(false)}
-      >
-        <div 
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
-            boxShadow: `
-              inset 3px 3px 6px rgba(0, 0, 0, 0.8),
-              inset -2px -2px 4px rgba(60, 60, 60, 0.2),
-              0 4px 15px rgba(0, 0, 0, 0.5),
-              0 0 30px rgba(0, 255, 255, 0.1)
-            `,
-          }}
-        />
+      />
 
-        <div className="absolute inset-3 rounded-full overflow-hidden" style={{
-          background: 'radial-gradient(circle at 30% 30%, #252525, #0a0a0a)',
-          boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.9)',
-        }}>
-          {[...Array(12)].map((_, i) => {
-            const segmentIndex = i < 3 ? 0 : i < 6 ? 1 : i < 9 ? 2 : 3;
-            const segment = ledSegments[segmentIndex];
-            const isOn = getLedState(i);
-            const angle = -135 + (i * 270 / 11);
-            const rad = (angle * Math.PI) / 180;
-            const radius = 38;
-            const x = 50 + radius * Math.sin(rad);
-            const y = 50 - radius * Math.cos(rad);
-            const color = LED_COLORS[segment.color];
-            
-            return (
-              <div
-                key={i}
-                className="absolute rounded-full transition-all duration-100"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  width: 8,
-                  height: 8,
-                  transform: 'translate(-50%, -50%)',
-                  background: isOn ? color.on : '#1a1a1a',
-                  boxShadow: isOn 
-                    ? `0 0 8px ${color.glow}, 0 0 15px ${color.glow}, inset 0 0 3px rgba(255,255,255,0.5)`
-                    : 'inset 0 0 2px rgba(0,0,0,0.8)',
-                  border: isOn ? 'none' : '1px solid #333',
-                }}
-              />
-            );
-          })}
-        </div>
+      <div className="absolute inset-3 rounded-full overflow-hidden" style={{
+        background: 'radial-gradient(circle at 30% 30%, #252525, #0a0a0a)',
+        boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.9)',
+      }}>
+        {[...Array(12)].map((_, i) => {
+          const segmentIndex = i < 3 ? 0 : i < 6 ? 1 : i < 9 ? 2 : 3;
+          const segment = ledSegments[segmentIndex];
+          const isOn = getLedState(i);
+          const angle = -135 + (i * 270 / 11);
+          const rad = (angle * Math.PI) / 180;
+          const radius = 40;
+          const x = 50 + radius * Math.sin(rad);
+          const y = 50 - radius * Math.cos(rad);
+          const color = LED_COLORS[segment.color];
+          
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full transition-all duration-100"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                width: 4,
+                height: 4,
+                transform: 'translate(-50%, -50%)',
+                background: isOn ? color.on : '#1a1a1a',
+                boxShadow: isOn 
+                  ? `0 0 4px ${color.glow}, 0 0 8px ${color.glow}`
+                  : 'inset 0 0 1px rgba(0,0,0,0.8)',
+                border: isOn ? 'none' : '1px solid #222',
+              }}
+            />
+          );
+        })}
+      </div>
 
         <div 
           className="absolute rounded-full"
@@ -229,15 +228,6 @@ export function VolumeKnob({
             }}
           />
         </div>
-      </div>
-
-      <div 
-        className="absolute text-[10px] font-semibold text-cyan-400 tracking-wide mt-2"
-        style={{ 
-          textShadow: '0 0 10px rgba(0, 255, 255, 0.5)',
-        }}
-      >
-        Volume
       </div>
     </div>
   );
