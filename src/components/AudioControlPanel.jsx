@@ -26,9 +26,9 @@ export default function AudioControlPanel({
               0 10px 40px rgba(0,0,0,0.8),
               0 0 60px rgba(0,255,255,0.1)
             `,
-            padding: '16px',
-            width: '260px',
-            height: 'calc(100vh - 140px)',
+            padding: '20px',
+            width: '320px',
+            height: 'calc(100vh - 100px)',
           }}
         >
           {/* Coroa dourada */}
@@ -83,9 +83,9 @@ export default function AudioControlPanel({
               0 10px 40px rgba(0,0,0,0.8),
               0 0 60px rgba(0,255,255,0.1)
             `,
-            padding: '16px',
-            width: '260px',
-            height: 'calc(100vh - 140px)',
+            padding: '20px',
+            width: '320px',
+            height: 'calc(100vh - 100px)',
           }}
         >
           {/* Coroa dourada */}

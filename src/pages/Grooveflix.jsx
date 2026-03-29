@@ -152,7 +152,7 @@ export default function Grooveflix() {
         onVolumeChange={setVolume}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '280px', marginRight: '280px', maxHeight: 'calc(100vh - 80px)' }}>
+      <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '340px', marginRight: '340px', maxHeight: 'calc(100vh - 80px)' }}>
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
