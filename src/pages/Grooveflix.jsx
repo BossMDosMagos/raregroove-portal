@@ -10,6 +10,7 @@ import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
 import { VUMeterRight } from '../components/VUMeterRight.jsx';
+import { VirtualWooferLeft, VirtualWooferRight } from '../components/VirtualWoofer.jsx';
 import { useAudioEngine } from '../hooks/useAudioEngine.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
@@ -48,7 +49,7 @@ export default function Grooveflix() {
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek } = useAudioEngine();
+  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, spectrumL, spectrumR } = useAudioEngine();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -150,6 +151,14 @@ export default function Grooveflix() {
 
       <div className="fixed top-20 right-[42px] z-50">
         <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
+      </div>
+
+      <div className="fixed bottom-24 left-[42px] z-50">
+        <VirtualWooferLeft spectrum={spectrumL} isPlaying={isAudioPlaying} />
+      </div>
+
+      <div className="fixed bottom-24 right-[42px] z-50">
+        <VirtualWooferRight spectrum={spectrumR} isPlaying={isAudioPlaying} />
       </div>
 
       <AudioControlPanel
