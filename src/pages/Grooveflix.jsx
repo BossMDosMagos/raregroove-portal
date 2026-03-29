@@ -165,7 +165,7 @@ export default function Grooveflix() {
         onSeek={seek}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-28 space-y-6" style={{ marginLeft: '280px', marginRight: '280px' }}>
+      <div className="relative mx-auto px-4 md:px-6 pt-4 space-y-4" style={{ marginLeft: '280px', marginRight: '280px' }}>
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
