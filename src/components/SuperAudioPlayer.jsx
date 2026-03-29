@@ -7,7 +7,6 @@ import { useAudioEngine, ANSI } from '../hooks/useAudioEngine';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { VUMeter } from './VUMeter';
 import { AudioControlsPanel } from './AudioControlsPanel';
 import KnobPanel from './KnobPanel';
 
@@ -77,7 +76,6 @@ export function SuperAudioPlayer() {
     analyserData,
     timeDomainData,
     eqFrequencies,
-    vuMeterData,
     spectrumL,
     spectrumR,
     timeDomainBytesL,
@@ -353,10 +351,6 @@ export function SuperAudioPlayer() {
             <Minus className="w-3.5 h-3.5" />
           </button>
         </div>
-      </div>
-
-      <div className="px-3 pt-2 pb-1 bg-gradient-to-b from-black/80 to-transparent">
-        <VUMeter vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
 
       <KnobPanel 

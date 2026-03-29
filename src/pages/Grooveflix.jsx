@@ -8,6 +8,9 @@ import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
+import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
+import { VUMeterRight } from '../components/VUMeterRight.jsx';
+import { useAudioEngine } from '../hooks/useAudioEngine.js';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
@@ -43,6 +46,8 @@ export default function Grooveflix() {
   const { t } = useI18n();
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
+
+  const { vuMeterData, isPlaying } = useAudioEngine();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -137,6 +142,14 @@ export default function Grooveflix() {
         <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-fuchsia-600/10 blur-[150px]" />
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
+      </div>
+
+      <div className="fixed bottom-8 left-8 z-50">
+        <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isPlaying} />
+      </div>
+
+      <div className="fixed bottom-8 right-8 z-50">
+        <VUMeterRight vuMeterData={vuMeterData} isPlaying={isPlaying} />
       </div>
 
       <div className="relative max-w-[1200px] mx-auto px-4 md:px-6 pt-28 space-y-8">
