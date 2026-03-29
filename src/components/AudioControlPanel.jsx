@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, SkipBack as Rewind, FastForward } from 'lucide-react';
+import { VirtualWooferLeft, VirtualWooferRight } from './VirtualWoofer.jsx';
 
 export default function AudioControlPanel({ 
   volume, 
@@ -11,7 +12,9 @@ export default function AudioControlPanel({
   onNext,
   currentTime = 0, 
   duration = 1,
-  onSeek 
+  onSeek,
+  spectrumL,
+  spectrumR
 }) {
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const [faderValue, setFaderValue] = useState(75);
@@ -72,7 +75,7 @@ export default function AudioControlPanel({
           `,
           padding: '16px',
           width: '260px',
-          height: '520px',
+          height: '640px',
         }}
       >
         {/* Coroa dourada */}
@@ -87,6 +90,11 @@ export default function AudioControlPanel({
               </linearGradient>
             </defs>
           </svg>
+        </div>
+
+        {/* WOOFER ESQUERDO */}
+        <div className="flex items-center justify-center mb-6">
+          <VirtualWooferLeft spectrum={spectrumL} isPlaying={isPlaying} />
         </div>
 
         {/* MÓDULO SUPERIOR - Volume e Energia */}
@@ -492,9 +500,14 @@ export default function AudioControlPanel({
           `,
           padding: '16px',
           width: '260px',
-          height: '520px',
+          height: '640px',
         }}
       >
+        {/* Woofer Direito no painel direito */}
+        <div className="flex items-center justify-center mt-4">
+          <VirtualWooferRight spectrum={spectrumR} isPlaying={isPlaying} />
+        </div>
+
         {/* Coroa dourada */}
         <div className="absolute bottom-3 right-3 z-10">
           <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
