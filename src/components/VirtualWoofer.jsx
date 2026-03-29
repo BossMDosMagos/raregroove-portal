@@ -1,9 +1,6 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 
 const BASS_BINS = 8;
-const MIN_SCALE = 1.0;
-const MAX_SCALE = 1.15;
-const INERTIA_FACTOR = 0.3;
 
 function calculateBassLevel(bassData) {
   if (!bassData || bassData.length === 0) return 0;
@@ -17,62 +14,61 @@ function calculateBassLevel(bassData) {
 }
 
 export function VirtualWooferLeft({ bassData, isPlaying }) {
+  const coneRef = useRef(null);
+  const neonRingRef = useRef(null);
+  const animationRef = useRef(null);
   const targetBassRef = useRef(0);
   const currentBassRef = useRef(0);
-  const animationRef = useRef(null);
-  const lastTimeRef = useRef(performance.now());
 
   useEffect(() => {
-    const bassLevel = calculateBassLevel(bassData);
-    targetBassRef.current = isPlaying ? bassLevel : 0;
+    targetBassRef.current = isPlaying ? calculateBassLevel(bassData) : 0;
   }, [bassData, isPlaying]);
 
   useEffect(() => {
-    const animate = (timestamp) => {
-      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.05);
-      lastTimeRef.current = timestamp;
-
+    const updateSpeakers = () => {
       const target = targetBassRef.current;
       const current = currentBassRef.current;
       const diff = target - current;
-      currentBassRef.current += diff * INERTIA_FACTOR;
+      currentBassRef.current += diff * 0.35;
       currentBassRef.current = Math.max(0, Math.min(1.1, currentBassRef.current));
 
-      animationRef.current = requestAnimationFrame(animate);
+      const bassLevel = currentBassRef.current;
+      const scale = 1 + bassLevel * 0.15;
+      const neonGlow = bassLevel * 35;
+      const shadowBlur = 10 + bassLevel * 30;
+      const coneShadow = bassLevel * 15;
+
+      if (coneRef.current) {
+        coneRef.current.style.transform = `scale(${scale})`;
+        coneRef.current.style.boxShadow = `
+          inset 0 2px 6px rgba(255,255,255,0.04),
+          inset 0 -3px 8px rgba(0,0,0,0.9),
+          0 ${coneShadow}px ${shadowBlur}px rgba(0,255,255,${bassLevel * 0.35})
+        `;
+      }
+
+      if (neonRingRef.current) {
+        neonRingRef.current.style.border = `${1.5 + bassLevel * 2}px solid rgba(0,255,255,${0.15 + bassLevel * 0.7})`;
+        neonRingRef.current.style.boxShadow = `
+          0 0 ${neonGlow}px rgba(0,255,255,${bassLevel * 0.6}),
+          0 0 ${neonGlow * 1.5}px rgba(0,255,255,${bassLevel * 0.25}),
+          inset 0 0 ${neonGlow * 0.4}px rgba(0,255,255,${bassLevel * 0.35})
+        `;
+      }
+
+      animationRef.current = requestAnimationFrame(updateSpeakers);
     };
 
-    animationRef.current = requestAnimationFrame(animate);
+    animationRef.current = requestAnimationFrame(updateSpeakers);
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
-  const bassLevel = currentBassRef.current;
-  const scale = MIN_SCALE + bassLevel * (MAX_SCALE - MIN_SCALE);
-  const neonGlow = bassLevel * 40;
-  const shadowBlur = 15 + bassLevel * 35;
-  const coneShadow = bassLevel * 20;
-
   return (
     <div className="relative" style={{ width: '100px', height: '100px' }}>
-      <style>{`
-        .woofer-cone {
-          transition: transform 0.05s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .woofer-neon-ring {
-          transition: box-shadow 0.03s ease-out, border-color 0.03s ease-out;
-        }
-        @keyframes woofer-idle {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.008); }
-        }
-        .woofer-idle {
-          animation: woofer-idle 2.5s ease-in-out infinite;
-        }
-      `}</style>
-
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className={`relative w-full h-full ${!isPlaying ? 'woofer-idle' : ''}`}>
+        <div className="relative w-full h-full">
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -108,16 +104,13 @@ export function VirtualWooferLeft({ bassData, isPlaying }) {
           />
 
           <div
-            className="woofer-cone absolute rounded-full"
+            ref={coneRef}
+            className="absolute rounded-full"
             style={{
               inset: '18px',
-              transform: `scale(${scale})`,
+              transition: 'transform 0.05s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               background: 'radial-gradient(circle at 40% 40%, #1a1a1a 0%, #0a0a0a 40%, #000000 100%)',
-              boxShadow: `
-                inset 0 2px 6px rgba(255,255,255,0.04),
-                inset 0 -3px 8px rgba(0,0,0,0.9),
-                0 ${coneShadow}px ${shadowBlur}px rgba(0,255,255,${bassLevel * 0.4})
-              `,
+              boxShadow: 'inset 0 2px 6px rgba(255,255,255,0.04), inset 0 -3px 8px rgba(0,0,0,0.9)',
             }}
           >
             <div
@@ -139,15 +132,13 @@ export function VirtualWooferLeft({ bassData, isPlaying }) {
           </div>
 
           <div
-            className="woofer-neon-ring absolute rounded-full"
+            ref={neonRingRef}
+            className="absolute rounded-full"
             style={{
               inset: '14px',
-              border: `${1.5 + bassLevel * 2}px solid rgba(0,255,255,${0.15 + bassLevel * 0.7})`,
-              boxShadow: `
-                0 0 ${neonGlow}px rgba(0,255,255,${bassLevel * 0.6}),
-                0 0 ${neonGlow * 1.5}px rgba(0,255,255,${bassLevel * 0.3}),
-                inset 0 0 ${neonGlow * 0.5}px rgba(0,255,255,${bassLevel * 0.4})
-              `,
+              border: '1.5px solid rgba(0,255,255,0.15)',
+              boxShadow: '0 0 0px rgba(0,255,255,0)',
+              transition: 'box-shadow 0.03s ease-out, border 0.03s ease-out',
             }}
           />
 
@@ -168,46 +159,61 @@ export function VirtualWooferLeft({ bassData, isPlaying }) {
 }
 
 export function VirtualWooferRight({ bassData, isPlaying }) {
+  const coneRef = useRef(null);
+  const neonRingRef = useRef(null);
+  const animationRef = useRef(null);
   const targetBassRef = useRef(0);
   const currentBassRef = useRef(0);
-  const animationRef = useRef(null);
-  const lastTimeRef = useRef(performance.now());
 
   useEffect(() => {
-    const bassLevel = calculateBassLevel(bassData);
-    targetBassRef.current = isPlaying ? bassLevel : 0;
+    targetBassRef.current = isPlaying ? calculateBassLevel(bassData) : 0;
   }, [bassData, isPlaying]);
 
   useEffect(() => {
-    const animate = (timestamp) => {
-      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.05);
-      lastTimeRef.current = timestamp;
-
+    const updateSpeakers = () => {
       const target = targetBassRef.current;
       const current = currentBassRef.current;
       const diff = target - current;
-      currentBassRef.current += diff * INERTIA_FACTOR;
+      currentBassRef.current += diff * 0.35;
       currentBassRef.current = Math.max(0, Math.min(1.1, currentBassRef.current));
 
-      animationRef.current = requestAnimationFrame(animate);
+      const bassLevel = currentBassRef.current;
+      const scale = 1 + bassLevel * 0.15;
+      const neonGlow = bassLevel * 35;
+      const shadowBlur = 10 + bassLevel * 30;
+      const coneShadow = bassLevel * 15;
+
+      if (coneRef.current) {
+        coneRef.current.style.transform = `scale(${scale})`;
+        coneRef.current.style.boxShadow = `
+          inset 0 2px 6px rgba(255,255,255,0.04),
+          inset 0 -3px 8px rgba(0,0,0,0.9),
+          0 ${coneShadow}px ${shadowBlur}px rgba(0,255,255,${bassLevel * 0.35})
+        `;
+      }
+
+      if (neonRingRef.current) {
+        neonRingRef.current.style.border = `${1.5 + bassLevel * 2}px solid rgba(0,255,255,${0.15 + bassLevel * 0.7})`;
+        neonRingRef.current.style.boxShadow = `
+          0 0 ${neonGlow}px rgba(0,255,255,${bassLevel * 0.6}),
+          0 0 ${neonGlow * 1.5}px rgba(0,255,255,${bassLevel * 0.25}),
+          inset 0 0 ${neonGlow * 0.4}px rgba(0,255,255,${bassLevel * 0.35})
+        `;
+      }
+
+      animationRef.current = requestAnimationFrame(updateSpeakers);
     };
 
-    animationRef.current = requestAnimationFrame(animate);
+    animationRef.current = requestAnimationFrame(updateSpeakers);
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
-  const bassLevel = currentBassRef.current;
-  const scale = MIN_SCALE + bassLevel * (MAX_SCALE - MIN_SCALE);
-  const neonGlow = bassLevel * 40;
-  const shadowBlur = 15 + bassLevel * 35;
-  const coneShadow = bassLevel * 20;
-
   return (
     <div className="relative" style={{ width: '100px', height: '100px' }}>
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className={`relative w-full h-full ${!isPlaying ? 'woofer-idle' : ''}`}>
+        <div className="relative w-full h-full">
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -243,16 +249,13 @@ export function VirtualWooferRight({ bassData, isPlaying }) {
           />
 
           <div
-            className="woofer-cone absolute rounded-full"
+            ref={coneRef}
+            className="absolute rounded-full"
             style={{
               inset: '18px',
-              transform: `scale(${scale})`,
+              transition: 'transform 0.05s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               background: 'radial-gradient(circle at 40% 40%, #1a1a1a 0%, #0a0a0a 40%, #000000 100%)',
-              boxShadow: `
-                inset 0 2px 6px rgba(255,255,255,0.04),
-                inset 0 -3px 8px rgba(0,0,0,0.9),
-                0 ${coneShadow}px ${shadowBlur}px rgba(0,255,255,${bassLevel * 0.4})
-              `,
+              boxShadow: 'inset 0 2px 6px rgba(255,255,255,0.04), inset 0 -3px 8px rgba(0,0,0,0.9)',
             }}
           >
             <div
@@ -274,15 +277,13 @@ export function VirtualWooferRight({ bassData, isPlaying }) {
           </div>
 
           <div
-            className="woofer-neon-ring absolute rounded-full"
+            ref={neonRingRef}
+            className="absolute rounded-full"
             style={{
               inset: '14px',
-              border: `${1.5 + bassLevel * 2}px solid rgba(0,255,255,${0.15 + bassLevel * 0.7})`,
-              boxShadow: `
-                0 0 ${neonGlow}px rgba(0,255,255,${bassLevel * 0.6}),
-                0 0 ${neonGlow * 1.5}px rgba(0,255,255,${bassLevel * 0.3}),
-                inset 0 0 ${neonGlow * 0.5}px rgba(0,255,255,${bassLevel * 0.4})
-              `,
+              border: '1.5px solid rgba(0,255,255,0.15)',
+              boxShadow: '0 0 0px rgba(0,255,255,0)',
+              transition: 'box-shadow 0.03s ease-out, border 0.03s ease-out',
             }}
           />
 
