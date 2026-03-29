@@ -12,7 +12,7 @@ export default function AudioControlPanel({
   return (
     <>
       {/* Painel Esquerdo */}
-      <div className="fixed bottom-4 left-4 z-50" style={{ perspective: '1000px' }}>
+      <div className="fixed top-20 left-4 z-50" style={{ perspective: '1000px' }}>
         <div 
           className="relative rounded-xl"
           style={{
@@ -25,7 +25,7 @@ export default function AudioControlPanel({
             `,
             padding: '16px',
             width: '260px',
-            height: '640px',
+            height: 'calc(100vh - 140px)',
           }}
         >
           {/* Coroa dourada */}
@@ -60,7 +60,7 @@ export default function AudioControlPanel({
       </div>
 
       {/* Painel Direito */}
-      <div className="fixed bottom-4 right-4 z-50" style={{ perspective: '1000px' }}>
+      <div className="fixed top-20 right-4 z-50" style={{ perspective: '1000px' }}>
         <div 
           className="relative rounded-xl"
           style={{
@@ -73,7 +73,7 @@ export default function AudioControlPanel({
             `,
             padding: '16px',
             width: '260px',
-            height: '640px',
+            height: 'calc(100vh - 140px)',
           }}
         >
           {/* Coroa dourada */}
