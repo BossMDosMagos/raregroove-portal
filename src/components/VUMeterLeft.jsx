@@ -159,7 +159,7 @@ export function VUMeterLeft({ vuMeterData, isPlaying }) {
       <span className="text-[10px] font-black text-yellow-600 tracking-wider">L</span>
       <canvas 
         ref={canvasRef} 
-        className="w-[140px] h-[72px]"
+        className="w-[175px] h-[90px]"
         style={{ 
           backgroundImage: `url(${vuLImg})`,
           backgroundSize: '100% 100%',

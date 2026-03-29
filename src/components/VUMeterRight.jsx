@@ -158,7 +158,7 @@ export function VUMeterRight({ vuMeterData, isPlaying }) {
     <div className="flex items-center gap-2">
       <canvas 
         ref={canvasRef} 
-        className="w-[140px] h-[72px]"
+        className="w-[175px] h-[90px]"
         style={{ 
           backgroundImage: `url(${vuRImg})`,
           backgroundSize: '100% 100%',
