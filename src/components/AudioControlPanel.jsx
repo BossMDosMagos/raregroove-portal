@@ -2,12 +2,15 @@ import { VUMeterLeft } from './VUMeterLeft.jsx';
 import { VUMeterRight } from './VUMeterRight.jsx';
 import { VirtualWooferLeft, VirtualWooferRight } from './VirtualWoofer.jsx';
 import { SpectrumLeft, SpectrumRight } from './SpectrumVisualizer.jsx';
+import { VolumeKnob } from './VolumeKnob.jsx';
 
 export default function AudioControlPanel({ 
   vuMeterData,
   isPlaying,
   timeDomainBytesL,
-  timeDomainBytesR
+  timeDomainBytesR,
+  volume,
+  onVolumeChange
 }) {
   return (
     <>
@@ -50,6 +53,15 @@ export default function AudioControlPanel({
           {/* Spectrum Esquerdo */}
           <div className="flex justify-center mb-3">
             <SpectrumLeft timeDomainL={timeDomainBytesL} isPlaying={isPlaying} />
+          </div>
+
+          {/* Volume Knob */}
+          <div className="flex justify-center mb-3">
+            <VolumeKnob 
+              volume={volume || 0} 
+              onVolumeChange={onVolumeChange || (() => {})} 
+              size={70}
+            />
           </div>
 
           {/* Woofer Esquerdo */}

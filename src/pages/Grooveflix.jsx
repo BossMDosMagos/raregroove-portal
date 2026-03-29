@@ -148,6 +148,8 @@ export default function Grooveflix() {
         isPlaying={isAudioPlaying}
         timeDomainBytesL={timeDomainBytesL}
         timeDomainBytesR={timeDomainBytesR}
+        volume={volume}
+        onVolumeChange={setVolume}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '280px', marginRight: '280px', maxHeight: 'calc(100vh - 80px)' }}>
