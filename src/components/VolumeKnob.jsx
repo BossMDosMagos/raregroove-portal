@@ -116,20 +116,19 @@ export function VolumeKnob({
       <div 
         className="absolute inset-0 rounded-full"
         style={{
-          background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
-          boxShadow: 'inset 3px 3px 6px rgba(0, 0, 0, 0.8), inset -2px -2px 4px rgba(60, 60, 60, 0.2), 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 255, 255, 0.1)',
+          background: '#1a1a1a',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
         }}
       />
 
-      <div className="absolute inset-3 rounded-full overflow-hidden" style={{
-        background: 'radial-gradient(circle at 30% 30%, #252525, #0a0a0a)',
-        boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.9)',
+      <div className="absolute inset-2 rounded-full overflow-hidden" style={{
+        background: '#0f0f0f',
       }}>
         {ledColors.map((colorKey, i) => {
           const isOn = getLedState(i);
           const ledAngle = -135 + (i * 270 / 11);
           const rad = (ledAngle * Math.PI) / 180;
-          const radius = 40;
+          const radius = 28;
           const x = 50 + radius * Math.sin(rad);
           const y = 50 - radius * Math.cos(rad);
           const color = LED_COLORS[colorKey];
@@ -141,12 +140,12 @@ export function VolumeKnob({
               style={{
                 left: `${x}%`,
                 top: `${y}%`,
-                width: 4,
-                height: 4,
+                width: 3,
+                height: 3,
                 transform: 'translate(-50%, -50%)',
-                background: isOn ? color.on : '#1a1a1a',
-                boxShadow: isOn ? `0 0 4px ${color.glow}, 0 0 8px ${color.glow}` : 'inset 0 0 1px rgba(0,0,0,0.8)',
-                border: isOn ? 'none' : '1px solid #222',
+                background: isOn ? color.on : '#151515',
+                boxShadow: isOn ? `0 0 3px ${color.glow}, 0 0 6px ${color.glow}` : 'none',
+                border: '1px solid #222',
               }}
             />
           );
@@ -158,11 +157,10 @@ export function VolumeKnob({
         style={{
           top: '50%',
           left: '50%',
-          width: '50%',
-          height: '50%',
+          width: '70%',
+          height: '70%',
           transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle at 30% 30%, #2d2d2d, #151515)',
-          boxShadow: 'inset 2px 2px 4px rgba(80, 80, 80, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5)',
+          background: '#151515',
         }}
       />
 
@@ -171,8 +169,8 @@ export function VolumeKnob({
         style={{
           top: '50%',
           left: '50%',
-          width: '50%',
-          height: '50%',
+          width: '70%',
+          height: '70%',
           transform: `translate(-50%, -50%) rotate(${knobRotation}deg)`,
         }}
       >
@@ -180,19 +178,19 @@ export function VolumeKnob({
           src="/images/knob/knob.png"
           alt="Volume Knob"
           className="w-full h-full"
-          style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
+          style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}
           draggable={false}
         />
         <div 
           className="absolute rounded-full"
           style={{
-            top: '8%',
+            top: '6%',
             left: '50%',
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             transform: 'translateX(-50%)',
             background: 'radial-gradient(circle, #ff0000 0%, #ff0000 40%, transparent 70%)',
-            boxShadow: '0 0 8px #ff0000, 0 0 15px #ff0000, 0 0 25px rgba(255, 0, 0, 0.5), 0 0 40px rgba(255, 0, 0, 0.3)',
+            boxShadow: '0 0 6px #ff0000, 0 0 12px #ff0000, 0 0 20px rgba(255, 0, 0, 0.5)',
           }}
         />
       </div>
