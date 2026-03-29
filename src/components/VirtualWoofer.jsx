@@ -3,65 +3,73 @@ import { Howler } from 'howler';
 
 export function VirtualWooferLeft() {
   const coneRef = useRef(null);
+  const setupRef = useRef(false);
 
   useEffect(() => {
-    const setupPhysics = () => {
-      const howl = Howler._src;
-      if (!howl?._node) return;
+    if (setupRef.current) return;
+    setupRef.current = true;
 
-      const audioEl = Howler._src._node;
-      if (!audioEl || !audioEl.captureStream) return;
+    const setupPhysics = () => {
+      const context = Howler.ctx;
+      const node = Howler.masterGain;
+
+      if (!context || !node) {
+        setTimeout(setupPhysics, 200);
+        return;
+      }
 
       try {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const src = context.createMediaElementSource(audioEl);
         const analyser = context.createAnalyser();
         analyser.fftSize = 256;
 
-        src.connect(analyser);
+        node.connect(analyser);
         analyser.connect(context.destination);
 
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
-        const coneL = coneRef.current;
-        const neonRing = coneL?.parentElement?.parentElement?.querySelector('.neon-ring');
+        const coneL = document.getElementById('cone-l');
+        const coneR = document.getElementById('cone-r');
 
-        const render = () => {
+        if (!coneL || !coneR) {
+          setTimeout(setupPhysics, 200);
+          return;
+        }
+
+        const renderVibration = () => {
+          requestAnimationFrame(renderVibration);
           analyser.getByteFrequencyData(dataArray);
 
           let bass = 0;
           for (let i = 0; i < 10; i++) {
             bass += dataArray[i] || 0;
           }
-          bass = bass / 10;
+          const avgBass = bass / 10;
 
-          const intensity = bass / 255;
-          const scale = 1 + (intensity * 0.2);
+          const intensity = avgBass / 255;
+          const scale = 1 + (intensity * 0.18);
 
-          if (coneL) {
-            coneL.style.transform = `scale(${scale})`;
-          }
-          if (neonRing) {
-            neonRing.style.opacity = 0.3 + (intensity * 0.7);
-            neonRing.style.boxShadow = `0 0 ${intensity * 25}px #00FFFF`;
-          }
-
-          requestAnimationFrame(render);
+          coneL.style.transform = `scale(${scale})`;
+          coneR.style.transform = `scale(${scale})`;
         };
-        render();
+
+        renderVibration();
       } catch (e) {
         console.log('Woofer setup error:', e);
+        setupRef.current = false;
       }
     };
 
-    const interval = setInterval(setupPhysics, 500);
-    return () => clearInterval(interval);
+    setupPhysics();
+
+    return () => {
+      setupRef.current = false;
+    };
   }, []);
 
   return (
     <div className="woofer-box">
-      <div ref={coneRef} className="woofer-cone">
+      <div ref={coneRef} className="woofer-cone" id="cone-l">
         <div className="dust-cap"></div>
       </div>
       <div className="neon-ring"></div>
@@ -70,70 +78,9 @@ export function VirtualWooferLeft() {
 }
 
 export function VirtualWooferRight() {
-  const coneRef = useRef(null);
-
-  useEffect(() => {
-    const setupPhysics = () => {
-      const audioEl = Howler._src?._node;
-      if (!audioEl) return;
-
-      try {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const src = context.createMediaElementSource(audioEl);
-        const analyser = context.createAnalyser();
-        analyser.fftSize = 256;
-
-        src.connect(analyser);
-        analyser.connect(context.destination);
-
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        const coneR = coneRef.current;
-        const neonRing = coneR?.parentElement?.parentElement?.querySelector('.neon-ring');
-
-        let isConnected = false;
-
-        const render = () => {
-          if (!isConnected) {
-            try {
-              src.connect(analyser);
-              isConnected = true;
-            } catch {}
-          }
-
-          analyser.getByteFrequencyData(dataArray);
-
-          let bass = 0;
-          for (let i = 0; i < 10; i++) {
-            bass += dataArray[i] || 0;
-          }
-          bass = bass / 10;
-
-          const intensity = bass / 255;
-          const scale = 1 + (intensity * 0.2);
-
-          if (coneR) {
-            coneR.style.transform = `scale(${scale})`;
-          }
-          if (neonRing) {
-            neonRing.style.opacity = 0.3 + (intensity * 0.7);
-            neonRing.style.boxShadow = `0 0 ${intensity * 25}px #00FFFF`;
-          }
-
-          requestAnimationFrame(render);
-        };
-        render();
-      } catch (e) {}
-    };
-
-    const interval = setInterval(setupPhysics, 500);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="woofer-box">
-      <div ref={coneRef} className="woofer-cone">
+      <div className="woofer-cone" id="cone-r">
         <div className="dust-cap"></div>
       </div>
       <div className="neon-ring"></div>
