@@ -665,8 +665,8 @@ body {
 /* VIRTUAL WOOFER STYLES */
 .woofer {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 168px;
+  height: 168px;
   display: flex;
   align-items: center;
   justify-content: center;
