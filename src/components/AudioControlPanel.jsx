@@ -165,7 +165,6 @@ export default function AudioControlPanel({
                 style={{
                   top: '8px',
                   left: '50%',
-                  transform: 'translateX(-50%)',
                   background: '#888',
                   boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4)',
                   transform: `translateX(-50%) rotate(${-135 + volume * 270}deg)`,
