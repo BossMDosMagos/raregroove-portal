@@ -326,17 +326,22 @@ export function useAudioEngine() {
           ensureContextRunning();
           stopAnimLoop();
           animFrameRef.current = requestAnimationFrame(animLoop);
+          
+          connectAnalysers();
+          window.dispatchEvent(new CustomEvent('grooveflix-play'));
         },
         onpause: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
           stopAnimLoop();
+          window.dispatchEvent(new CustomEvent('grooveflix-pause'));
         },
         onstop: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
           setCurrentTime(0);
           stopAnimLoop();
+          window.dispatchEvent(new CustomEvent('grooveflix-stop'));
         },
         onseek: () => {
           const pos = howl.seek();
@@ -348,11 +353,8 @@ export function useAudioEngine() {
           const dur = howl.duration();
           setDuration(dur);
           
-          connectAnalysers();
-          
           if (autoplay) {
             howl.play();
-            window.dispatchEvent(new CustomEvent('grooveflix-play'));
           }
           resolve(howl);
         },
@@ -379,35 +381,18 @@ export function useAudioEngine() {
 
     if (howlRef.current) {
       howlRef.current.play();
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-      
-      ensureContextRunning();
-      stopAnimLoop();
-      animFrameRef.current = requestAnimationFrame(animLoop);
-      
-      window.dispatchEvent(new CustomEvent('grooveflix-play'));
     }
-  }, [ensureContextRunning, stopAnimLoop, animLoop]);
+  }, []);
 
   const pause = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.pause();
-    setIsPlaying(false);
-    isPlayingRef.current = false;
-    stopAnimLoop();
-    window.dispatchEvent(new CustomEvent('grooveflix-pause'));
-  }, [stopAnimLoop]);
+  }, []);
 
   const stop = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.stop();
-    setIsPlaying(false);
-    isPlayingRef.current = false;
-    setCurrentTime(0);
-    stopAnimLoop();
-    window.dispatchEvent(new CustomEvent('grooveflix-stop'));
-  }, [stopAnimLoop]);
+  }, []);
 
   const seek = useCallback((time) => {
     if (!howlRef.current) return;
