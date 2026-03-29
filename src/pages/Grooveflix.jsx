@@ -48,7 +48,7 @@ export default function Grooveflix() {
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, bassDataL, bassDataR } = useAudioEngine();
+  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek } = useAudioEngine();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -163,8 +163,6 @@ export default function Grooveflix() {
         currentTime={currentTime}
         duration={duration}
         onSeek={seek}
-        bassDataL={bassDataL}
-        bassDataR={bassDataR}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '280px', marginRight: '280px', maxHeight: 'calc(100vh - 80px)' }}>

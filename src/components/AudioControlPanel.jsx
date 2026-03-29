@@ -12,9 +12,7 @@ export default function AudioControlPanel({
   onNext,
   currentTime = 0, 
   duration = 1,
-  onSeek,
-  bassDataL,
-  bassDataR
+  onSeek
 }) {
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const [faderValue, setFaderValue] = useState(75);
@@ -94,7 +92,7 @@ export default function AudioControlPanel({
 
         {/* WOOFER ESQUERDO */}
         <div className="flex items-center justify-center mb-6">
-          <VirtualWooferLeft bassData={bassDataL} isPlaying={isPlaying} />
+          <VirtualWooferLeft />
         </div>
 
         {/* MÓDULO SUPERIOR - Volume e Energia */}
@@ -505,7 +503,7 @@ export default function AudioControlPanel({
       >
         {/* Woofer Direito no painel direito */}
         <div className="flex items-center justify-center mt-4">
-          <VirtualWooferRight bassData={bassDataR} isPlaying={isPlaying} />
+          <VirtualWooferRight />
         </div>
 
         {/* Coroa dourada */}
