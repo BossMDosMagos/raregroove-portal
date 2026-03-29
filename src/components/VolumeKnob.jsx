@@ -121,14 +121,14 @@ export function VolumeKnob({
         }}
       />
 
-      <div className="absolute inset-2 rounded-full overflow-hidden z-10" style={{
+      <div className="absolute inset-2 rounded-full overflow-hidden z-5" style={{
         background: '#0f0f0f',
       }}>
         {ledColors.map((colorKey, i) => {
           const isOn = getLedState(i);
           const ledAngle = -135 + (i * 270 / 11);
           const rad = (ledAngle * Math.PI) / 180;
-          const radius = 28;
+          const radius = 38;
           const x = 50 + radius * Math.sin(rad);
           const y = 50 - radius * Math.cos(rad);
           const color = LED_COLORS[colorKey];
@@ -140,11 +140,11 @@ export function VolumeKnob({
               style={{
                 left: `${x}%`,
                 top: `${y}%`,
-                width: 3,
-                height: 3,
+                width: 5,
+                height: 5,
                 transform: 'translate(-50%, -50%)',
                 background: isOn ? color.on : '#151515',
-                boxShadow: isOn ? `0 0 3px ${color.glow}, 0 0 6px ${color.glow}` : 'none',
+                boxShadow: isOn ? `0 0 4px ${color.glow}, 0 0 8px ${color.glow}` : 'none',
                 border: '1px solid #222',
               }}
             />
@@ -165,7 +165,7 @@ export function VolumeKnob({
       />
 
       <div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none z-20"
         style={{
           top: '50%',
           left: '50%',
