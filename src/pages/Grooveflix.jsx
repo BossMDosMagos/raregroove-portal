@@ -11,6 +11,7 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
 import { VUMeterRight } from '../components/VUMeterRight.jsx';
 import { useAudioEngine } from '../hooks/useAudioEngine.js';
+import AudioControlPanel from '../components/AudioControlPanel.jsx';
 import MixerPanel from '../components/MixerPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
@@ -48,7 +49,7 @@ export default function Grooveflix() {
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume } = useAudioEngine();
+  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek } = useAudioEngine();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -152,11 +153,17 @@ export default function Grooveflix() {
         <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
       </div>
 
-      <MixerPanel 
-        vuMeterData={vuMeterData} 
-        isPlaying={isAudioPlaying} 
+      <AudioControlPanel
         volume={volume}
-        onVolumeChange={(v) => setVolume(v)}
+        onVolumeChange={setVolume}
+        isPlaying={isAudioPlaying}
+        onPlayPause={() => isAudioPlaying ? pause() : play()}
+        onStop={stop}
+        onPrev={() => {}}
+        onNext={() => {}}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seek}
       />
 
       <div className="relative max-w-[1200px] mx-auto px-4 md:px-6 pt-28 space-y-8">
