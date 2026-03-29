@@ -58,8 +58,8 @@ export default function AudioControlPanel({
           {/* Volume Knob */}
           <div className="flex justify-center mb-3">
             <VolumeKnob 
-              volume={volume || 0} 
-              onVolumeChange={onVolumeChange || (() => {})} 
+              value={volume || 0} 
+              onChange={onVolumeChange || (() => {})} 
               size={170}
             />
           </div>
