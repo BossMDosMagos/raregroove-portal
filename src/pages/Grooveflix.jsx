@@ -8,9 +8,7 @@ import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
-import { VUMeterLeft } from '../components/VUMeterLeft.jsx';
-import { VUMeterRight } from '../components/VUMeterRight.jsx';
-import { SpectrumLeft, SpectrumRight } from '../components/SpectrumVisualizer.jsx';
+
 import { useAudioEngine } from '../hooks/useAudioEngine.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
@@ -145,31 +143,11 @@ export default function Grooveflix() {
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
       </div>
 
-      <div className="fixed top-20 left-[42px] z-50">
-        <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
-        <div className="mt-2">
-          <SpectrumLeft timeDomainL={timeDomainBytesL} isPlaying={isAudioPlaying} />
-        </div>
-      </div>
-
-      <div className="fixed top-20 right-[42px] z-50">
-        <VUMeterRight vuMeterData={vuMeterData} isPlaying={isAudioPlaying} />
-        <div className="mt-2">
-          <SpectrumRight timeDomainR={timeDomainBytesR} isPlaying={isAudioPlaying} />
-        </div>
-      </div>
-
       <AudioControlPanel
-        volume={volume}
-        onVolumeChange={setVolume}
+        vuMeterData={vuMeterData}
         isPlaying={isAudioPlaying}
-        onPlayPause={() => isAudioPlaying ? pause() : play()}
-        onStop={stop}
-        onPrev={() => {}}
-        onNext={() => {}}
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={seek}
+        timeDomainBytesL={timeDomainBytesL}
+        timeDomainBytesR={timeDomainBytesR}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '280px', marginRight: '280px', maxHeight: 'calc(100vh - 80px)' }}>
