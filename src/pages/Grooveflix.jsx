@@ -136,7 +136,7 @@ export default function Grooveflix() {
   });
 
   return (
-    <div className="min-h-screen bg-black text-white pb-28">
+    <div className="h-screen bg-black text-white overflow-hidden">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <EqualizerBackground isPlaying={isAudioPlaying} />
         <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
@@ -165,7 +165,7 @@ export default function Grooveflix() {
         onSeek={seek}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-20 space-y-4" style={{ marginLeft: '280px', marginRight: '280px' }}>
+      <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '280px', marginRight: '280px', maxHeight: 'calc(100vh - 80px)' }}>
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
