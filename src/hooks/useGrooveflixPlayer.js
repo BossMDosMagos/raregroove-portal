@@ -135,14 +135,13 @@ export function useGrooveflixPlayer() {
     
     state.sound = new Howl({
       src: [url],
-      html5: false,
+      html5: true,
       format: ['mp3', 'flac', 'wav'],
       volume: 0.8,
       preload: true,
       
       onload: () => {
         setDuration(state.sound.duration());
-        connectAnalysers();
         state.sound.play();
       },
       
@@ -155,6 +154,7 @@ export function useGrooveflixPlayer() {
         setIsPlaying(true);
         stopAnimLoop();
         ensureContextRunning();
+        connectAnalysers();
         state.animFrameId = requestAnimationFrame(animLoop);
       },
       
