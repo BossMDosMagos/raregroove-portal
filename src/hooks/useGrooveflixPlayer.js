@@ -190,13 +190,22 @@ export function useGrooveflixPlayer() {
     isInitializedRef.current = true;
   }, []);
   
+  const isLoadingRef = useRef(false);
+  
   const loadAndPlayTrack = useCallback(async (track) => {
     if (!track || !track.audioPath) {
       console.log('[GrooveflixPlayer] No audioPath in track');
       return;
     }
     
+    if (isLoadingRef.current) {
+      console.log('[GrooveflixPlayer] Already loading, skipping...');
+      return;
+    }
+    isLoadingRef.current = true;
+    
     if (howlRef.current) {
+      howlRef.current.stop();
       howlRef.current.unload();
       howlRef.current = null;
     }
@@ -204,6 +213,7 @@ export function useGrooveflixPlayer() {
     stopAnimLoop();
     disconnectAnalysers();
     isPlayingRef.current = false;
+    audioPlayer.setIsPlaying(false);
     
     initAudioContext();
     
@@ -215,13 +225,17 @@ export function useGrooveflixPlayer() {
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
     if (!url) {
       console.log('[GrooveflixPlayer] Failed to get presigned URL');
+      isLoadingRef.current = false;
       return;
     }
+    
+    const ext = track.audioPath.split('.').pop()?.toLowerCase() || 'mp3';
+    const format = ext === 'flac' ? ['flac'] : ext === 'wav' ? ['wav'] : ext === 'ogg' ? ['ogg'] : ext === 'm4a' ? ['m4a'] : ['mp3'];
     
     const howl = new Howl({
       src: [url],
       html5: false,
-      format: ['mp3'],
+      format: format,
       xhr: { method: 'GET', withCredentials: false },
       volume: volumeRef.current,
       loop: false,
@@ -262,14 +276,17 @@ export function useGrooveflixPlayer() {
       },
       onloaderror: (id, err) => {
         console.log('[GrooveflixPlayer] Load error:', err);
+        isLoadingRef.current = false;
       },
       onplayerror: (id, err) => {
         console.log('[GrooveflixPlayer] Play error:', err);
+        isLoadingRef.current = false;
         Howler.ctx?.resume().then(() => howl?.play());
       },
     });
     
     howlRef.current = howl;
+    isLoadingRef.current = false;
   }, [audioPlayer, initAudioContext, ensureContextRunning, stopAnimLoop, animLoop, connectAnalysers, disconnectAnalysers]);
   
   const play = useCallback(async () => {
