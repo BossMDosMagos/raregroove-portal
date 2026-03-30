@@ -10,7 +10,7 @@ export function VirtualWooferLeft({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
-  const { isReady, getBassEnergy, update } = useGlobalAudioAnalyser();
+  const { isReady, getBassEnergy } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const speaker = speakerRef.current;
@@ -28,7 +28,6 @@ export function VirtualWooferLeft({ isPlaying }) {
         return;
       }
       
-      update();
       const bass = getBassEnergy();
       
       smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
@@ -47,7 +46,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergy, update]);
+  }, [isReady, isPlaying, getBassEnergy]);
 
   return (
     <div className="flex items-center justify-center">
@@ -67,7 +66,7 @@ export function VirtualWooferRight({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
-  const { isReady, getBassEnergy, update } = useGlobalAudioAnalyser();
+  const { isReady, getBassEnergy } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const speaker = speakerRef.current;
@@ -85,7 +84,6 @@ export function VirtualWooferRight({ isPlaying }) {
         return;
       }
       
-      update();
       const bass = getBassEnergy();
       
       smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
@@ -104,7 +102,7 @@ export function VirtualWooferRight({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergy, update]);
+  }, [isReady, isPlaying, getBassEnergy]);
 
   return (
     <div className="flex items-center justify-center">
