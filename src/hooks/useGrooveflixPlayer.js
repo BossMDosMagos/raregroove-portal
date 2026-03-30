@@ -2,97 +2,82 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
 
+let sharedAudioContext = null;
+let sharedSplitter = null;
+let sharedAnalyserL = null;
+let sharedAnalyserR = null;
+let sharedMerger = null;
+let sharedStereoGain = null;
+
+function initSharedAudioGraph() {
+  if (sharedAudioContext) return sharedAudioContext;
+  
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  sharedAudioContext = ctx;
+  
+  const splitter = ctx.createChannelSplitter(2);
+  sharedSplitter = splitter;
+  
+  const analyserL = ctx.createAnalyser();
+  analyserL.fftSize = 2048;
+  analyserL.smoothingTimeConstant = 0.8;
+  sharedAnalyserL = analyserL;
+  
+  const analyserR = ctx.createAnalyser();
+  analyserR.fftSize = 2048;
+  analyserR.smoothingTimeConstant = 0.8;
+  sharedAnalyserR = analyserR;
+  
+  const merger = ctx.createChannelMerger(2);
+  sharedMerger = merger;
+  
+  const stereoGain = ctx.createGain();
+  stereoGain.gain.value = 1;
+  sharedStereoGain = stereoGain;
+  
+  stereoGain.connect(splitter);
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
+  analyserL.connect(merger, 0, 0);
+  analyserR.connect(merger, 0, 1);
+  merger.connect(ctx.destination);
+  
+  registerAnalysers({
+    analyserL: sharedAnalyserL,
+    analyserR: sharedAnalyserR,
+    splitter: sharedSplitter,
+    merger: sharedMerger,
+  });
+  
+  return ctx;
+}
+
 export function useGrooveflixPlayer() {
   const audioPlayer = useAudioPlayer();
   
   const audioRef = useRef(null);
-  const audioContextRef = useRef(null);
   const mediaSourceRef = useRef(null);
-  const stereoGainRef = useRef(null);
-  const analyserLRef = useRef(null);
-  const analyserRRef = useRef(null);
-  const splitterRef = useRef(null);
-  const mergerRef = useRef(null);
-  
-  const volumeRef = useRef(0.8);
-  const isInitializedRef = useRef(false);
+  const isConnectedRef = useRef(false);
   const isLoadingRef = useRef(false);
-  const sourceConnectedRef = useRef(false);
-  const blobUrlRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   
-  const initAudioContext = useCallback(() => {
-    if (isInitializedRef.current && audioContextRef.current) return audioContextRef.current;
+  const connectMediaSource = useCallback((audio) => {
+    if (isConnectedRef.current) return;
     
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    audioContextRef.current = ctx;
+    const ctx = initSharedAudioGraph();
+    if (!ctx || !audio) return;
     
-    const splitter = ctx.createChannelSplitter(2);
-    splitterRef.current = splitter;
-    
-    const analyserL = ctx.createAnalyser();
-    analyserL.fftSize = 2048;
-    analyserL.smoothingTimeConstant = 0.8;
-    analyserLRef.current = analyserL;
-    
-    const analyserR = ctx.createAnalyser();
-    analyserR.fftSize = 2048;
-    analyserR.smoothingTimeConstant = 0.8;
-    analyserRRef.current = analyserR;
-    
-    const merger = ctx.createChannelMerger(2);
-    mergerRef.current = merger;
-    
-    const stereoGain = ctx.createGain();
-    stereoGain.gain.value = 1;
-    stereoGainRef.current = stereoGain;
-    
-    stereoGain.connect(splitter);
-    splitter.connect(analyserL, 0);
-    splitter.connect(analyserR, 1);
-    analyserL.connect(merger, 0, 0);
-    analyserR.connect(merger, 0, 1);
-    merger.connect(ctx.destination);
-    
-    isInitializedRef.current = true;
-    
-    registerAnalysers({
-      analyserL: analyserLRef.current,
-      analyserR: analyserRRef.current,
-      splitter: splitterRef.current,
-      merger: mergerRef.current,
-    });
-    
-    return ctx;
-  }, []);
-  
-  const disconnectAnalysers = useCallback(() => {
-    try { splitterRef.current?.disconnect(); } catch {}
-    try { analyserLRef.current?.disconnect(); } catch {}
-    try { analyserRRef.current?.disconnect(); } catch {}
-    try { mergerRef.current?.disconnect(); } catch {}
-    splitterRef.current = null;
-    analyserLRef.current = null;
-    analyserRRef.current = null;
-    mergerRef.current = null;
-    unregisterAnalysers();
-  }, []);
-  
-  const connectMediaSource = useCallback(() => {
-    const ctx = audioContextRef.current;
-    const audio = audioRef.current;
-    
-    if (!ctx || !audio || sourceConnectedRef.current) return;
-    
-    try { mediaSourceRef.current?.disconnect(); } catch {}
-    
-    const mediaSource = ctx.createMediaElementSource(audio);
-    mediaSource.connect(stereoGainRef.current);
-    mediaSourceRef.current = mediaSource;
-    sourceConnectedRef.current = true;
+    try {
+      const mediaSource = ctx.createMediaElementSource(audio);
+      mediaSource.connect(sharedStereoGain);
+      mediaSourceRef.current = mediaSource;
+      isConnectedRef.current = true;
+    } catch (err) {
+      console.log('[GrooveflixPlayer] MediaSource error:', err);
+    }
   }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
@@ -100,24 +85,16 @@ export function useGrooveflixPlayer() {
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
-    }
-    
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    
-    disconnectAnalysers();
-    setIsPlaying(false);
-    isLoadingRef.current = false;
-    sourceConnectedRef.current = false;
-    
-    const ctx = initAudioContext();
+    const ctx = initSharedAudioGraph();
     if (ctx.state === 'suspended') {
       await ctx.resume();
+    }
+    
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.src = '';
+      audio.load();
     }
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
@@ -127,54 +104,38 @@ export function useGrooveflixPlayer() {
       return;
     }
     
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Fetch failed');
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      blobUrlRef.current = blobUrl;
-      
-      const audio = new Audio();
-      audio.crossOrigin = 'anonymous';
-      audio.preload = 'metadata';
-      
-      audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
-      audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
-      audio.addEventListener('ended', () => {
-        setIsPlaying(false);
-      });
-      audio.addEventListener('play', () => setIsPlaying(true));
-      audio.addEventListener('pause', () => setIsPlaying(false));
-      
-      audioRef.current = audio;
-      
-      audio.addEventListener('canplay', () => {
-        connectMediaSource();
-        audio.volume = volumeRef.current;
-        audio.play().catch(console.error);
-        isLoadingRef.current = false;
-      }, { once: true });
-      
-      audio.addEventListener('error', () => {
-        console.log('[GrooveflixPlayer] Audio error');
-        isLoadingRef.current = false;
-      }, { once: true });
-      
-      audio.src = blobUrl;
-      audio.load();
-      
-    } catch (err) {
-      console.log('[GrooveflixPlayer] Fetch error:', err);
-      isLoadingRef.current = false;
-    }
+    const newAudio = new Audio();
+    newAudio.crossOrigin = 'anonymous';
+    newAudio.preload = 'metadata';
     
-  }, [audioPlayer, initAudioContext, connectMediaSource, disconnectAnalysers]);
+    newAudio.addEventListener('timeupdate', () => setCurrentTime(newAudio.currentTime));
+    newAudio.addEventListener('loadedmetadata', () => setDuration(newAudio.duration));
+    newAudio.addEventListener('ended', () => setIsPlaying(false));
+    newAudio.addEventListener('play', () => setIsPlaying(true));
+    newAudio.addEventListener('pause', () => setIsPlaying(false));
+    
+    newAudio.addEventListener('canplay', () => {
+      connectMediaSource(newAudio);
+      newAudio.volume = 0.8;
+      newAudio.play().catch(console.error);
+      isLoadingRef.current = false;
+    }, { once: true });
+    
+    newAudio.addEventListener('error', () => {
+      console.log('[GrooveflixPlayer] Audio error');
+      isLoadingRef.current = false;
+    }, { once: true });
+    
+    audioRef.current = newAudio;
+    newAudio.src = url;
+    newAudio.load();
+    
+  }, [audioPlayer, connectMediaSource]);
   
   const play = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio?.src) return;
-    const ctx = audioContextRef.current;
+    const ctx = sharedAudioContext;
     if (ctx?.state === 'suspended') await ctx.resume();
     try { await audio.play(); } catch (err) { console.error(err); }
   }, []);
@@ -200,36 +161,19 @@ export function useGrooveflixPlayer() {
   
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
-    volumeRef.current = vol;
     if (audioRef.current) audioRef.current.volume = vol;
     audioPlayer.setVolume(vol);
   }, [audioPlayer]);
   
   const dispose = useCallback(() => {
-    disconnectAnalysers();
-    
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
       audioRef.current = null;
     }
-    
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    
-    try { mediaSourceRef.current?.disconnect(); } catch {}
-    mediaSourceRef.current = null;
-    
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    
-    isInitializedRef.current = false;
-    sourceConnectedRef.current = false;
-  }, [disconnectAnalysers]);
+    isConnectedRef.current = false;
+    isLoadingRef.current = false;
+  }, []);
   
   useEffect(() => {
     return () => { dispose(); };
@@ -240,7 +184,7 @@ export function useGrooveflixPlayer() {
     isPlaying,
     currentTime,
     duration,
-    volume: volumeRef.current,
+    volume: 0.8,
     setVolume,
     play,
     pause,
