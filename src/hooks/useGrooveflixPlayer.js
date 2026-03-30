@@ -13,12 +13,12 @@ export function useGrooveflixPlayer() {
   const analyserRRef = useRef(null);
   const splitterRef = useRef(null);
   const mergerRef = useRef(null);
-  const animFrameRef = useRef(null);
   
   const volumeRef = useRef(0.8);
   const isInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const sourceConnectedRef = useRef(false);
+  const blobUrlRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -51,13 +51,10 @@ export function useGrooveflixPlayer() {
     stereoGainRef.current = stereoGain;
     
     stereoGain.connect(splitter);
-    
     splitter.connect(analyserL, 0);
     splitter.connect(analyserR, 1);
-    
     analyserL.connect(merger, 0, 0);
     analyserR.connect(merger, 0, 1);
-    
     merger.connect(ctx.destination);
     
     isInitializedRef.current = true;
@@ -73,22 +70,15 @@ export function useGrooveflixPlayer() {
   }, []);
   
   const disconnectAnalysers = useCallback(() => {
-    try { if (splitterRef.current) splitterRef.current.disconnect(); } catch {}
-    try { if (analyserLRef.current) analyserLRef.current.disconnect(); } catch {}
-    try { if (analyserRRef.current) analyserRRef.current.disconnect(); } catch {}
-    try { if (mergerRef.current) mergerRef.current.disconnect(); } catch {}
+    try { splitterRef.current?.disconnect(); } catch {}
+    try { analyserLRef.current?.disconnect(); } catch {}
+    try { analyserRRef.current?.disconnect(); } catch {}
+    try { mergerRef.current?.disconnect(); } catch {}
     splitterRef.current = null;
     analyserLRef.current = null;
     analyserRRef.current = null;
     mergerRef.current = null;
     unregisterAnalysers();
-  }, []);
-  
-  const stopAnimLoop = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
   }, []);
   
   const connectMediaSource = useCallback(() => {
@@ -97,9 +87,7 @@ export function useGrooveflixPlayer() {
     
     if (!ctx || !audio || sourceConnectedRef.current) return;
     
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch {}
-    }
+    try { mediaSourceRef.current?.disconnect(); } catch {}
     
     const mediaSource = ctx.createMediaElementSource(audio);
     mediaSource.connect(stereoGainRef.current);
@@ -108,8 +96,7 @@ export function useGrooveflixPlayer() {
   }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
-    if (!track || !track.audioPath) return;
-    
+    if (!track?.audioPath) return;
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     
@@ -118,70 +105,77 @@ export function useGrooveflixPlayer() {
       audioRef.current.src = '';
     }
     
-    stopAnimLoop();
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    
     disconnectAnalysers();
     setIsPlaying(false);
     isLoadingRef.current = false;
     sourceConnectedRef.current = false;
     
-    initAudioContext();
-    
-    const ctx = audioContextRef.current;
+    const ctx = initAudioContext();
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
     
-    const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
-    audio.preload = 'metadata';
-    
-    audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
-    audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
-    audio.addEventListener('ended', () => {
-      setIsPlaying(false);
-      stopAnimLoop();
-    });
-    audio.addEventListener('play', () => setIsPlaying(true));
-    audio.addEventListener('pause', () => setIsPlaying(false));
-    
-    audioRef.current = audio;
-    
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
     if (!url) {
-      console.log('[GrooveflixPlayer] Failed to get presigned URL');
+      console.log('[GrooveflixPlayer] No URL');
       isLoadingRef.current = false;
       return;
     }
     
-    audio.volume = volumeRef.current;
-    audio.src = url;
-    audio.load();
-    
-    const onCanPlay = () => {
-      connectMediaSource();
-      audio.play().catch(console.error);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Fetch failed');
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrlRef.current = blobUrl;
+      
+      const audio = new Audio();
+      audio.crossOrigin = 'anonymous';
+      audio.preload = 'metadata';
+      
+      audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
+      audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+      });
+      audio.addEventListener('play', () => setIsPlaying(true));
+      audio.addEventListener('pause', () => setIsPlaying(false));
+      
+      audioRef.current = audio;
+      
+      audio.addEventListener('canplay', () => {
+        connectMediaSource();
+        audio.volume = volumeRef.current;
+        audio.play().catch(console.error);
+        isLoadingRef.current = false;
+      }, { once: true });
+      
+      audio.addEventListener('error', () => {
+        console.log('[GrooveflixPlayer] Audio error');
+        isLoadingRef.current = false;
+      }, { once: true });
+      
+      audio.src = blobUrl;
+      audio.load();
+      
+    } catch (err) {
+      console.log('[GrooveflixPlayer] Fetch error:', err);
       isLoadingRef.current = false;
-    };
+    }
     
-    const onError = () => {
-      console.log('[GrooveflixPlayer] Load error:', audio.error);
-      isLoadingRef.current = false;
-    };
-    
-    audio.addEventListener('canplay', onCanPlay, { once: true });
-    audio.addEventListener('error', onError, { once: true });
-    
-  }, [audioPlayer, initAudioContext, connectMediaSource, stopAnimLoop, disconnectAnalysers]);
+  }, [audioPlayer, initAudioContext, connectMediaSource, disconnectAnalysers]);
   
   const play = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !audio.src) return;
-    
+    if (!audio?.src) return;
     const ctx = audioContextRef.current;
-    if (ctx?.state === 'suspended') {
-      await ctx.resume();
-    }
-    
+    if (ctx?.state === 'suspended') await ctx.resume();
     try { await audio.play(); } catch (err) { console.error(err); }
   }, []);
   
@@ -200,22 +194,18 @@ export function useGrooveflixPlayer() {
   const seek = useCallback((time) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const clampedTime = Math.max(0, Math.min(time, duration));
-    audio.currentTime = clampedTime;
-    setCurrentTime(clampedTime);
+    audio.currentTime = Math.max(0, Math.min(time, duration));
+    setCurrentTime(audio.currentTime);
   }, [duration]);
   
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
     volumeRef.current = vol;
-    if (audioRef.current) {
-      audioRef.current.volume = vol;
-    }
+    if (audioRef.current) audioRef.current.volume = vol;
     audioPlayer.setVolume(vol);
   }, [audioPlayer]);
   
   const dispose = useCallback(() => {
-    stopAnimLoop();
     disconnectAnalysers();
     
     if (audioRef.current) {
@@ -224,10 +214,13 @@ export function useGrooveflixPlayer() {
       audioRef.current = null;
     }
     
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch {}
-      mediaSourceRef.current = null;
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
     }
+    
+    try { mediaSourceRef.current?.disconnect(); } catch {}
+    mediaSourceRef.current = null;
     
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -236,7 +229,7 @@ export function useGrooveflixPlayer() {
     
     isInitializedRef.current = false;
     sourceConnectedRef.current = false;
-  }, [stopAnimLoop, disconnectAnalysers]);
+  }, [disconnectAnalysers]);
   
   useEffect(() => {
     return () => { dispose(); };
