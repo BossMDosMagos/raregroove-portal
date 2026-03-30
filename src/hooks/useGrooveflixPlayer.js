@@ -99,7 +99,6 @@ export function useGrooveflixPlayer() {
     }
     
     const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
     audio.preload = 'metadata';
     
     audio.addEventListener('timeupdate', () => {
@@ -181,7 +180,7 @@ export function useGrooveflixPlayer() {
     }
     
     audio.volume = volumeRef.current;
-    audio.src = url;
+    audio.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
     audio.load();
     
     const onCanPlay = () => {
