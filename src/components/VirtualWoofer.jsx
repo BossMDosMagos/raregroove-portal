@@ -185,7 +185,7 @@ export function VirtualWooferLeft() {
         ref={speakerLRef}
         src="/images/speaker/falante.png"
         alt="Speaker L"
-        className="w-32 h-32 object-contain transition-transform duration-75"
+        className="w-52 h-52 object-contain transition-transform duration-75"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
       />
     </div>
@@ -226,7 +226,7 @@ export function VirtualWooferRight() {
         ref={speakerRRef}
         src="/images/speaker/falante.png"
         alt="Speaker R"
-        className="w-32 h-32 object-contain transition-transform duration-75"
+        className="w-52 h-52 object-contain transition-transform duration-75"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
       />
     </div>
