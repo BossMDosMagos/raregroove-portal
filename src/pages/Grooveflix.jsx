@@ -45,21 +45,25 @@ function normalizeTracks(items = []) {
 export default function Grooveflix() {
   const { t } = useI18n();
   const { isTrialing, isActive } = useSubscription();
-  const { setQueue, playTrack, currentTrack: globalCurrentTrack } = useAudioPlayer();
+  const { setQueue, playTrack, currentTrack: globalCurrentTrack, isPlaying: isAudioContextPlaying, playAlbum, pauseTrack, resumeTrack, clearQueue } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, timeDomainBytesL, timeDomainBytesR } = useAudioEngine();
+  const { vuMeterData, isPlaying: isAudioEnginePlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, timeDomainBytesL, timeDomainBytesR } = useAudioEngine();
 
   const handlePlay = useCallback(() => {
-    play();
-  }, [play]);
+    if (isAudioContextPlaying) {
+      pauseTrack();
+    } else if (globalCurrentTrack) {
+      resumeTrack();
+    }
+  }, [isAudioContextPlaying, globalCurrentTrack, pauseTrack, resumeTrack]);
 
   const handlePause = useCallback(() => {
-    pause();
-  }, [pause]);
+    pauseTrack();
+  }, [pauseTrack]);
 
   const handleStop = useCallback(() => {
-    stop();
-  }, [stop]);
+    clearQueue();
+  }, [clearQueue]);
 
   const handleSeekBackward = useCallback(() => {
     if (currentTime > 0) {
@@ -74,9 +78,8 @@ export default function Grooveflix() {
   }, [seek, currentTime, duration]);
 
   const handleEject = useCallback(() => {
-    stop();
-    setQueue([]);
-  }, [stop, setQueue]);
+    clearQueue();
+  }, [clearQueue]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -166,7 +169,7 @@ export default function Grooveflix() {
   return (
     <div className="h-screen bg-black text-white overflow-hidden">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <EqualizerBackground isPlaying={isAudioPlaying} />
+        <EqualizerBackground isPlaying={isAudioContextPlaying} />
         <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-fuchsia-600/10 blur-[150px]" />
         <div className="absolute top-20 right-[-200px] w-[700px] h-[700px] bg-purple-600/8 blur-[160px]" />
@@ -174,7 +177,7 @@ export default function Grooveflix() {
 
       <AudioControlPanel
         vuMeterData={vuMeterData}
-        isPlaying={isAudioPlaying}
+        isPlaying={isAudioContextPlaying}
         timeDomainBytesL={timeDomainBytesL}
         timeDomainBytesR={timeDomainBytesR}
         volume={volume}
