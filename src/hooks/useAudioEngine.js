@@ -179,74 +179,62 @@ export function useAudioEngine() {
   const animLoop = useCallback(() => {
     stopAnimLoop();
 
-    if (!isPlayingRef.current) return;
-
     const ctx = Howler.ctx;
-    if (!ctx || ctx.state === 'closed' || !analyserLRef.current || !analyserRRef.current) {
-      animFrameRef.current = requestAnimationFrame(animLoop);
-      return;
-    }
+    const ctxOk = ctx && ctx.state === 'running' && analyserLRef.current && analyserRRef.current;
 
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        if (isPlayingRef.current) {
-          animFrameRef.current = requestAnimationFrame(animLoop);
+    if (ctxOk) {
+      try {
+        analyserLRef.current.getByteTimeDomainData(dataLRef.current);
+        analyserRRef.current.getByteTimeDomainData(dataRRef.current);
+
+        const rmsL = calculateRMS(dataLRef.current);
+        const rmsR = calculateRMS(dataRRef.current);
+
+        const combinedTime = new Float32Array(dataLRef.current.length + dataRRef.current.length);
+        combinedTime.set(dataLRef.current, 0);
+        combinedTime.set(dataRRef.current, dataLRef.current.length);
+        setTimeDomainData(combinedTime);
+
+        const timeBytesL = new Uint8Array(dataLRef.current.length);
+        const timeBytesR = new Uint8Array(dataRRef.current.length);
+        analyserLRef.current.getByteTimeDomainData(timeBytesL);
+        analyserRRef.current.getByteTimeDomainData(timeBytesR);
+        setTimeDomainBytesL(timeBytesL);
+        setTimeDomainBytesR(timeBytesR);
+
+        const freqL = new Uint8Array(analyserLRef.current.frequencyBinCount);
+        const freqR = new Uint8Array(analyserRRef.current.frequencyBinCount);
+        analyserLRef.current.getByteFrequencyData(freqL);
+        analyserRRef.current.getByteFrequencyData(freqR);
+
+        const combinedFreq = new Uint8Array(freqL.length);
+        for (let i = 0; i < combinedFreq.length; i++) {
+          combinedFreq[i] = Math.max(freqL[i], freqR[i]);
         }
-      });
-      return;
-    }
-
-    try {
-      analyserLRef.current.getByteTimeDomainData(dataLRef.current);
-      analyserRRef.current.getByteTimeDomainData(dataRRef.current);
-
-      const rmsL = calculateRMS(dataLRef.current);
-      const rmsR = calculateRMS(dataRRef.current);
-
-      const combinedTime = new Float32Array(dataLRef.current.length + dataRRef.current.length);
-      combinedTime.set(dataLRef.current, 0);
-      combinedTime.set(dataRRef.current, dataLRef.current.length);
-      setTimeDomainData(combinedTime);
-
-      const timeBytesL = new Uint8Array(dataLRef.current.length);
-      const timeBytesR = new Uint8Array(dataRRef.current.length);
-      analyserLRef.current.getByteTimeDomainData(timeBytesL);
-      analyserRRef.current.getByteTimeDomainData(timeBytesR);
-      setTimeDomainBytesL(timeBytesL);
-      setTimeDomainBytesR(timeBytesR);
-
-      const freqL = new Uint8Array(analyserLRef.current.frequencyBinCount);
-      const freqR = new Uint8Array(analyserRRef.current.frequencyBinCount);
-      analyserLRef.current.getByteFrequencyData(freqL);
-      analyserRRef.current.getByteFrequencyData(freqR);
-
-      const combinedFreq = new Uint8Array(freqL.length);
-      for (let i = 0; i < combinedFreq.length; i++) {
-        combinedFreq[i] = Math.max(freqL[i], freqR[i]);
+        setAnalyserData(combinedFreq);
+        
+        const reducedL = new Uint8Array(64);
+        const reducedR = new Uint8Array(64);
+        const stepL = Math.floor(freqL.length / 64);
+        const stepR = Math.floor(freqR.length / 64);
+        for (let i = 0; i < 64; i++) {
+          reducedL[i] = freqL[i * stepL] || 0;
+          reducedR[i] = freqR[i * stepR] || 0;
+        }
+        setSpectrumL(reducedL);
+        setSpectrumR(reducedR);
+        
+        const bassL = new Uint8Array(8);
+        const bassR = new Uint8Array(8);
+        for (let i = 0; i < 8; i++) {
+          bassL[i] = freqL[i] || 0;
+          bassR[i] = freqR[i] || 0;
+        }
+        setBassDataL(bassL);
+        setBassDataR(bassR);
+      } catch (e) {
+        console.log('[Audio] Analyser read error:', e.message);
       }
-      setAnalyserData(combinedFreq);
-      
-      const reducedL = new Uint8Array(64);
-      const reducedR = new Uint8Array(64);
-      const stepL = Math.floor(freqL.length / 64);
-      const stepR = Math.floor(freqR.length / 64);
-      for (let i = 0; i < 64; i++) {
-        reducedL[i] = freqL[i * stepL] || 0;
-        reducedR[i] = freqR[i * stepR] || 0;
-      }
-      setSpectrumL(reducedL);
-      setSpectrumR(reducedR);
-      
-      const bassL = new Uint8Array(8);
-      const bassR = new Uint8Array(8);
-      for (let i = 0; i < 8; i++) {
-        bassL[i] = freqL[i] || 0;
-        bassR[i] = freqR[i] || 0;
-      }
-      setBassDataL(bassL);
-      setBassDataR(bassR);
-    } catch (e) {
-      console.log('[Audio] Analyser read error:', e.message);
     }
 
     if (isPlayingRef.current) {
@@ -328,12 +316,22 @@ export function useAudioEngine() {
         pool: 1,
         autoplay: false,
         preload: true,
+        onload: () => {
+          const dur = howl.duration();
+          setDuration(dur);
+          
+          connectAnalysers();
+          
+          if (autoplay) {
+            howl.play();
+          }
+          resolve(howl);
+        },
         onplay: () => {
           setIsPlaying(true);
           isPlayingRef.current = true;
           
           ensureContextRunning();
-          connectAnalysers();
           stopAnimLoop();
           animFrameRef.current = requestAnimationFrame(animLoop);
           
@@ -357,15 +355,6 @@ export function useAudioEngine() {
           if (typeof pos === 'number') {
             setCurrentTime(pos);
           }
-        },
-        onload: () => {
-          const dur = howl.duration();
-          setDuration(dur);
-          
-          if (autoplay) {
-            howl.play();
-          }
-          resolve(howl);
         },
         onloaderror: (id, err) => {
           reject(new Error('Failed to load audio: ' + err));
