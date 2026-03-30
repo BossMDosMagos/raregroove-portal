@@ -549,7 +549,52 @@ CLOUDFLARE_API_TOKEN=cfut_HES0PZBEdFw7KyIgZalxedoSAoSMnSgV0AMSvMe720089df8
 
 ---
 
-*Última atualização: 2026-03-24 02:50 UTC-3*
+*Última atualização: 2026-03-30 08:15 UTC-3*
+
+---
+
+## Arquitetura de Áudio 3.0 (GrooveflixPlayer)
+
+### Visão Geral
+Sistema de áudio integrado que conecta o player de streaming com visualizadores VU Meter, Woofer e Spectrum usando Web Audio API através do Howler.js.
+
+### Arquivos Principais
+- **Player Integrado:** `src/hooks/useGrooveflixPlayer.js`
+- **Singleton de Analysers:** `src/hooks/useGlobalAudioAnalyser.js`
+- **Engine de Áudio:** `src/hooks/useAudioEngine.js`
+- **Contexto de Estado:** `src/contexts/AudioPlayerContext.jsx`
+
+### Fluxo de Reprodução
+1. `CoverFlow3D` chama `playAlbum()` do `useGrooveflixPlayer`
+2. `AudioPlayerContext.playAlbum()` expande tracks e define `currentTrack`
+3. Effect em `Grooveflix.jsx` detecta mudança de `currentTrack`
+4. `loadAndPlayTrack()` busca presigned URL via `getPresignedUrl()`
+5. `Howl` carrega o áudio com `html5: false` (Web Audio API)
+6. No callback `onload`, `connectAnalysers()` conecta os nós de análise
+7. No callback `onplay`, inicia o loop de animação dos visualizadores
+
+### Conexão dos Analysers
+```
+Howler.masterGain → ChannelSplitter(2)
+                            ↓
+              ┌─────────────┴─────────────┐
+              ↓                           ↓
+        AnalyserL                    AnalyserR
+        (FFT 4096)                  (FFT 4096)
+              ↓                           ↓
+        ChannelMerger(2) → destination
+```
+
+### Hooks de Visualização
+Todos usam `useGlobalAudioAnalyser()` para acessar dados:
+- **VUMeterLeft/Right:** `getRMS()` para nível RMS esquerdo/direito
+- **VirtualWooferLeft/Right:** `getBassEnergy()` para frequências 0-60Hz
+- **SpectrumLeft/Right:** `getWaveform()` para waveform stereo
+
+### Problemas Corrigidos
+1. **VUs travados no máximo:** Conectar analysers no `onload` (não no `onplay`)
+2. **Memória vazando (3000+ frames):** Um único `animFrameId` com cancel antes do loop
+3. **ctx.state === "closed":** `ensureContextRunning()` faz resume() antes de ler dados
 
 ---
 
