@@ -13,6 +13,7 @@ let state = {
   dataR: null,
   animFrameId: null,
   isPlaying: false,
+  audioElement: null,
 };
 
 export function useGrooveflixPlayer() {
@@ -54,7 +55,10 @@ export function useGrooveflixPlayer() {
   
   const connectAnalysers = useCallback(() => {
     const ctx = Howler.ctx;
-    if (!ctx) { console.error('[Player] Howler.ctx indisponível'); return; }
+    if (!ctx) { 
+      console.error('[Player] Howler.ctx indisponível'); 
+      return; 
+    }
     
     disconnectAnalysers();
     
@@ -123,59 +127,52 @@ export function useGrooveflixPlayer() {
     disconnectAnalysers();
     state.isPlaying = false;
     setIsPlaying(false);
+    setCurrentTime(0);
     
     Howler.autoSuspend = false;
-    Howler.volume(0.8);
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
     if (!url) {
-      console.log('[Player] Sem URL');
+      console.error('[Player] Sem URL');
       return;
     }
     
     state.sound = new Howl({
       src: [url],
-      html5: true,
-      format: ['mp3', 'flac', 'wav'],
+      html5: false,
+      format: ['flac', 'mp3'],
       volume: 0.8,
       preload: true,
-      
       onload: () => {
         setDuration(state.sound.duration());
-        connectAnalysers();
         state.sound.play();
       },
-      
       onloaderror: (id, err) => {
         console.error('[Player] Load error:', err);
       },
-      
       onplay: () => {
         state.isPlaying = true;
         setIsPlaying(true);
         stopAnimLoop();
         ensureContextRunning();
+        connectAnalysers();
         state.animFrameId = requestAnimationFrame(animLoop);
       },
-      
       onpause: () => {
         state.isPlaying = false;
         setIsPlaying(false);
         stopAnimLoop();
       },
-      
       onstop: () => {
         state.isPlaying = false;
         setIsPlaying(false);
         stopAnimLoop();
       },
-      
       onend: () => {
         state.isPlaying = false;
         setIsPlaying(false);
         stopAnimLoop();
       },
-      
       onplayerror: (id, err) => {
         console.error('[Player] Play error:', err);
         Howler.ctx?.resume().then(() => state.sound?.play());

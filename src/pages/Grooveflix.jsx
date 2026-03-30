@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Film, Sparkles, Plus, Music, RotateCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { Howler } from 'howler';
 import GrooveflixUploader from '../components/GrooveflixUploader';
 import CoverFlow3D from '../components/CoverFlow3D';
 import EqualizerBackground from '../components/EqualizerBackground';
@@ -72,6 +73,21 @@ export default function Grooveflix() {
       play();
     }
   }, [isAudioContextPlaying, globalCurrentTrack, pause, play]);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      const ctx = Howler.ctx;
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   const handlePause = useCallback(() => {
     pause();
