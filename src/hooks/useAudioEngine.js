@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Howl, Howler } from 'howler';
+import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
 
 const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
@@ -123,6 +124,7 @@ export function useAudioEngine() {
     dataLRef.current = null;
     dataRRef.current = null;
     isConnectedRef.current = false;
+    unregisterAnalysers();
   }, []);
 
   const connectAnalysers = useCallback(() => {
@@ -158,6 +160,13 @@ export function useAudioEngine() {
     mergerRef.current.connect(ctx.destination);
 
     isConnectedRef.current = true;
+    
+    registerAnalysers({
+      analyserL: analyserLRef.current,
+      analyserR: analyserRRef.current,
+      splitter: splitterRef.current,
+      merger: mergerRef.current,
+    });
   }, [disconnectAnalysers]);
 
   const stopAnimLoop = useCallback(() => {

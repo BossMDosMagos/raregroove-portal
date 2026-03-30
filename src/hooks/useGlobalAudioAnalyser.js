@@ -1,155 +1,142 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Howler } from 'howler';
 
-let globalAnalyserInstance = null;
-let globalAnalyserState = null;
-let initializationPromise = null;
+let sharedState = null;
 
-function createGlobalAnalyser() {
-  if (globalAnalyserInstance) return globalAnalyserInstance;
+function initSharedState() {
+  if (sharedState) return sharedState;
   
-  const ctx = Howler.ctx;
-  if (!ctx) return null;
-
-  const masterGain = Howler.masterGain;
-  if (!masterGain) return null;
-
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.8;
-  
-  const freqData = new Uint8Array(analyser.frequencyBinCount);
-  const timeData = new Uint8Array(analyser.frequencyBinCount);
-  
-  masterGain.connect(analyser);
-  analyser.connect(ctx.destination);
-  
-  globalAnalyserInstance = {
-    analyser,
-    freqData,
-    timeData,
-    ctx,
-    
-    update() {
-      analyser.getByteFrequencyData(freqData);
-      analyser.getByteTimeDomainData(timeData);
-    },
-    
-    getRMS() {
-      analyser.getByteTimeDomainData(timeData);
-      let sum = 0;
-      for (let i = 0; i < timeData.length; i++) {
-        const val = (timeData[i] - 128) / 128;
-        sum += val * val;
-      }
-      return Math.sqrt(sum / timeData.length);
-    },
-    
-    getBassEnergy() {
-      analyser.getByteFrequencyData(freqData);
-      const nyquist = ctx.sampleRate / 2;
-      const binSize = nyquist / (analyser.frequencyBinCount / 2);
-      const bassMinBin = Math.floor(20 / binSize);
-      const bassMaxBin = Math.ceil(60 / binSize);
-      
-      let sum = 0;
-      const count = bassMaxBin - bassMinBin;
-      for (let i = bassMinBin; i < bassMaxBin && i < freqData.length; i++) {
-        const norm = freqData[i] / 255;
-        sum += norm * norm;
-      }
-      return Math.sqrt(sum / Math.max(count, 1));
-    },
-    
-    getSpectrum() {
-      analyser.getByteFrequencyData(freqData);
-      return freqData;
-    },
-    
-    getWaveform() {
-      analyser.getByteTimeDomainData(timeData);
-      return timeData;
-    },
-    
-    isReady() {
-      return ctx.state === 'running';
-    },
-    
-    destroy() {
-      try { analyser.disconnect(); } catch (e) {}
-      masterGain.disconnect(analyser);
-      globalAnalyserInstance = null;
-    }
+  sharedState = {
+    analyserL: null,
+    analyserR: null,
+    splitter: null,
+    merger: null,
+    isConnected: false,
+    listeners: new Set(),
+    updateAnalysers: null,
   };
   
-  return globalAnalyserInstance;
+  return sharedState;
 }
 
-function initAnalyser() {
-  if (initializationPromise) return initializationPromise;
+export function registerAnalysers({ analyserL, analyserR, splitter, merger }) {
+  const state = initSharedState();
+  state.analyserL = analyserL;
+  state.analyserR = analyserR;
+  state.splitter = splitter;
+  state.merger = merger;
+  state.isConnected = true;
   
-  initializationPromise = new Promise((resolve) => {
-    const tryInit = () => {
-      const instance = createGlobalAnalyser();
-      if (instance) {
-        resolve(instance);
-      } else {
-        setTimeout(tryInit, 100);
-      }
-    };
-    tryInit();
-  });
-  
-  return initializationPromise;
+  state.listeners.forEach(fn => fn());
+}
+
+export function unregisterAnalysers() {
+  if (sharedState) {
+    sharedState.analyserL = null;
+    sharedState.analyserR = null;
+    sharedState.splitter = null;
+    sharedState.merger = null;
+    sharedState.isConnected = false;
+  }
 }
 
 export function useGlobalAudioAnalyser() {
-  const analyserRef = useRef(null);
+  const state = initSharedState();
   const [isReady, setIsReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [, forceUpdate] = useState(0);
   
   useEffect(() => {
-    initAnalyser().then((instance) => {
-      analyserRef.current = instance;
-      setIsReady(instance.isReady());
-    });
+    const checkReady = () => {
+      const ready = state.isConnected && state.analyserL && state.analyserR;
+      setIsReady(ready);
+      forceUpdate(n => n + 1);
+    };
     
-    const checkState = setInterval(() => {
-      if (analyserRef.current) {
-        const ready = analyserRef.current.isReady();
-        setIsReady(ready);
-        if (!ready) {
-          setIsPlaying(false);
-        }
-      }
-    }, 500);
+    state.listeners.add(checkReady);
+    checkReady();
     
     return () => {
-      clearInterval(checkState);
+      state.listeners.delete(checkReady);
     };
   }, []);
   
-  const setPlayingState = useCallback((playing) => {
-    setIsPlaying(playing);
+  const getRMS = useCallback(() => {
+    if (!state.analyserL || !state.analyserR) return 0;
+    
+    const dataL = new Uint8Array(state.analyserL.frequencyBinCount);
+    const dataR = new Uint8Array(state.analyserR.frequencyBinCount);
+    
+    state.analyserL.getByteTimeDomainData(dataL);
+    state.analyserR.getByteTimeDomainData(dataR);
+    
+    let sumL = 0, sumR = 0;
+    for (let i = 0; i < dataL.length; i++) {
+      const vL = (dataL[i] - 128) / 128;
+      const vR = (dataR[i] - 128) / 128;
+      sumL += vL * vL;
+      sumR += vR * vR;
+    }
+    
+    const rmsL = Math.sqrt(sumL / dataL.length);
+    const rmsR = Math.sqrt(sumR / dataR.length);
+    
+    return (rmsL + rmsR) / 2;
+  }, []);
+  
+  const getBassEnergy = useCallback(() => {
+    if (!state.analyserL || !state.analyserR) return 0;
+    
+    const ctx = Howler.ctx;
+    if (!ctx) return 0;
+    
+    const freqL = new Uint8Array(state.analyserL.frequencyBinCount);
+    const freqR = new Uint8Array(state.analyserR.frequencyBinCount);
+    
+    state.analyserL.getByteFrequencyData(freqL);
+    state.analyserR.getByteFrequencyData(freqR);
+    
+    const nyquist = ctx.sampleRate / 2;
+    const binSize = nyquist / (state.analyserL.frequencyBinCount / 2);
+    const bassMinBin = Math.floor(20 / binSize);
+    const bassMaxBin = Math.ceil(60 / binSize);
+    
+    let sumL = 0, sumR = 0;
+    let count = bassMaxBin - bassMinBin;
+    
+    for (let i = bassMinBin; i < bassMaxBin && i < freqL.length; i++) {
+      const normL = freqL[i] / 255;
+      const normR = freqR[i] / 255;
+      sumL += normL * normL;
+      sumR += normR * normR;
+    }
+    
+    const bassL = Math.sqrt(sumL / Math.max(count, 1));
+    const bassR = Math.sqrt(sumR / Math.max(count, 1));
+    
+    return (bassL + bassR) / 2;
+  }, []);
+  
+  const getWaveform = useCallback(() => {
+    if (!state.analyserL) return new Uint8Array(0);
+    
+    const data = new Uint8Array(state.analyserL.frequencyBinCount);
+    state.analyserL.getByteTimeDomainData(data);
+    return data;
+  }, []);
+  
+  const getSpectrum = useCallback(() => {
+    if (!state.analyserL) return new Uint8Array(0);
+    
+    const data = new Uint8Array(state.analyserL.frequencyBinCount);
+    state.analyserL.getByteFrequencyData(data);
+    return data;
   }, []);
   
   return {
-    analyser: analyserRef.current,
     isReady,
-    isPlaying,
-    setPlayingState,
-    update: () => analyserRef.current?.update(),
-    getRMS: () => analyserRef.current?.getRMS() || 0,
-    getBassEnergy: () => analyserRef.current?.getBassEnergy() || 0,
-    getSpectrum: () => analyserRef.current?.getSpectrum() || new Uint8Array(0),
-    getWaveform: () => analyserRef.current?.getWaveform() || new Uint8Array(0),
+    getRMS,
+    getBassEnergy,
+    getWaveform,
+    getSpectrum,
   };
-}
-
-export function getGlobalAnalyser() {
-  return globalAnalyserInstance;
-}
-
-export function initGlobalAnalyser() {
-  return initAnalyser();
 }
