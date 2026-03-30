@@ -7,9 +7,8 @@ import CoverFlow3D from '../components/CoverFlow3D';
 import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
-import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 
-import { useAudioEngine } from '../hooks/useAudioEngine.js';
+import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
@@ -45,25 +44,43 @@ function normalizeTracks(items = []) {
 export default function Grooveflix() {
   const { t } = useI18n();
   const { isTrialing, isActive } = useSubscription();
-  const { setQueue, playTrack, currentTrack: globalCurrentTrack, isPlaying: isAudioContextPlaying, playAlbum, pauseTrack, resumeTrack, clearQueue } = useAudioPlayer();
-
-  const { volume, setVolume, currentTime, duration, seek } = useAudioEngine();
+  const player = useGrooveflixPlayer();
+  const { 
+    setQueue, 
+    playTrack, 
+    currentTrack: globalCurrentTrack, 
+    isPlaying: isAudioContextPlaying, 
+    playAlbum, 
+    pauseTrack, 
+    resumeTrack, 
+    clearQueue,
+    loadAndPlayTrack,
+    volume,
+    setVolume,
+    currentTime,
+    duration,
+    seek,
+    play,
+    pause,
+    stop
+  } = player;
 
   const handlePlay = useCallback(() => {
     if (isAudioContextPlaying) {
-      pauseTrack();
+      pause();
     } else if (globalCurrentTrack) {
-      resumeTrack();
+      play();
     }
-  }, [isAudioContextPlaying, globalCurrentTrack, pauseTrack, resumeTrack]);
+  }, [isAudioContextPlaying, globalCurrentTrack, pause, play]);
 
   const handlePause = useCallback(() => {
-    pauseTrack();
-  }, [pauseTrack]);
+    pause();
+  }, [pause]);
 
   const handleStop = useCallback(() => {
+    stop();
     clearQueue();
-  }, [clearQueue]);
+  }, [stop, clearQueue]);
 
   const handleSeekBackward = useCallback(() => {
     if (currentTime > 0) {
@@ -80,6 +97,12 @@ export default function Grooveflix() {
   const handleEject = useCallback(() => {
     clearQueue();
   }, [clearQueue]);
+
+  useEffect(() => {
+    if (globalCurrentTrack && globalCurrentTrack.audioPath) {
+      loadAndPlayTrack(globalCurrentTrack);
+    }
+  }, [globalCurrentTrack, loadAndPlayTrack]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);

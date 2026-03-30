@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Play, Trash2, Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
+import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
@@ -39,7 +39,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
   const [activeTrackIndex, setActiveTrackIndex] = useState(null);
   
   const containerRef = useRef(null);
-  const { playAlbum, isPlaying } = useAudioPlayer() || {};
+  const { playAlbum, isPlaying } = useGrooveflixPlayer() || {};
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
