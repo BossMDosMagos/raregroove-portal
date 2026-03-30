@@ -18,6 +18,7 @@ export function useGrooveflixPlayer() {
   const volumeRef = useRef(0.8);
   const isInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const sourceConnectedRef = useRef(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -90,68 +91,26 @@ export function useGrooveflixPlayer() {
     }
   }, []);
   
-  const createAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeEventListener('error', () => {});
-      audioRef.current.removeEventListener('canplay', () => {});
-      audioRef.current.src = '';
-    }
-    
-    const audio = new Audio();
-    audio.preload = 'metadata';
-    
-    audio.addEventListener('timeupdate', () => {
-      setCurrentTime(audio.currentTime);
-    });
-    
-    audio.addEventListener('loadedmetadata', () => {
-      setDuration(audio.duration);
-    });
-    
-    audio.addEventListener('ended', () => {
-      setIsPlaying(false);
-      stopAnimLoop();
-      window.dispatchEvent(new CustomEvent('grooveflix-end'));
-    });
-    
-    audio.addEventListener('play', () => {
-      setIsPlaying(true);
-    });
-    
-    audio.addEventListener('pause', () => {
-      setIsPlaying(false);
-    });
-    
-    audioRef.current = audio;
-    return audio;
-  }, [stopAnimLoop]);
-  
-  const connectSource = useCallback((audio) => {
+  const connectMediaSource = useCallback(() => {
     const ctx = audioContextRef.current;
-    if (!ctx || !audio) return;
+    const audio = audioRef.current;
+    
+    if (!ctx || !audio || sourceConnectedRef.current) return;
     
     if (mediaSourceRef.current) {
-      try {
-        mediaSourceRef.current.disconnect();
-      } catch {}
+      try { mediaSourceRef.current.disconnect(); } catch {}
     }
     
     const mediaSource = ctx.createMediaElementSource(audio);
     mediaSource.connect(stereoGainRef.current);
     mediaSourceRef.current = mediaSource;
+    sourceConnectedRef.current = true;
   }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
-    if (!track || !track.audioPath) {
-      console.log('[GrooveflixPlayer] No audioPath in track');
-      return;
-    }
+    if (!track || !track.audioPath) return;
     
-    if (isLoadingRef.current) {
-      console.log('[GrooveflixPlayer] Already loading, skipping...');
-      return;
-    }
+    if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     
     if (audioRef.current) {
@@ -163,14 +122,29 @@ export function useGrooveflixPlayer() {
     disconnectAnalysers();
     setIsPlaying(false);
     isLoadingRef.current = false;
+    sourceConnectedRef.current = false;
     
-    const ctx = initAudioContext();
+    initAudioContext();
+    
+    const ctx = audioContextRef.current;
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
     
-    const audio = createAudio();
-    connectSource(audio);
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'metadata';
+    
+    audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
+    audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+      stopAnimLoop();
+    });
+    audio.addEventListener('play', () => setIsPlaying(true));
+    audio.addEventListener('pause', () => setIsPlaying(false));
+    
+    audioRef.current = audio;
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
     if (!url) {
@@ -180,18 +154,16 @@ export function useGrooveflixPlayer() {
     }
     
     audio.volume = volumeRef.current;
-    audio.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+    audio.src = url;
     audio.load();
     
     const onCanPlay = () => {
+      connectMediaSource();
+      audio.play().catch(console.error);
       isLoadingRef.current = false;
-      audio.play().catch(err => {
-        console.log('[GrooveflixPlayer] Play error:', err);
-      });
     };
     
     const onError = () => {
-      if (audio.error?.code === 4) return;
       console.log('[GrooveflixPlayer] Load error:', audio.error);
       isLoadingRef.current = false;
     };
@@ -199,7 +171,7 @@ export function useGrooveflixPlayer() {
     audio.addEventListener('canplay', onCanPlay, { once: true });
     audio.addEventListener('error', onError, { once: true });
     
-  }, [audioPlayer, initAudioContext, createAudio, connectSource, stopAnimLoop, disconnectAnalysers]);
+  }, [audioPlayer, initAudioContext, connectMediaSource, stopAnimLoop, disconnectAnalysers]);
   
   const play = useCallback(async () => {
     const audio = audioRef.current;
@@ -210,17 +182,11 @@ export function useGrooveflixPlayer() {
       await ctx.resume();
     }
     
-    try {
-      await audio.play();
-    } catch (err) {
-      console.log('[GrooveflixPlayer] Play error:', err);
-    }
+    try { await audio.play(); } catch (err) { console.error(err); }
   }, []);
   
   const pause = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
+    audioRef.current?.pause();
   }, []);
   
   const stop = useCallback(() => {
@@ -259,9 +225,7 @@ export function useGrooveflixPlayer() {
     }
     
     if (mediaSourceRef.current) {
-      try {
-        mediaSourceRef.current.disconnect();
-      } catch {}
+      try { mediaSourceRef.current.disconnect(); } catch {}
       mediaSourceRef.current = null;
     }
     
@@ -271,12 +235,11 @@ export function useGrooveflixPlayer() {
     }
     
     isInitializedRef.current = false;
+    sourceConnectedRef.current = false;
   }, [stopAnimLoop, disconnectAnalysers]);
   
   useEffect(() => {
-    return () => {
-      dispose();
-    };
+    return () => { dispose(); };
   }, [dispose]);
   
   return {
