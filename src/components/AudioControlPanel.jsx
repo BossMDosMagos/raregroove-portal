@@ -3,6 +3,7 @@ import { VUMeterRight } from './VUMeterRight.jsx';
 import { VirtualWooferLeft, VirtualWooferRight } from './VirtualWoofer.jsx';
 import { SpectrumLeft, SpectrumRight } from './SpectrumVisualizer.jsx';
 import { VolumeKnob } from './VolumeKnob.jsx';
+import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
 
 export default function AudioControlPanel({ 
@@ -69,6 +70,14 @@ export default function AudioControlPanel({
               onChange={onVolumeChange || (() => {})} 
               size={120}
             />
+          </div>
+
+          {/* Tone Knobs */}
+          <div className="flex justify-center gap-3 mb-3">
+            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Bass" />
+            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Low" />
+            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Mid" />
+            <ToneKnob value={0.5} onChange={() => {}} size={70} label="High" />
           </div>
 
           {/* Player Controls */}
