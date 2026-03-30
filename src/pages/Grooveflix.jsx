@@ -49,6 +49,35 @@ export default function Grooveflix() {
 
   const { vuMeterData, isPlaying: isAudioPlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, timeDomainBytesL, timeDomainBytesR } = useAudioEngine();
 
+  const handlePlay = useCallback(() => {
+    play();
+  }, [play]);
+
+  const handlePause = useCallback(() => {
+    pause();
+  }, [pause]);
+
+  const handleStop = useCallback(() => {
+    stop();
+  }, [stop]);
+
+  const handleSeekBackward = useCallback(() => {
+    if (currentTime > 0) {
+      seek(Math.max(0, currentTime - 10));
+    }
+  }, [seek, currentTime]);
+
+  const handleSeekForward = useCallback(() => {
+    if (currentTime < duration) {
+      seek(Math.min(duration, currentTime + 10));
+    }
+  }, [seek, currentTime, duration]);
+
+  const handleEject = useCallback(() => {
+    stop();
+    setQueue([]);
+  }, [stop, setQueue]);
+
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [focusedItem, setFocusedItem] = useState(null);
@@ -150,6 +179,12 @@ export default function Grooveflix() {
         timeDomainBytesR={timeDomainBytesR}
         volume={volume}
         onVolumeChange={setVolume}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onStop={handleStop}
+        onSeekBackward={handleSeekBackward}
+        onSeekForward={handleSeekForward}
+        onEject={handleEject}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '340px', marginRight: '340px', maxHeight: 'calc(100vh - 80px)' }}>

@@ -3,6 +3,7 @@ import { VUMeterRight } from './VUMeterRight.jsx';
 import { VirtualWooferLeft, VirtualWooferRight } from './VirtualWoofer.jsx';
 import { SpectrumLeft, SpectrumRight } from './SpectrumVisualizer.jsx';
 import { VolumeKnob } from './VolumeKnob.jsx';
+import { PlayerControls } from './PlayerControls.jsx';
 
 export default function AudioControlPanel({ 
   vuMeterData,
@@ -10,7 +11,13 @@ export default function AudioControlPanel({
   timeDomainBytesL,
   timeDomainBytesR,
   volume,
-  onVolumeChange
+  onVolumeChange,
+  onPlay,
+  onPause,
+  onStop,
+  onSeekBackward,
+  onSeekForward,
+  onEject
 }) {
   return (
     <>
@@ -61,6 +68,19 @@ export default function AudioControlPanel({
               value={volume || 0} 
               onChange={onVolumeChange || (() => {})} 
               size={170}
+            />
+          </div>
+
+          {/* Player Controls */}
+          <div className="flex justify-center mb-3">
+            <PlayerControls
+              isPlaying={isPlaying}
+              onPlay={onPlay || (() => {})}
+              onPause={onPause || (() => {})}
+              onStop={onStop || (() => {})}
+              onSeekBackward={onSeekBackward || (() => {})}
+              onSeekForward={onSeekForward || (() => {})}
+              onEject={onEject || (() => {})}
             />
           </div>
 
