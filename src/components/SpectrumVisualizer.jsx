@@ -158,7 +158,6 @@ function SpectrumChannel({ isPlaying, side }) {
       
       isSilentRef.current = false;
       
-      update?.();
       const waveformData = getWaveform();
       
       ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -178,7 +177,7 @@ function SpectrumChannel({ isPlaying, side }) {
         cancelAnimationFrame(animRef.current);
       }
     };
-  }, [isReady, isPlaying, getWaveform, update]);
+  }, [isReady, isPlaying, getWaveform]);
 
   return (
     <canvas

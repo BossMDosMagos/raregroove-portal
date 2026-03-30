@@ -124,7 +124,6 @@ export function VUMeterLeft({ isPlaying }) {
       let leftRMS = 0;
       
       if (isReady && isPlaying) {
-        update?.();
         leftRMS = getRMS();
       }
 
@@ -155,7 +154,7 @@ export function VUMeterLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getRMS, update]);
+  }, [isReady, isPlaying, getRMS]);
 
   return (
     <div className="flex items-center gap-2">
