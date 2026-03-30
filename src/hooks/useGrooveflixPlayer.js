@@ -229,13 +229,10 @@ export function useGrooveflixPlayer() {
       return;
     }
     
-    const ext = track.audioPath.split('.').pop()?.toLowerCase() || 'mp3';
-    const format = ext === 'flac' ? ['flac'] : ext === 'wav' ? ['wav'] : ext === 'ogg' ? ['ogg'] : ext === 'm4a' ? ['m4a'] : ['mp3'];
-    
     const howl = new Howl({
       src: [url],
       html5: false,
-      format: format,
+      format: ['flac', 'mp3'],
       xhr: { method: 'GET', withCredentials: false },
       volume: volumeRef.current,
       loop: false,
