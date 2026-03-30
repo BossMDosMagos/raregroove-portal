@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import vuRImg from '../assets/images/vu/vu-r.png';
+import { useGlobalAudioAnalyser } from '../hooks/useGlobalAudioAnalyser.js';
 
 const ANSI = {
   OMEGA_N: 21.0,
@@ -10,13 +11,15 @@ const ANSI = {
   RMS_FRAMES: 18,
 };
 
-export function VUMeterRight({ vuMeterData, isPlaying }) {
+export function VUMeterRight({ isPlaying }) {
   const canvasRef = useRef(null);
   const ballRef = useRef({ pos: 0, vel: 0 });
   const rmsBufRef = useRef(new Float32Array(ANSI.RMS_FRAMES));
   const targetRef = useRef(0);
   const lastTimeRef = useRef(null);
   const animationRef = useRef(null);
+  
+  const { isReady, getRMS, update } = useGlobalAudioAnalyser();
 
   const vuToPos = (vu) => {
     return (vu - ANSI.SCALE_MIN) / (ANSI.SCALE_MAX - ANSI.SCALE_MIN);
@@ -119,11 +122,11 @@ export function VUMeterRight({ vuMeterData, isPlaying }) {
       lastTimeRef.current = timestamp;
 
       let rightRMS = 0;
-      if (vuMeterData && vuMeterData.rightRMS !== undefined) {
-        rightRMS = vuMeterData.rightRMS || 0;
+      
+      if (isReady && isPlaying) {
+        update();
+        rightRMS = getRMS();
       }
-
-      if (!isPlaying) rightRMS = 0;
 
       targetRef.current = rightRMS;
 
@@ -152,7 +155,7 @@ export function VUMeterRight({ vuMeterData, isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [vuMeterData, isPlaying]);
+  }, [isReady, isPlaying, getRMS, update]);
 
   return (
     <div className="flex items-center gap-2">
@@ -168,3 +171,5 @@ export function VUMeterRight({ vuMeterData, isPlaying }) {
     </div>
   );
 }
+
+export default VUMeterRight;

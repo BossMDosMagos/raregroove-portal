@@ -7,10 +7,7 @@ import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
 
 export default function AudioControlPanel({ 
-  vuMeterData,
   isPlaying,
-  timeDomainBytesL,
-  timeDomainBytesR,
   volume,
   onVolumeChange,
   onPlay,
@@ -55,12 +52,12 @@ export default function AudioControlPanel({
 
           {/* VU Meter Esquerdo */}
           <div className="flex justify-center mb-3">
-            <VUMeterLeft vuMeterData={vuMeterData} isPlaying={isPlaying} />
+            <VUMeterLeft isPlaying={isPlaying} />
           </div>
 
           {/* Spectrum Esquerdo */}
           <div className="flex justify-center mb-3">
-            <SpectrumLeft timeDomainL={timeDomainBytesL} isPlaying={isPlaying} />
+            <SpectrumLeft isPlaying={isPlaying} />
           </div>
 
           {/* Volume Knob */}
@@ -95,7 +92,7 @@ export default function AudioControlPanel({
 
           {/* Woofer Esquerdo */}
           <div className="flex items-center justify-center mt-auto mb-4">
-            <VirtualWooferLeft />
+            <VirtualWooferLeft isPlaying={isPlaying} />
           </div>
         </div>
       </div>
@@ -133,17 +130,17 @@ export default function AudioControlPanel({
 
           {/* VU Meter Direito */}
           <div className="flex justify-center mb-3">
-            <VUMeterRight vuMeterData={vuMeterData} isPlaying={isPlaying} />
+            <VUMeterRight isPlaying={isPlaying} />
           </div>
 
           {/* Spectrum Direito */}
           <div className="flex justify-center mb-3">
-            <SpectrumRight timeDomainR={timeDomainBytesR} isPlaying={isPlaying} />
+            <SpectrumRight isPlaying={isPlaying} />
           </div>
 
           {/* Woofer Direito */}
           <div className="flex items-center justify-center mt-auto mb-4">
-            <VirtualWooferRight />
+            <VirtualWooferRight isPlaying={isPlaying} />
           </div>
         </div>
       </div>

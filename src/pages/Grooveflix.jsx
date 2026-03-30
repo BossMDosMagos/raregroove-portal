@@ -47,7 +47,7 @@ export default function Grooveflix() {
   const { isTrialing, isActive } = useSubscription();
   const { setQueue, playTrack, currentTrack: globalCurrentTrack, isPlaying: isAudioContextPlaying, playAlbum, pauseTrack, resumeTrack, clearQueue } = useAudioPlayer();
 
-  const { vuMeterData, isPlaying: isAudioEnginePlaying, volume, setVolume, currentTime, duration, play, pause, stop, seek, timeDomainBytesL, timeDomainBytesR } = useAudioEngine();
+  const { volume, setVolume, currentTime, duration, seek } = useAudioEngine();
 
   const handlePlay = useCallback(() => {
     if (isAudioContextPlaying) {
@@ -176,10 +176,7 @@ export default function Grooveflix() {
       </div>
 
       <AudioControlPanel
-        vuMeterData={vuMeterData}
         isPlaying={isAudioContextPlaying}
-        timeDomainBytesL={timeDomainBytesL}
-        timeDomainBytesR={timeDomainBytesR}
         volume={volume}
         onVolumeChange={setVolume}
         onPlay={handlePlay}
