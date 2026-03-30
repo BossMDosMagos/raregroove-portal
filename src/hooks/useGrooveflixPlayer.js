@@ -163,6 +163,7 @@ export function useGrooveflixPlayer() {
     stopAnimLoop();
     disconnectAnalysers();
     setIsPlaying(false);
+    isLoadingRef.current = false;
     
     const ctx = initAudioContext();
     if (ctx.state === 'suspended') {
@@ -191,6 +192,7 @@ export function useGrooveflixPlayer() {
     };
     
     const onError = () => {
+      if (audio.error?.code === 4) return;
       console.log('[GrooveflixPlayer] Load error:', audio.error);
       isLoadingRef.current = false;
     };

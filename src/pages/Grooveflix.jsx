@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Film, Sparkles, Plus, Music, RotateCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -98,11 +98,15 @@ export default function Grooveflix() {
     clearQueue();
   }, [clearQueue]);
 
+  const lastTrackIdRef = useRef(null);
+
   useEffect(() => {
-    if (globalCurrentTrack && globalCurrentTrack.audioPath) {
+    const trackId = globalCurrentTrack?.id;
+    if (trackId && trackId !== lastTrackIdRef.current && globalCurrentTrack.audioPath) {
+      lastTrackIdRef.current = trackId;
       loadAndPlayTrack(globalCurrentTrack);
     }
-  }, [globalCurrentTrack, loadAndPlayTrack]);
+  }, [globalCurrentTrack]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
