@@ -50,12 +50,27 @@ export function VirtualWooferLeft({ isPlaying }) {
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
   useEffect(() => {
+    const cone = coneRef.current;
+    if (!cone) return;
+    
+    const applyScale = () => {
+      const norm = Math.max(0, ch.L.x / P.excursion);
+      const scaleY = (1.0 + norm * 0.09) * manualScale;
+      const scaleX = (1.0 + norm * 0.04) * manualScale;
+      const transY = -ch.L.x * 0.35;
+      const bright = 1.0 + norm * 0.35;
+      cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
+      cone.style.filter = `brightness(${bright.toFixed(3)})`;
+    };
+
+    applyScale();
+    
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
 
       if (!isReady || !isPlaying) {
         stepMSD(ch.L, 0);
-        applyCone(coneRef.current, glowRef.current, ch.L.x * 0.9);
+        applyScale();
         return;
       }
 
@@ -65,17 +80,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       ch.L.smooth = rawL > ch.L.smooth ? ch.L.smooth + (rawL - ch.L.smooth) * attk : ch.L.smooth * 0.85;
 
       stepMSD(ch.L, ch.L.smooth);
-      
-      const cone = coneRef.current;
-      if (cone) {
-        const norm = Math.max(0, ch.L.x / P.excursion);
-        const scaleY = (1.0 + norm * 0.09) * manualScale;
-        const scaleX = (1.0 + norm * 0.04) * manualScale;
-        const transY = -ch.L.x * 0.35;
-        const bright = 1.0 + norm * 0.35;
-        cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
-        cone.style.filter = `brightness(${bright.toFixed(3)})`;
-      }
+      applyScale();
       
       if (glowRef.current) {
         const norm = Math.max(0, ch.L.x / P.excursion);
@@ -150,12 +155,27 @@ export function VirtualWooferRight({ isPlaying }) {
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
   useEffect(() => {
+    const cone = coneRef.current;
+    if (!cone) return;
+    
+    const applyScale = () => {
+      const norm = Math.max(0, ch.R.x / P.excursion);
+      const scaleY = (1.0 + norm * 0.09) * manualScale;
+      const scaleX = (1.0 + norm * 0.04) * manualScale;
+      const transY = -ch.R.x * 0.35;
+      const bright = 1.0 + norm * 0.35;
+      cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
+      cone.style.filter = `brightness(${bright.toFixed(3)})`;
+    };
+
+    applyScale();
+    
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
 
       if (!isReady || !isPlaying) {
         stepMSD(ch.R, 0);
-        applyCone(coneRef.current, glowRef.current, ch.R.x * 0.9);
+        applyScale();
         return;
       }
 
@@ -165,17 +185,7 @@ export function VirtualWooferRight({ isPlaying }) {
       ch.R.smooth = rawR > ch.R.smooth ? ch.R.smooth + (rawR - ch.R.smooth) * attk : ch.R.smooth * 0.85;
 
       stepMSD(ch.R, ch.R.smooth);
-      
-      const cone = coneRef.current;
-      if (cone) {
-        const norm = Math.max(0, ch.R.x / P.excursion);
-        const scaleY = (1.0 + norm * 0.09) * manualScale;
-        const scaleX = (1.0 + norm * 0.04) * manualScale;
-        const transY = -ch.R.x * 0.35;
-        const bright = 1.0 + norm * 0.35;
-        cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
-        cone.style.filter = `brightness(${bright.toFixed(3)})`;
-      }
+      applyScale();
       
       if (glowRef.current) {
         const norm = Math.max(0, ch.R.x / P.excursion);
