@@ -25,7 +25,7 @@ function stepMSD(c, force) {
   c.x = Math.max(-P.excursion * 0.2, Math.min(P.excursion, c.x));
 }
 
-const MANUAL_SCALE = 0.85;
+const MANUAL_SCALE = 0.80;
 
 function DebugPanel() {
   const [params, setParams] = useState({ ...P });
@@ -144,7 +144,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       const scaleX = (1.0 + norm * 0.04) * MANUAL_SCALE;
       const transY = -ch.L.x * 0.35;
       const bright = 1.0 + norm * 0.35;
-      cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
+      cone.style.transform = `translate(2px, ${transY.toFixed(2)}px) scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)})`;
       cone.style.filter = `brightness(${bright.toFixed(3)})`;
     };
 
@@ -233,7 +233,7 @@ export function VirtualWooferRight({ isPlaying }) {
       const scaleX = (1.0 + norm * 0.04) * MANUAL_SCALE;
       const transY = -ch.R.x * 0.35;
       const bright = 1.0 + norm * 0.35;
-      cone.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
+      cone.style.transform = `translate(2px, ${transY.toFixed(2)}px) scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)})`;
       cone.style.filter = `brightness(${bright.toFixed(3)})`;
     };
 
