@@ -10,6 +10,8 @@ const P = {
   bassMax: 200,
 };
 
+const MANUAL_SCALE = 8.43;
+
 const ch = {
   L: { x: 0, v: 0, a: 0, smooth: 0 },
   R: { x: 0, v: 0, a: 0, smooth: 0 },
@@ -25,10 +27,10 @@ function stepMSD(c, force) {
   c.x = Math.max(-P.excursion * 0.2, Math.min(P.excursion, c.x));
 }
 
-function applyCone(el, glowEl, x) {
+function applyCone(el, glowEl, x, baseScale) {
   const norm = Math.max(0, x / P.excursion);
-  const scaleY = 1.0 + norm * 0.09;
-  const scaleX = 1.0 + norm * 0.04;
+  const scaleY = (1.0 + norm * 0.09) * baseScale;
+  const scaleX = (1.0 + norm * 0.04) * baseScale;
   const transY = -x * 0.35;
   const bright = 1.0 + norm * 0.35;
 
@@ -54,7 +56,7 @@ export function VirtualWooferLeft({ isPlaying }) {
 
       if (!isReady || !isPlaying) {
         stepMSD(ch.L, 0);
-        applyCone(coneRef.current, glowRef.current, ch.L.x * 0.9);
+        applyCone(coneRef.current, glowRef.current, ch.L.x * 0.9, MANUAL_SCALE);
         return;
       }
 
@@ -64,7 +66,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       ch.L.smooth = rawL > ch.L.smooth ? ch.L.smooth + (rawL - ch.L.smooth) * attk : ch.L.smooth * 0.85;
 
       stepMSD(ch.L, ch.L.smooth);
-      applyCone(coneRef.current, glowRef.current, ch.L.x);
+      applyCone(coneRef.current, glowRef.current, ch.L.x, MANUAL_SCALE);
     };
 
     animate();
@@ -122,7 +124,7 @@ export function VirtualWooferRight({ isPlaying }) {
 
       if (!isReady || !isPlaying) {
         stepMSD(ch.R, 0);
-        applyCone(coneRef.current, glowRef.current, ch.R.x * 0.9);
+        applyCone(coneRef.current, glowRef.current, ch.R.x * 0.9, MANUAL_SCALE);
         return;
       }
 
@@ -132,7 +134,7 @@ export function VirtualWooferRight({ isPlaying }) {
       ch.R.smooth = rawR > ch.R.smooth ? ch.R.smooth + (rawR - ch.R.smooth) * attk : ch.R.smooth * 0.85;
 
       stepMSD(ch.R, ch.R.smooth);
-      applyCone(coneRef.current, glowRef.current, ch.R.x);
+      applyCone(coneRef.current, glowRef.current, ch.R.x, MANUAL_SCALE);
     };
 
     animate();
