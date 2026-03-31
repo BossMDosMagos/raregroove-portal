@@ -99,7 +99,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         <input 
           type="range" 
           min="0.1" 
-          max="3" 
+          max="10" 
           step="0.01"
           value={manualScale}
           onChange={(e) => setManualScale(parseFloat(e.target.value))}
@@ -204,7 +204,7 @@ export function VirtualWooferRight({ isPlaying }) {
         <input 
           type="range" 
           min="0.1" 
-          max="3" 
+          max="10" 
           step="0.01"
           value={manualScale}
           onChange={(e) => setManualScale(parseFloat(e.target.value))}
