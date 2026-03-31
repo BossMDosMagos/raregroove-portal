@@ -60,7 +60,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         ref={coneRef}
         src="/images/speaker/conemovel.png"
         alt="Cone"
-        className="absolute w-40 h-40 object-contain z-20"
+        className="absolute w-full h-full object-contain z-20"
         style={{ 
           transformOrigin: 'center',
           filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
@@ -126,7 +126,7 @@ export function VirtualWooferRight({ isPlaying }) {
         ref={coneRef}
         src="/images/speaker/conemovel.png"
         alt="Cone"
-        className="absolute w-40 h-40 object-contain z-20"
+        className="absolute w-full h-full object-contain z-20"
         style={{ 
           transformOrigin: 'center',
           filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
