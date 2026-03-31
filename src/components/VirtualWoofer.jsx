@@ -99,35 +99,34 @@ export function VirtualWooferLeft({ isPlaying }) {
   }, [isReady, isPlaying, getBassEnergyL, manualScale]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-52 h-52">
-        <div 
-          ref={glowRef}
-          className="absolute inset-[-12px] rounded-full z-0 pointer-events-none"
-          style={{
-            opacity: 0,
-            background: 'radial-gradient(circle, rgba(255,160,0,0.18) 0%, transparent 70%)',
-            transition: 'opacity 0.04s linear',
-          }}
-        />
-        <img 
-          src="/images/speaker/aro.png"
-          alt="Aro"
-          className="absolute inset-0 w-full h-full z-10"
-          style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))' }}
-        />
-        <img 
-          ref={coneRef}
-          src="/images/speaker/conemovel.png"
-          alt="Cone"
-          className="absolute inset-0 w-full h-full z-20"
-          style={{ 
-            transformOrigin: 'center center',
-            willChange: 'transform, filter',
-            transition: 'none',
-            filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
-          }}
-        />
+    <div className="relative w-52 h-52">
+      <div 
+        ref={glowRef}
+        className="absolute inset-[-12px] rounded-full z-0 pointer-events-none"
+        style={{
+          opacity: 0,
+          background: 'radial-gradient(circle, rgba(255,160,0,0.18) 0%, transparent 70%)',
+          transition: 'opacity 0.04s linear',
+        }}
+      />
+      <img 
+        src="/images/speaker/aro.png"
+        alt="Aro"
+        className="absolute inset-0 w-full h-full z-10"
+        style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))' }}
+      />
+      <img 
+        ref={coneRef}
+        src="/images/speaker/conemovel.png"
+        alt="Cone"
+        className="absolute inset-0 w-full h-full z-20"
+        style={{ 
+          transformOrigin: 'center center',
+          willChange: 'transform, filter',
+          transition: 'none',
+          filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
+        }}
+      />
     </div>
   );
 }
