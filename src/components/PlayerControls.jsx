@@ -3,8 +3,8 @@ export function PlayerControls({
   onPlay, 
   onPause, 
   onStop, 
-  onSeekBackward, 
-  onSeekForward,
+  onPreviousTrack, 
+  onNextTrack,
   onEject 
 }) {
   return (
@@ -22,13 +22,13 @@ export function PlayerControls({
       </button>
 
       <button
-        onClick={onSeekBackward}
+        onClick={onPreviousTrack}
         className="w-10 h-10 hover:scale-110 transition-transform"
-        title="Retrocesso"
+        title="Faixa Anterior"
       >
         <img 
-          src="/images/knob/retrocesso.png" 
-          alt="Retrocesso" 
+          src="/images/knob/back.png" 
+          alt="Anterior" 
           className="w-full h-full object-contain"
         />
       </button>
@@ -60,13 +60,13 @@ export function PlayerControls({
       )}
 
       <button
-        onClick={onSeekForward}
+        onClick={onNextTrack}
         className="w-10 h-10 hover:scale-110 transition-transform"
-        title="Avanço"
+        title="Próxima Faixa"
       >
         <img 
-          src="/images/knob/avanco.png" 
-          alt="Avanço" 
+          src="/images/knob/next.png" 
+          alt="Próxima" 
           className="w-full h-full object-contain"
         />
       </button>

@@ -98,17 +98,21 @@ export default function Grooveflix() {
     clearQueue();
   }, [stop, clearQueue]);
 
-  const handleSeekBackward = useCallback(() => {
-    if (currentTime > 0) {
-      seek(Math.max(0, currentTime - 10));
+  const handlePreviousTrack = useCallback(() => {
+    const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
+    if (currentIndex > 0) {
+      const prevTrack = queue[currentIndex - 1];
+      playTrack(prevTrack);
     }
-  }, [seek, currentTime]);
+  }, [queue, globalCurrentTrack, playTrack]);
 
-  const handleSeekForward = useCallback(() => {
-    if (currentTime < duration) {
-      seek(Math.min(duration, currentTime + 10));
+  const handleNextTrack = useCallback(() => {
+    const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
+    if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+      const nextTrack = queue[currentIndex + 1];
+      playTrack(nextTrack);
     }
-  }, [seek, currentTime, duration]);
+  }, [queue, globalCurrentTrack, playTrack]);
 
   const handleEject = useCallback(() => {
     clearQueue();
@@ -225,8 +229,8 @@ export default function Grooveflix() {
         onPlay={handlePlay}
         onPause={handlePause}
         onStop={handleStop}
-        onSeekBackward={handleSeekBackward}
-        onSeekForward={handleSeekForward}
+        onPreviousTrack={handlePreviousTrack}
+        onNextTrack={handleNextTrack}
         onEject={handleEject}
       />
 

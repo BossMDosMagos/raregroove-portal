@@ -13,8 +13,8 @@ export default function AudioControlPanel({
   onPlay,
   onPause,
   onStop,
-  onSeekBackward,
-  onSeekForward,
+  onPreviousTrack,
+  onNextTrack,
   onEject
 }) {
   return (
@@ -84,8 +84,8 @@ export default function AudioControlPanel({
               onPlay={onPlay || (() => {})}
               onPause={onPause || (() => {})}
               onStop={onStop || (() => {})}
-              onSeekBackward={onSeekBackward || (() => {})}
-              onSeekForward={onSeekForward || (() => {})}
+              onPreviousTrack={onPreviousTrack || (() => {})}
+              onNextTrack={onNextTrack || (() => {})}
               onEject={onEject || (() => {})}
             />
           </div>
