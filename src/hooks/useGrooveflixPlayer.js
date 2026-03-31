@@ -1,30 +1,73 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Howler } from 'howler';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
 
-let state = {
-  sound: null,
-  analyserL: null,
-  analyserR: null,
-  splitter: null,
-  merger: null,
-  dataL: null,
-  dataR: null,
-  animFrameId: null,
-  isPlaying: false,
-  audioElement: null,
-};
+let audioContextInstance = null;
+let sharedAnalyserL = null;
+let sharedAnalyserR = null;
+let sharedSplitter = null;
+let sharedMerger = null;
+let sharedGain = null;
+
+function initAudioGraph() {
+  if (audioContextInstance) return audioContextInstance;
+  
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  audioContextInstance = ctx;
+  
+  const splitter = ctx.createChannelSplitter(2);
+  sharedSplitter = splitter;
+  
+  const analyserL = ctx.createAnalyser();
+  analyserL.fftSize = 2048;
+  analyserL.smoothingTimeConstant = 0.8;
+  sharedAnalyserL = analyserL;
+  
+  const analyserR = ctx.createAnalyser();
+  analyserR.fftSize = 2048;
+  analyserR.smoothingTimeConstant = 0.8;
+  sharedAnalyserR = analyserR;
+  
+  const merger = ctx.createChannelMerger(2);
+  sharedMerger = merger;
+  
+  const gain = ctx.createGain();
+  gain.gain.value = 1;
+  sharedGain = gain;
+  
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
+  
+  analyserL.connect(merger, 0, 0);
+  analyserR.connect(merger, 0, 1);
+  
+  merger.connect(gain);
+  gain.connect(ctx.destination);
+  
+  registerAnalysers({
+    analyserL: sharedAnalyserL,
+    analyserR: sharedAnalyserR,
+    splitter: sharedSplitter,
+    merger: sharedMerger,
+  });
+  
+  return ctx;
+}
 
 export function useGrooveflixPlayer() {
   const audioPlayer = useAudioPlayer();
+  
+  const audioElementRef = useRef(null);
+  const mediaSourceRef = useRef(null);
+  const isConnectedRef = useRef(false);
+  const isLoadingRef = useRef(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   
   const ensureContextRunning = useCallback(async () => {
-    const ctx = Howler.ctx;
+    const ctx = audioContextInstance;
     if (!ctx) return false;
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch { return false; }
@@ -32,193 +75,146 @@ export function useGrooveflixPlayer() {
     return ctx.state === 'running';
   }, []);
   
-  const disconnectAnalysers = useCallback(() => {
-    try { if (state.splitter) state.splitter.disconnect(); } catch {}
-    try { if (state.analyserL) state.analyserL.disconnect(); } catch {}
-    try { if (state.analyserR) state.analyserR.disconnect(); } catch {}
-    try { if (state.merger) state.merger.disconnect(); } catch {}
-    state.splitter = null;
-    state.analyserL = null;
-    state.analyserR = null;
-    state.merger = null;
-    state.dataL = null;
-    state.dataR = null;
-    unregisterAnalysers();
-  }, []);
-  
-  const stopAnimLoop = useCallback(() => {
-    if (state.animFrameId !== null) {
-      cancelAnimationFrame(state.animFrameId);
-      state.animFrameId = null;
-    }
-  }, []);
-  
-  const connectAnalysers = useCallback(() => {
-    const ctx = Howler.ctx;
-    if (!ctx) { 
-      console.error('[Player] Howler.ctx indisponível'); 
-      return; 
-    }
+  const connectMediaSource = useCallback((audioElement) => {
+    if (isConnectedRef.current || !audioContextInstance || !audioElement) return;
     
-    disconnectAnalysers();
-    
-    const FFT_SIZE = 2048;
-    
-    state.splitter = ctx.createChannelSplitter(2);
-    
-    state.analyserL = ctx.createAnalyser();
-    state.analyserL.fftSize = FFT_SIZE;
-    state.analyserL.smoothingTimeConstant = 0.8;
-    state.dataL = new Uint8Array(state.analyserL.frequencyBinCount);
-    
-    state.analyserR = ctx.createAnalyser();
-    state.analyserR.fftSize = FFT_SIZE;
-    state.analyserR.smoothingTimeConstant = 0.8;
-    state.dataR = new Uint8Array(state.analyserR.frequencyBinCount);
-    
-    state.merger = ctx.createChannelMerger(2);
-    
-    Howler.masterGain.connect(state.splitter);
-    
-    state.splitter.connect(state.analyserL, 0);
-    state.splitter.connect(state.analyserR, 1);
-    
-    state.analyserL.connect(state.merger, 0, 0);
-    state.analyserR.connect(state.merger, 0, 1);
-    
-    state.merger.connect(ctx.destination);
-    
-    registerAnalysers({
-      analyserL: state.analyserL,
-      analyserR: state.analyserR,
-      splitter: state.splitter,
-      merger: state.merger,
-    });
-    
-    console.log('[Player] Analysers conectados. ctx.state =', ctx.state);
-  }, [disconnectAnalysers]);
-  
-  const animLoop = useCallback(async () => {
-    stopAnimLoop();
-    
-    const ctxOk = await ensureContextRunning();
-    if (!ctxOk || !state.analyserL || !state.analyserR) {
-      if (state.isPlaying) {
-        state.animFrameId = requestAnimationFrame(animLoop);
+    try {
+      if (mediaSourceRef.current) {
+        mediaSourceRef.current.disconnect();
       }
-      return;
+      
+      const mediaSource = audioContextInstance.createMediaElementSource(audioElement);
+      mediaSource.connect(sharedSplitter);
+      mediaSourceRef.current = mediaSource;
+      isConnectedRef.current = true;
+    } catch (err) {
+      console.log('[Player] MediaSource error:', err.message);
+    }
+  }, []);
+  
+  const cleanup = useCallback(() => {
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.src = '';
+      audioElementRef.current = null;
     }
     
-    if (state.isPlaying) {
-      state.animFrameId = requestAnimationFrame(animLoop);
+    if (mediaSourceRef.current) {
+      try { mediaSourceRef.current.disconnect(); } catch {}
+      mediaSourceRef.current = null;
     }
-  }, [stopAnimLoop, ensureContextRunning]);
+    
+    isConnectedRef.current = false;
+    isLoadingRef.current = false;
+  }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
     if (!track?.audioPath) return;
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     
-    if (state.sound) {
-      state.sound.stop();
-      state.sound.unload();
-      state.sound = null;
-    }
-    
-    stopAnimLoop();
-    disconnectAnalysers();
-    state.isPlaying = false;
+    cleanup();
     setIsPlaying(false);
     setCurrentTime(0);
     
-    Howler.autoSuspend = false;
+    const ctx = initAudioGraph();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
     if (!url) {
       console.error('[Player] Sem URL');
+      isLoadingRef.current = false;
       return;
     }
     
-    state.sound = new Howl({
-      src: [url],
-      html5: false,
-      format: ['flac', 'mp3'],
-      volume: 0.8,
-      preload: true,
-      onload: () => {
-        setDuration(state.sound.duration());
-        state.sound.play();
-      },
-      onloaderror: (id, err) => {
-        console.error('[Player] Load error:', err);
-      },
-      onplay: () => {
-        state.isPlaying = true;
-        setIsPlaying(true);
-        stopAnimLoop();
-        ensureContextRunning();
-        connectAnalysers();
-        state.animFrameId = requestAnimationFrame(animLoop);
-      },
-      onpause: () => {
-        state.isPlaying = false;
-        setIsPlaying(false);
-        stopAnimLoop();
-      },
-      onstop: () => {
-        state.isPlaying = false;
-        setIsPlaying(false);
-        stopAnimLoop();
-      },
-      onend: () => {
-        state.isPlaying = false;
-        setIsPlaying(false);
-        stopAnimLoop();
-      },
-      onplayerror: (id, err) => {
-        console.error('[Player] Play error:', err);
-        Howler.ctx?.resume().then(() => state.sound?.play());
-      },
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'none';
+    
+    audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
+    audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+    });
+    audio.addEventListener('play', () => {
+      setIsPlaying(true);
+      connectMediaSource(audio);
+    });
+    audio.addEventListener('pause', () => setIsPlaying(false));
+    audio.addEventListener('error', (e) => {
+      console.error('[Player] Audio error:', e);
+      isLoadingRef.current = false;
     });
     
-  }, [audioPlayer, connectAnalysers, disconnectAnalysers, stopAnimLoop, ensureContextRunning, animLoop]);
+    audioElementRef.current = audio;
+    audio.src = url;
+    audio.load();
+    
+    audio.play().then(() => {
+      isLoadingRef.current = false;
+    }).catch(err => {
+      console.error('[Player] Play failed:', err);
+      isLoadingRef.current = false;
+    });
+    
+  }, [audioPlayer, cleanup, connectMediaSource]);
   
   const play = useCallback(async () => {
-    if (!state.sound) return;
+    const audio = audioElementRef.current;
+    if (!audio) return;
+    
     await ensureContextRunning();
-    state.sound.play();
+    
+    try {
+      await audio.play();
+    } catch (err) {
+      console.error('[Player] Play error:', err);
+    }
   }, [ensureContextRunning]);
   
   const pause = useCallback(() => {
-    if (!state.sound) return;
-    state.sound.pause();
+    audioElementRef.current?.pause();
   }, []);
   
   const stop = useCallback(() => {
-    if (!state.sound) return;
-    state.sound.stop();
+    const audio = audioElementRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.pause();
+    setCurrentTime(0);
   }, []);
   
   const seek = useCallback((time) => {
-    if (!state.sound) return;
-    state.sound.seek(time);
-    setCurrentTime(time);
-  }, []);
+    const audio = audioElementRef.current;
+    if (!audio) return;
+    const clampedTime = Math.max(0, Math.min(time, duration));
+    audio.currentTime = clampedTime;
+    setCurrentTime(clampedTime);
+  }, [duration]);
   
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
-    Howler.volume(vol);
+    if (audioElementRef.current) {
+      audioElementRef.current.volume = vol;
+    }
+    if (sharedGain) {
+      sharedGain.gain.value = vol;
+    }
     audioPlayer.setVolume(vol);
   }, [audioPlayer]);
   
   const dispose = useCallback(() => {
-    stopAnimLoop();
-    if (state.sound) {
-      state.sound.stop();
-      state.sound.unload();
-      state.sound = null;
+    cleanup();
+    
+    if (mediaSourceRef.current) {
+      try { mediaSourceRef.current.disconnect(); } catch {}
+      mediaSourceRef.current = null;
     }
-    disconnectAnalysers();
-    state.isPlaying = false;
-  }, [stopAnimLoop, disconnectAnalysers]);
+    
+    unregisterAnalysers();
+  }, [cleanup]);
   
   useEffect(() => {
     return () => { dispose(); };
