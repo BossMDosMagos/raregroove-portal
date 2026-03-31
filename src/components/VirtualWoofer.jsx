@@ -6,15 +6,15 @@ const SCALE_MAX = 1.12;
 const SMOOTH = 0.85;
 
 export function VirtualWooferLeft({ isPlaying }) {
-  const speakerRef = useRef(null);
+  const coneRef = useRef(null);
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
   useEffect(() => {
-    const speaker = speakerRef.current;
-    if (!speaker) return;
+    const cone = coneRef.current;
+    if (!cone) return;
 
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
@@ -23,8 +23,8 @@ export function VirtualWooferLeft({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        speaker.style.transform = `scale(${scale.toFixed(4)})`;
-        speaker.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
+        cone.style.transform = `scale(${scale.toFixed(4)})`;
+        cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
       
@@ -35,8 +35,8 @@ export function VirtualWooferLeft({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      speaker.style.transform = `scale(${scale.toFixed(4)})`;
-      speaker.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
+      cone.style.transform = `scale(${scale.toFixed(4)})`;
+      cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
     animate();
@@ -49,28 +49,38 @@ export function VirtualWooferLeft({ isPlaying }) {
   }, [isReady, isPlaying, getBassEnergyL]);
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="relative w-52 h-52 flex items-center justify-center">
       <img 
-        ref={speakerRef}
-        src="/images/speaker/falante.png"
-        alt="Speaker L"
-        className="w-52 h-52 object-contain transition-transform duration-75"
+        src="/images/speaker/aro.png"
+        alt="Aro"
+        className="absolute inset-0 w-full h-full object-contain z-10"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+      />
+      <img 
+        ref={coneRef}
+        src="/images/speaker/conemovel.png"
+        alt="Cone"
+        className="absolute w-40 h-40 object-contain z-20"
+        style={{ 
+          transformOrigin: 'center',
+          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+          transition: 'transform 0.05s ease-out'
+        }}
       />
     </div>
   );
 }
 
 export function VirtualWooferRight({ isPlaying }) {
-  const speakerRef = useRef(null);
+  const coneRef = useRef(null);
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
   useEffect(() => {
-    const speaker = speakerRef.current;
-    if (!speaker) return;
+    const cone = coneRef.current;
+    if (!cone) return;
 
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
@@ -79,8 +89,8 @@ export function VirtualWooferRight({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        speaker.style.transform = `scale(${scale.toFixed(4)})`;
-        speaker.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
+        cone.style.transform = `scale(${scale.toFixed(4)})`;
+        cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
       
@@ -91,8 +101,8 @@ export function VirtualWooferRight({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      speaker.style.transform = `scale(${scale.toFixed(4)})`;
-      speaker.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
+      cone.style.transform = `scale(${scale.toFixed(4)})`;
+      cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
     animate();
@@ -105,13 +115,23 @@ export function VirtualWooferRight({ isPlaying }) {
   }, [isReady, isPlaying, getBassEnergyR]);
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="relative w-52 h-52 flex items-center justify-center">
       <img 
-        ref={speakerRef}
-        src="/images/speaker/falante.png"
-        alt="Speaker R"
-        className="w-52 h-52 object-contain transition-transform duration-75"
+        src="/images/speaker/aro.png"
+        alt="Aro"
+        className="absolute inset-0 w-full h-full object-contain z-10"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+      />
+      <img 
+        ref={coneRef}
+        src="/images/speaker/conemovel.png"
+        alt="Cone"
+        className="absolute w-40 h-40 object-contain z-20"
+        style={{ 
+          transformOrigin: 'center',
+          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+          transition: 'transform 0.05s ease-out'
+        }}
       />
     </div>
   );
