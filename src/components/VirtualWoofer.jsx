@@ -45,7 +45,7 @@ export function VirtualWooferLeft({ isPlaying }) {
   const coneRef = useRef(null);
   const glowRef = useRef(null);
   const animationRef = useRef(null);
-  const [manualScale, setManualScale] = useState(1);
+  const [manualScale] = useState(0.85);
 
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
@@ -128,20 +128,6 @@ export function VirtualWooferLeft({ isPlaying }) {
             filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
           }}
         />
-      </div>
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span>Scale:</span>
-        <input 
-          type="range" 
-          min="0.1" 
-          max="15" 
-          step="0.01"
-          value={manualScale}
-          onChange={(e) => setManualScale(parseFloat(e.target.value))}
-          className="w-24"
-        />
-        <span>{manualScale.toFixed(2)}</span>
-      </div>
     </div>
   );
 }
@@ -150,7 +136,7 @@ export function VirtualWooferRight({ isPlaying }) {
   const coneRef = useRef(null);
   const glowRef = useRef(null);
   const animationRef = useRef(null);
-  const [manualScale, setManualScale] = useState(1);
+  const [manualScale] = useState(0.85);
 
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
@@ -233,19 +219,6 @@ export function VirtualWooferRight({ isPlaying }) {
             filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
           }}
         />
-      </div>
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span>Scale:</span>
-        <input 
-          type="range" 
-          min="0.1" 
-          max="15" 
-          step="0.01"
-          value={manualScale}
-          onChange={(e) => setManualScale(parseFloat(e.target.value))}
-          className="w-24"
-        />
-        <span>{manualScale.toFixed(2)}</span>
       </div>
     </div>
   );
