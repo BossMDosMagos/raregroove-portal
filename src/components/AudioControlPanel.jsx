@@ -1,6 +1,6 @@
 import { VUMeterLeft } from './VUMeterLeft.jsx';
 import { VUMeterRight } from './VUMeterRight.jsx';
-import { VirtualWooferLeft, VirtualWooferRight } from './VirtualWoofer.jsx';
+import { VirtualWooferLeft, VirtualWooferRight, WooferDebugPanel } from './VirtualWoofer.jsx';
 import { SpectrumLeft, SpectrumRight } from './SpectrumVisualizer.jsx';
 import { VolumeKnob } from './VolumeKnob.jsx';
 import { ToneKnob } from './ToneKnob.jsx';
@@ -144,6 +144,8 @@ export default function AudioControlPanel({
           </div>
         </div>
       </div>
+
+      <WooferDebugPanel />
     </>
   );
 }
