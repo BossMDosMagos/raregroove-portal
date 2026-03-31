@@ -49,18 +49,18 @@ export function VirtualWooferLeft({ isPlaying }) {
   }, [isReady, isPlaying, getBassEnergyL]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
+    <div className="relative flex items-center justify-center">
       <img 
         src="/images/speaker/aro.png"
         alt="Aro"
-        className="absolute inset-0 w-full h-full object-contain z-10"
+        className="absolute z-10"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
       />
       <img 
         ref={coneRef}
         src="/images/speaker/conemovel.png"
         alt="Cone"
-        className="absolute w-full h-full object-contain z-20"
+        className="absolute z-20"
         style={{ 
           transformOrigin: 'center',
           filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
@@ -115,18 +115,18 @@ export function VirtualWooferRight({ isPlaying }) {
   }, [isReady, isPlaying, getBassEnergyR]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
+    <div className="relative flex items-center justify-center">
       <img 
         src="/images/speaker/aro.png"
         alt="Aro"
-        className="absolute inset-0 w-full h-full object-contain z-10"
+        className="absolute z-10"
         style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
       />
       <img 
         ref={coneRef}
         src="/images/speaker/conemovel.png"
         alt="Cone"
-        className="absolute w-full h-full object-contain z-20"
+        className="absolute z-20"
         style={{ 
           transformOrigin: 'center',
           filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
