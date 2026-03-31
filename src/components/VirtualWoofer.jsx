@@ -1,16 +1,40 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGlobalAudioAnalyser } from '../hooks/useGlobalAudioAnalyser.js';
 
 const SCALE_MIN = 1.0;
 const SCALE_MAX = 1.12;
 const SMOOTH = 0.85;
+const CONTAINER_SIZE = 208;
 
 export function VirtualWooferLeft({ isPlaying }) {
   const coneRef = useRef(null);
+  const aroRef = useRef(null);
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
+  const [aroScale, setAroScale] = useState(1);
   
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
+
+  useEffect(() => {
+    const aroImg = aroRef.current;
+    const coneImg = coneRef.current;
+    if (!aroImg || !coneImg) return;
+
+    const handleLoad = () => {
+      const naturalWidth = aroImg.naturalWidth;
+      if (naturalWidth > 0) {
+        const scale = CONTAINER_SIZE / naturalWidth;
+        setAroScale(scale);
+      }
+    };
+
+    if (aroImg.complete) {
+      handleLoad();
+    } else {
+      aroImg.addEventListener('load', handleLoad);
+      return () => aroImg.removeEventListener('load', handleLoad);
+    }
+  }, []);
 
   useEffect(() => {
     const cone = coneRef.current;
@@ -23,7 +47,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${scale.toFixed(4)})`;
+        cone.style.transform = `scale(${aroScale * scale})`;
         cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
@@ -35,7 +59,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      cone.style.transform = `scale(${scale.toFixed(4)})`;
+      cone.style.transform = `scale(${aroScale * scale})`;
       cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
@@ -46,11 +70,12 @@ export function VirtualWooferLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyL]);
+  }, [isReady, isPlaying, getBassEnergyL, aroScale]);
 
   return (
     <div className="relative w-52 h-52 flex items-center justify-center">
       <img 
+        ref={aroRef}
         src="/images/speaker/aro.png"
         alt="Aro"
         className="absolute inset-0 w-full h-full z-10"
@@ -73,10 +98,33 @@ export function VirtualWooferLeft({ isPlaying }) {
 
 export function VirtualWooferRight({ isPlaying }) {
   const coneRef = useRef(null);
+  const aroRef = useRef(null);
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
+  const [aroScale, setAroScale] = useState(1);
   
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
+
+  useEffect(() => {
+    const aroImg = aroRef.current;
+    const coneImg = coneRef.current;
+    if (!aroImg || !coneImg) return;
+
+    const handleLoad = () => {
+      const naturalWidth = aroImg.naturalWidth;
+      if (naturalWidth > 0) {
+        const scale = CONTAINER_SIZE / naturalWidth;
+        setAroScale(scale);
+      }
+    };
+
+    if (aroImg.complete) {
+      handleLoad();
+    } else {
+      aroImg.addEventListener('load', handleLoad);
+      return () => aroImg.removeEventListener('load', handleLoad);
+    }
+  }, []);
 
   useEffect(() => {
     const cone = coneRef.current;
@@ -89,7 +137,7 @@ export function VirtualWooferRight({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${scale.toFixed(4)})`;
+        cone.style.transform = `scale(${aroScale * scale})`;
         cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
@@ -101,7 +149,7 @@ export function VirtualWooferRight({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      cone.style.transform = `scale(${scale.toFixed(4)})`;
+      cone.style.transform = `scale(${aroScale * scale})`;
       cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
@@ -112,11 +160,12 @@ export function VirtualWooferRight({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyR]);
+  }, [isReady, isPlaying, getBassEnergyR, aroScale]);
 
   return (
     <div className="relative w-52 h-52 flex items-center justify-center">
       <img 
+        ref={aroRef}
         src="/images/speaker/aro.png"
         alt="Aro"
         className="absolute inset-0 w-full h-full z-10"
