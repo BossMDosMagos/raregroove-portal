@@ -308,6 +308,8 @@ export default function Grooveflix() {
             onAlbumDeleted={(id) => {
               setItems(prev => prev.filter(item => item.id !== id));
             }}
+            currentTrack={globalCurrentTrack}
+            isPlaying={isAudioContextPlaying}
           />
         )}
       </div>

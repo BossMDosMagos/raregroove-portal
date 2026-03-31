@@ -3,6 +3,7 @@ import { Play, Trash2, Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import { toast } from 'sonner';
+import { LCDDisplay } from './LCDDisplay.jsx';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -32,14 +33,14 @@ const fetchProxiedImage = async (discogsUrl) => {
   }
 };
 
-export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted }) {
+export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted, currentTrack, isPlaying }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
   const [showDetails, setShowDetails] = useState(false);
   const [activeTrackIndex, setActiveTrackIndex] = useState(null);
   
   const containerRef = useRef(null);
-  const { playAlbum, isPlaying } = useGrooveflixPlayer() || {};
+  const { playAlbum, isPlaying: localIsPlaying } = useGrooveflixPlayer() || {};
 
   const focusedItem = items[focusedIndex];
   const grooveflixData = focusedItem?.metadata?.grooveflix || {};
@@ -326,15 +327,15 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
       </div>
 
       {/* Info do Álbum Central */}
-      <div className="text-center py-6 px-4">
-        <h2 className="text-3xl font-black text-white tracking-tight">
-          {focusedItem?.title || 'Sem título'}
-        </h2>
-        <p className="text-cyan-400 text-xl mt-1 font-medium">
-          {focusedItem?.artist || 'Desconhecido'}
-        </p>
+      <div className="flex flex-col items-center gap-4 py-4 px-4">
+        <LCDDisplay
+          title={focusedItem?.title}
+          artist={focusedItem?.artist}
+          currentTrackTitle={currentTrack?.title || currentTrack?.name}
+          isPlaying={isPlaying}
+        />
         
-        <div className="flex items-center justify-center gap-3 mt-4">
+        <div className="flex items-center justify-center gap-3 mt-2">
           {grooveflixData.year && (
             <span className="px-3 py-1 bg-white/10 rounded-full text-white/60 text-sm">
               {grooveflixData.year}
