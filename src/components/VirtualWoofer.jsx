@@ -10,7 +10,7 @@ export function VirtualWooferLeft({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
-  const { isReady, getBassEnergy } = useGlobalAudioAnalyser();
+  const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const speaker = speakerRef.current;
@@ -28,7 +28,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         return;
       }
       
-      const bass = getBassEnergy();
+      const bass = getBassEnergyL();
       
       smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
       
@@ -66,7 +66,7 @@ export function VirtualWooferRight({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   
-  const { isReady, getBassEnergy } = useGlobalAudioAnalyser();
+  const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const speaker = speakerRef.current;
@@ -84,7 +84,7 @@ export function VirtualWooferRight({ isPlaying }) {
         return;
       }
       
-      const bass = getBassEnergy();
+      const bass = getBassEnergyR();
       
       smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
       

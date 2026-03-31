@@ -12,7 +12,8 @@ function SpectrumChannel({ isPlaying, side }) {
   const LERP = 0.3;
   const NOISE_GATE = 0.008;
 
-  const { isReady, getWaveform } = useGlobalAudioAnalyser();
+  const { isReady, getWaveformL, getWaveformR } = useGlobalAudioAnalyser();
+  const getWaveform = side === 'L' ? getWaveformL : getWaveformR;
 
   const clearCanvas = (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h);

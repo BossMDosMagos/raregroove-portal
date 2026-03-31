@@ -19,7 +19,7 @@ export function VUMeterRight({ isPlaying }) {
   const lastTimeRef = useRef(null);
   const animationRef = useRef(null);
   
-  const { isReady, getRMS } = useGlobalAudioAnalyser();
+  const { isReady, getRMSR } = useGlobalAudioAnalyser();
 
   const vuToPos = (vu) => {
     return (vu - ANSI.SCALE_MIN) / (ANSI.SCALE_MAX - ANSI.SCALE_MIN);
@@ -124,7 +124,7 @@ export function VUMeterRight({ isPlaying }) {
       let rightRMS = 0;
       
       if (isReady && isPlaying) {
-        rightRMS = getRMS();
+        rightRMS = getRMSR();
       }
 
       targetRef.current = rightRMS;
