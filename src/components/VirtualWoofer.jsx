@@ -1,66 +1,70 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGlobalAudioAnalyser } from '../hooks/useGlobalAudioAnalyser.js';
 
-const SCALE_MIN = 1.0;
-const SCALE_MAX = 1.12;
-const SMOOTH = 0.85;
-const CONTAINER_SIZE = 208;
+const P = {
+  sensitivity: 2.2,
+  stiffness: 80,
+  damping: 12,
+  excursion: 14,
+  bassMin: 20,
+  bassMax: 200,
+};
+
+const ch = {
+  L: { x: 0, v: 0, a: 0, smooth: 0 },
+  R: { x: 0, v: 0, a: 0, smooth: 0 },
+};
+
+const DT = 1 / 60;
+
+function stepMSD(c, force) {
+  const F = force * P.sensitivity * 100;
+  c.a = F - P.stiffness * c.x - P.damping * c.v;
+  c.v += c.a * DT;
+  c.x += c.v * DT;
+  c.x = Math.max(-P.excursion * 0.2, Math.min(P.excursion, c.x));
+}
+
+function applyCone(el, glowEl, x) {
+  const norm = Math.max(0, x / P.excursion);
+  const scaleY = 1.0 + norm * 0.09;
+  const scaleX = 1.0 + norm * 0.04;
+  const transY = -x * 0.35;
+  const bright = 1.0 + norm * 0.35;
+
+  el.style.transform = `scaleX(${scaleX.toFixed(5)}) scaleY(${scaleY.toFixed(5)}) translateY(${transY.toFixed(2)}px)`;
+  el.style.filter = `brightness(${bright.toFixed(3)})`;
+
+  if (glowEl) {
+    glowEl.style.opacity = (norm * 0.9).toFixed(3);
+    glowEl.style.transform = `scale(${1 + norm * 0.15})`;
+  }
+}
 
 export function VirtualWooferLeft({ isPlaying }) {
   const coneRef = useRef(null);
-  const aroRef = useRef(null);
+  const glowRef = useRef(null);
   const animationRef = useRef(null);
-  const smoothRef = useRef(0);
-  const [aroScale, setAroScale] = useState(1);
-  const [manualScale, setManualScale] = useState(8.43);
-  
+
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
   useEffect(() => {
-    const aroImg = aroRef.current;
-    if (!aroImg) return;
-
-    const handleLoad = () => {
-      const naturalWidth = aroImg.naturalWidth;
-      if (naturalWidth > 0) {
-        const scale = CONTAINER_SIZE / naturalWidth;
-        setAroScale(scale);
-      }
-    };
-
-    if (aroImg.complete) {
-      handleLoad();
-    } else {
-      aroImg.addEventListener('load', handleLoad);
-      return () => aroImg.removeEventListener('load', handleLoad);
-    }
-  }, []);
-
-  useEffect(() => {
-    const cone = coneRef.current;
-    if (!cone) return;
-
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
-      
+
       if (!isReady || !isPlaying) {
-        smoothRef.current *= 0.9;
-        const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
-        const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${aroScale * manualScale * scale})`;
-        cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
+        stepMSD(ch.L, 0);
+        applyCone(coneRef.current, glowRef.current, ch.L.x * 0.9);
         return;
       }
-      
-      const bass = getBassEnergyL();
-      
-      smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
-      
-      const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
-      const glow = smoothRef.current * 20;
-      
-      cone.style.transform = `scale(${aroScale * manualScale * scale})`;
-      cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
+
+      const rawL = getBassEnergyL();
+
+      const attk = 0.7;
+      ch.L.smooth = rawL > ch.L.smooth ? ch.L.smooth + (rawL - ch.L.smooth) * attk : ch.L.smooth * 0.85;
+
+      stepMSD(ch.L, ch.L.smooth);
+      applyCone(coneRef.current, glowRef.current, ch.L.x);
     };
 
     animate();
@@ -70,16 +74,24 @@ export function VirtualWooferLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyL, aroScale, manualScale]);
+  }, [isReady, isPlaying, getBassEnergyL]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
+    <div className="relative w-52 h-52">
+      <div 
+        ref={glowRef}
+        className="absolute inset-[-12px] rounded-full z-0 pointer-events-none"
+        style={{
+          opacity: 0,
+          background: 'radial-gradient(circle, rgba(255,160,0,0.18) 0%, transparent 70%)',
+          transition: 'opacity 0.04s linear',
+        }}
+      />
       <img 
-        ref={aroRef}
         src="/images/speaker/aro.png"
         alt="Aro"
         className="absolute inset-0 w-full h-full z-10"
-        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+        style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))' }}
       />
       <img 
         ref={coneRef}
@@ -87,9 +99,10 @@ export function VirtualWooferLeft({ isPlaying }) {
         alt="Cone"
         className="absolute inset-0 w-full h-full z-20"
         style={{ 
-          transformOrigin: 'center',
-          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
-          transition: 'transform 0.05s ease-out'
+          transformOrigin: 'center center',
+          willChange: 'transform, filter',
+          transition: 'none',
+          filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
         }}
       />
     </div>
@@ -98,59 +111,28 @@ export function VirtualWooferLeft({ isPlaying }) {
 
 export function VirtualWooferRight({ isPlaying }) {
   const coneRef = useRef(null);
-  const aroRef = useRef(null);
+  const glowRef = useRef(null);
   const animationRef = useRef(null);
-  const smoothRef = useRef(0);
-  const [aroScale, setAroScale] = useState(1);
-  const [manualScale, setManualScale] = useState(8.43);
-  
+
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
   useEffect(() => {
-    const aroImg = aroRef.current;
-    if (!aroImg) return;
-
-    const handleLoad = () => {
-      const naturalWidth = aroImg.naturalWidth;
-      if (naturalWidth > 0) {
-        const scale = CONTAINER_SIZE / naturalWidth;
-        setAroScale(scale);
-      }
-    };
-
-    if (aroImg.complete) {
-      handleLoad();
-    } else {
-      aroImg.addEventListener('load', handleLoad);
-      return () => aroImg.removeEventListener('load', handleLoad);
-    }
-  }, []);
-
-  useEffect(() => {
-    const cone = coneRef.current;
-    if (!cone) return;
-
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
-      
+
       if (!isReady || !isPlaying) {
-        smoothRef.current *= 0.9;
-        const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
-        const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${aroScale * manualScale * scale})`;
-        cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
+        stepMSD(ch.R, 0);
+        applyCone(coneRef.current, glowRef.current, ch.R.x * 0.9);
         return;
       }
-      
-      const bass = getBassEnergyR();
-      
-      smoothRef.current = smoothRef.current * SMOOTH + bass * (1 - SMOOTH);
-      
-      const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
-      const glow = smoothRef.current * 20;
-      
-      cone.style.transform = `scale(${aroScale * manualScale * scale})`;
-      cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
+
+      const rawR = getBassEnergyR();
+
+      const attk = 0.7;
+      ch.R.smooth = rawR > ch.R.smooth ? ch.R.smooth + (rawR - ch.R.smooth) * attk : ch.R.smooth * 0.85;
+
+      stepMSD(ch.R, ch.R.smooth);
+      applyCone(coneRef.current, glowRef.current, ch.R.x);
     };
 
     animate();
@@ -160,16 +142,24 @@ export function VirtualWooferRight({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyR, aroScale, manualScale]);
+  }, [isReady, isPlaying, getBassEnergyR]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
+    <div className="relative w-52 h-52">
+      <div 
+        ref={glowRef}
+        className="absolute inset-[-12px] rounded-full z-0 pointer-events-none"
+        style={{
+          opacity: 0,
+          background: 'radial-gradient(circle, rgba(255,160,0,0.18) 0%, transparent 70%)',
+          transition: 'opacity 0.04s linear',
+        }}
+      />
       <img 
-        ref={aroRef}
         src="/images/speaker/aro.png"
         alt="Aro"
         className="absolute inset-0 w-full h-full z-10"
-        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+        style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))' }}
       />
       <img 
         ref={coneRef}
@@ -177,9 +167,10 @@ export function VirtualWooferRight({ isPlaying }) {
         alt="Cone"
         className="absolute inset-0 w-full h-full z-20"
         style={{ 
-          transformOrigin: 'center',
-          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
-          transition: 'transform 0.05s ease-out'
+          transformOrigin: 'center center',
+          willChange: 'transform, filter',
+          transition: 'none',
+          filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.9))',
         }}
       />
     </div>
