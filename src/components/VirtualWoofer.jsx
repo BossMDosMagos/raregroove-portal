@@ -12,13 +12,13 @@ export function VirtualWooferLeft({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   const [aroScale, setAroScale] = useState(1);
+  const [manualScale, setManualScale] = useState(1);
   
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const aroImg = aroRef.current;
-    const coneImg = coneRef.current;
-    if (!aroImg || !coneImg) return;
+    if (!aroImg) return;
 
     const handleLoad = () => {
       const naturalWidth = aroImg.naturalWidth;
@@ -47,7 +47,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${aroScale * scale})`;
+        cone.style.transform = `scale(${aroScale * manualScale * scale})`;
         cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
@@ -59,7 +59,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      cone.style.transform = `scale(${aroScale * scale})`;
+      cone.style.transform = `scale(${aroScale * manualScale * scale})`;
       cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
@@ -70,28 +70,43 @@ export function VirtualWooferLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyL, aroScale]);
+  }, [isReady, isPlaying, getBassEnergyL, aroScale, manualScale]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
-      <img 
-        ref={aroRef}
-        src="/images/speaker/aro.png"
-        alt="Aro"
-        className="absolute inset-0 w-full h-full z-10"
-        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
-      />
-      <img 
-        ref={coneRef}
-        src="/images/speaker/conemovel.png"
-        alt="Cone"
-        className="absolute inset-0 w-full h-full z-20"
-        style={{ 
-          transformOrigin: 'center',
-          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
-          transition: 'transform 0.05s ease-out'
-        }}
-      />
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-52 h-52 flex items-center justify-center">
+        <img 
+          ref={aroRef}
+          src="/images/speaker/aro.png"
+          alt="Aro"
+          className="absolute inset-0 w-full h-full z-10"
+          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+        />
+        <img 
+          ref={coneRef}
+          src="/images/speaker/conemovel.png"
+          alt="Cone"
+          className="absolute inset-0 w-full h-full z-20"
+          style={{ 
+            transformOrigin: 'center',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+            transition: 'transform 0.05s ease-out'
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-2 text-xs text-gray-400">
+        <span>Scale:</span>
+        <input 
+          type="range" 
+          min="0.1" 
+          max="3" 
+          step="0.01"
+          value={manualScale}
+          onChange={(e) => setManualScale(parseFloat(e.target.value))}
+          className="w-24"
+        />
+        <span>{manualScale.toFixed(2)}</span>
+      </div>
     </div>
   );
 }
@@ -102,13 +117,13 @@ export function VirtualWooferRight({ isPlaying }) {
   const animationRef = useRef(null);
   const smoothRef = useRef(0);
   const [aroScale, setAroScale] = useState(1);
+  const [manualScale, setManualScale] = useState(1);
   
   const { isReady, getBassEnergyR } = useGlobalAudioAnalyser();
 
   useEffect(() => {
     const aroImg = aroRef.current;
-    const coneImg = coneRef.current;
-    if (!aroImg || !coneImg) return;
+    if (!aroImg) return;
 
     const handleLoad = () => {
       const naturalWidth = aroImg.naturalWidth;
@@ -137,7 +152,7 @@ export function VirtualWooferRight({ isPlaying }) {
         smoothRef.current *= 0.9;
         const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
         const glow = smoothRef.current * 15;
-        cone.style.transform = `scale(${aroScale * scale})`;
+        cone.style.transform = `scale(${aroScale * manualScale * scale})`;
         cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.6}))`;
         return;
       }
@@ -149,7 +164,7 @@ export function VirtualWooferRight({ isPlaying }) {
       const scale = SCALE_MIN + smoothRef.current * (SCALE_MAX - SCALE_MIN);
       const glow = smoothRef.current * 20;
       
-      cone.style.transform = `scale(${aroScale * scale})`;
+      cone.style.transform = `scale(${aroScale * manualScale * scale})`;
       cone.style.filter = `drop-shadow(0 0 ${glow}px rgba(255, 180, 0, ${smoothRef.current * 0.7}))`;
     };
 
@@ -160,28 +175,43 @@ export function VirtualWooferRight({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergyR, aroScale]);
+  }, [isReady, isPlaying, getBassEnergyR, aroScale, manualScale]);
 
   return (
-    <div className="relative w-52 h-52 flex items-center justify-center">
-      <img 
-        ref={aroRef}
-        src="/images/speaker/aro.png"
-        alt="Aro"
-        className="absolute inset-0 w-full h-full z-10"
-        style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
-      />
-      <img 
-        ref={coneRef}
-        src="/images/speaker/conemovel.png"
-        alt="Cone"
-        className="absolute inset-0 w-full h-full z-20"
-        style={{ 
-          transformOrigin: 'center',
-          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
-          transition: 'transform 0.05s ease-out'
-        }}
-      />
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-52 h-52 flex items-center justify-center">
+        <img 
+          ref={aroRef}
+          src="/images/speaker/aro.png"
+          alt="Aro"
+          className="absolute inset-0 w-full h-full z-10"
+          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}
+        />
+        <img 
+          ref={coneRef}
+          src="/images/speaker/conemovel.png"
+          alt="Cone"
+          className="absolute inset-0 w-full h-full z-20"
+          style={{ 
+            transformOrigin: 'center',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+            transition: 'transform 0.05s ease-out'
+          }}
+        />
+      </div>
+      <div className="flex items-center gap-2 text-xs text-gray-400">
+        <span>Scale:</span>
+        <input 
+          type="range" 
+          min="0.1" 
+          max="3" 
+          step="0.01"
+          value={manualScale}
+          onChange={(e) => setManualScale(parseFloat(e.target.value))}
+          className="w-24"
+        />
+        <span>{manualScale.toFixed(2)}</span>
+      </div>
     </div>
   );
 }
