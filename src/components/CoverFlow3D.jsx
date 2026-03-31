@@ -33,7 +33,7 @@ const fetchProxiedImage = async (discogsUrl) => {
   }
 };
 
-export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted, currentTrack, isPlaying }) {
+export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted, currentTrack, isPlaying, volume }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
   const [showDetails, setShowDetails] = useState(false);
@@ -333,6 +333,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
           artist={focusedItem?.artist}
           currentTrackTitle={currentTrack?.title || currentTrack?.name}
           isPlaying={isPlaying}
+          volume={volume}
         />
         
         <div className="flex items-center justify-center gap-3 mt-2">

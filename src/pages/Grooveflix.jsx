@@ -310,6 +310,7 @@ export default function Grooveflix() {
             }}
             currentTrack={globalCurrentTrack}
             isPlaying={isAudioContextPlaying}
+            volume={volume}
           />
         )}
       </div>
