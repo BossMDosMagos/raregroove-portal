@@ -63,7 +63,8 @@ export default function Grooveflix() {
     seek,
     play,
     pause,
-    stop
+    stop,
+    queue
   } = player;
 
   const handlePlay = useCallback(() => {
