@@ -154,7 +154,7 @@ export function VUMeterLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getRMS]);
+  }, [isReady, isPlaying, getRMSL]);
 
   return (
     <div className="flex items-center gap-2">

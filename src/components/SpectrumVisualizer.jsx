@@ -14,6 +14,7 @@ function SpectrumChannel({ isPlaying, side }) {
 
   const { isReady, getWaveformL, getWaveformR } = useGlobalAudioAnalyser();
   const getWaveform = side === 'L' ? getWaveformL : getWaveformR;
+  const getWaveformDeps = side === 'L' ? getWaveformL : getWaveformR;
 
   const clearCanvas = (ctx, w, h) => {
     ctx.clearRect(0, 0, w, h);
@@ -178,7 +179,7 @@ function SpectrumChannel({ isPlaying, side }) {
         cancelAnimationFrame(animRef.current);
       }
     };
-  }, [isReady, isPlaying, getWaveform]);
+  }, [isReady, isPlaying, getWaveformDeps]);
 
   return (
     <canvas

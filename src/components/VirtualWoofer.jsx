@@ -46,7 +46,7 @@ export function VirtualWooferLeft({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergy]);
+  }, [isReady, isPlaying, getBassEnergyL]);
 
   return (
     <div className="flex items-center justify-center">
@@ -102,7 +102,7 @@ export function VirtualWooferRight({ isPlaying }) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isReady, isPlaying, getBassEnergy]);
+  }, [isReady, isPlaying, getBassEnergyR]);
 
   return (
     <div className="flex items-center justify-center">
