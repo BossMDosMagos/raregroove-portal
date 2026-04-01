@@ -2,17 +2,18 @@ import React, { useMemo, useRef, useCallback } from 'react';
 
 const FREQUENCY_LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
 
-function DraggableSlider({ value, onChange, frequency, index }) {
+function DraggableSlider({ value, onChange, frequency }) {
   const sliderRef = useRef(null);
-  const isDragging = useRef(false);
   
-  const trackHeight = 140;
+  const trackHeight = 100;
+  const trackWidth = 16;
   const normalizedValue = (value + 12) / 24;
   const knobY = trackHeight - (normalizedValue * trackHeight);
+  const knobHeight = 24;
+  const knobWidth = 20;
   
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
-    isDragging.current = true;
     
     const updateValue = (clientY) => {
       if (!sliderRef.current) return;
@@ -28,7 +29,6 @@ function DraggableSlider({ value, onChange, frequency, index }) {
     };
     
     const handleMouseUp = () => {
-      isDragging.current = false;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -52,18 +52,21 @@ function DraggableSlider({ value, onChange, frequency, index }) {
   const glowColor = value > 0 ? 'rgba(34, 197, 94, 0.8)' : value < 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(34, 197, 94, 0.5)';
   
   return (
-    <div className="flex flex-col items-center gap-2 select-none">
+    <div className="flex flex-col items-center gap-1 select-none">
       <div 
         ref={sliderRef}
         className="relative cursor-pointer"
-        style={{ width: '32px', height: `${trackHeight}px` }}
+        style={{ 
+          width: `${trackWidth}px`, 
+          height: `${trackHeight}px` 
+        }}
         onClick={handleTrackClick}
       >
         <div 
-          className="absolute left-1/2 -translate-x-1/2 w-2 rounded-full"
+          className="absolute left-1/2 -translate-x-1/2 w-1.5 rounded-full"
           style={{
-            top: '4px',
-            height: `${trackHeight - 8}px`,
+            top: '2px',
+            height: `${trackHeight - 4}px`,
             background: 'linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 50%, #1f1f1f 100%)',
             borderLeft: '1px solid #333',
             borderRight: '1px solid #333',
@@ -71,36 +74,36 @@ function DraggableSlider({ value, onChange, frequency, index }) {
         />
         
         <div 
-          className="absolute left-1/2 -translate-x-1/2 w-2 rounded-full transition-all"
+          className="absolute left-1/2 -translate-x-1/2 w-1.5 rounded-full transition-all"
           style={{
-            bottom: '4px',
-            height: `${Math.abs(knobY - trackHeight/2 + 8)}px`,
+            bottom: '2px',
+            height: `${Math.abs(knobY - trackHeight/2)}px`,
             background: value >= 0 
-              ? `linear-gradient(180deg, #ec4899 0%, #a855f7 100%)`
-              : `linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%)`,
-            opacity: 0.7,
+              ? 'linear-gradient(180deg, #ec4899 0%, #a855f7 100%)'
+              : 'linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%)',
+            opacity: 0.6,
           }}
         />
         
         <div
-          className="absolute left-1/2 -translate-x-1/2 transition-all duration-75 cursor-grab active:cursor-grabbing"
+          className="absolute left-1/2 transition-all duration-75 cursor-grab active:cursor-grabbing"
           style={{
             top: `${knobY}px`,
-            width: '28px',
-            height: '28px',
+            width: `${knobWidth}px`,
+            height: `${knobHeight}px`,
             transform: 'translate(-50%, -50%)',
           }}
           onMouseDown={handleMouseDown}
         >
           <div 
-            className="w-full h-full rounded-full"
+            className="w-full h-full rounded-[40%]"
             style={{
-              background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+              background: 'radial-gradient(circle at 30% 30%, #5a5a5a, #1a1a1a)',
               boxShadow: `
                 0 2px 4px rgba(0,0,0,0.8),
-                inset 0 1px 2px rgba(255,255,255,0.1),
+                inset 0 1px 2px rgba(255,255,255,0.15),
                 inset 0 -1px 2px rgba(0,0,0,0.3),
-                0 0 15px ${glowColor}
+                0 0 12px ${glowColor}
               `,
               border: '1px solid #555',
             }}
@@ -109,21 +112,16 @@ function DraggableSlider({ value, onChange, frequency, index }) {
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full transition-all"
               style={{
                 background: ledColor,
-                boxShadow: `0 0 6px ${ledColor}, 0 0 12px ${ledColor}`,
+                boxShadow: `0 0 6px ${ledColor}, 0 0 10px ${ledColor}`,
               }}
             />
           </div>
         </div>
-        
-        <div className="absolute -left-1 top-0 bottom-0 w-1 flex flex-col justify-between py-1">
-          <span className="text-[6px] text-white/20">+12</span>
-          <span className="text-[6px] text-white/20">-12</span>
-        </div>
       </div>
       
       <div className="text-center">
-        <div className="text-[9px] font-bold text-white/80">{frequency}</div>
-        <div className={`text-[10px] font-black ${value > 0 ? 'text-pink-400' : value < 0 ? 'text-blue-400' : 'text-green-400'}`}>
+        <div className="text-[8px] font-bold text-white/70">{frequency}</div>
+        <div className={`text-[9px] font-black ${value > 0 ? 'text-pink-400' : value < 0 ? 'text-blue-400' : 'text-green-400'}`}>
           {value > 0 ? '+' : ''}{value}
         </div>
       </div>
@@ -135,7 +133,7 @@ function PresetButton({ name, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
+      className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${
         isActive 
           ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white shadow-lg shadow-fuchsia-500/30' 
           : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
@@ -160,10 +158,10 @@ export default function EqualizerPanel({
     { key: 'rock', name: 'Rock' },
     { key: 'pop', name: 'Pop' },
     { key: 'jazz', name: 'Jazz' },
-    { key: 'classical', name: 'Clássico' },
+    { key: 'classical', name: 'Cláss' },
     { key: 'electronic', name: 'EDM' },
-    { key: 'hiphop', name: 'Hip-Hop' },
-    { key: 'acoustic', name: 'Acústico' },
+    { key: 'hiphop', name: 'Hip-H' },
+    { key: 'acoustic', name: 'Acúst' },
     { key: 'vocal', name: 'Vocal' },
     { key: 'bass', name: 'Bass' },
   ], []);
@@ -178,18 +176,18 @@ export default function EqualizerPanel({
           inset 0 -1px 2px rgba(0,0,0,0.5),
           0 4px 20px rgba(0,0,0,0.6)
         `,
-        padding: '14px',
-        minWidth: '360px',
+        padding: '12px',
+        width: '100%',
       }}
     >
-      <div className="flex items-center justify-between mb-4 px-1">
+      <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" style={{ boxShadow: '0 0 10px #22c55e' }} />
-          <span className="text-[10px] font-black uppercase tracking-widest text-fuchsia-300">Equalizer</span>
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ boxShadow: '0 0 8px #22c55e' }} />
+          <span className="text-[9px] font-black uppercase tracking-widest text-fuchsia-300">Equalizer</span>
         </div>
         <button
           onClick={onToggle}
-          className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider ${
+          className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wider ${
             isEnabled 
               ? 'bg-green-500/20 text-green-400 border border-green-500/40' 
               : 'bg-red-500/20 text-red-400 border border-red-500/40'
@@ -199,21 +197,20 @@ export default function EqualizerPanel({
         </button>
       </div>
 
-      <div className="flex justify-center gap-3 mb-4 px-2">
+      <div className="flex justify-center gap-2 mb-3 px-1">
         {FREQUENCY_LABELS.map((freq, idx) => (
           <DraggableSlider
             key={idx}
             frequency={freq}
             value={gains[idx]}
             onChange={(val) => onBandChange(idx, val)}
-            index={idx}
           />
         ))}
       </div>
 
-      <div className="mb-3">
-        <div className="text-[9px] text-white/40 uppercase tracking-wider mb-2 px-1">Presets</div>
-        <div className="flex flex-wrap gap-1.5">
+      <div className="mb-2">
+        <div className="text-[8px] text-white/40 uppercase tracking-wider mb-1.5 px-1">Presets</div>
+        <div className="flex flex-wrap gap-1">
           {presets.map(preset => (
             <PresetButton
               key={preset.key}
@@ -228,17 +225,17 @@ export default function EqualizerPanel({
       <div className="flex gap-2">
         <button
           onClick={onReset}
-          className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition"
+          className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition"
         >
           Reset
         </button>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-white/5">
-        <div className="flex items-center justify-between text-[9px] text-white/40 px-1">
-          <span>10 Band Graphic EQ</span>
+      <div className="mt-2 pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between text-[8px] text-white/40 px-1">
+          <span>10 Band EQ</span>
           <span className={isEnabled ? 'text-green-400' : 'text-red-400'}>
-            {isEnabled ? '● ACTIVE' : '○ DISABLED'}
+            {isEnabled ? '● Active' : '○ Disabled'}
           </span>
         </div>
       </div>
