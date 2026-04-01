@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react';
 
-export function LCDDisplay({ 
-  line1 = '', 
-  line2 = '', 
-  line3 = '', 
-  line4 = '',
-  isPlaying = false,
-  showBounds = true
-}) => {
+export function LCDDisplay(props) {
+  const { line1, line2, line3, line4, isPlaying, showBounds } = props;
   const [currentTime, setCurrentTime] = useState('00:00');
 
   useEffect(() => {
@@ -41,10 +35,10 @@ export function LCDDisplay({
         <div 
           className="absolute pointer-events-none"
           style={{
-            top: `${bounds.top}px`,
-            right: `${bounds.right}px`,
-            bottom: `${bounds.bottom}px`,
-            left: `${bounds.left}px`,
+            top: bounds.top + 'px',
+            right: bounds.right + 'px',
+            bottom: bounds.bottom + 'px',
+            left: bounds.left + 'px',
             border: '1px solid red',
             borderRadius: '4px',
           }}
