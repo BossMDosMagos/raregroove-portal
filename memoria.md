@@ -614,3 +614,71 @@ const { data } = await supabase.functions.invoke('b2-presign', {
 });
 console.log(data.url);
 ```
+
+---
+
+## Novas Implementações (2026-04-01)
+
+### ✅ LCD Display com Fonte Dot-Matrix
+
+**Arquivos:**
+- `src/components/LCDDisplay.jsx`
+- `public/fonts/5x7-dot-matrix.otf`
+
+**Features:**
+- Fonte 5x7-dot-matrix customizada
+- Bounds fixados: top: 5, right: 48, bottom: 10, left: 48
+- Marquee contínuo para título da faixa
+- Exibe: linha 1 (título), linha 2 (artista), linha 3 (faixarolante), linha 4 (duração)
+
+**Fallback:**
+- Quando nenhuma faixa tocando, exibe "GROOVEFLIX HI-FI"
+
+### ✅ VirtualWoofer com Física MSD
+
+**Arquivos:**
+- `src/components/VirtualWoofer.jsx`
+
+**Features:**
+- Física Mass-Spring-Damper (v2)
+- Transient detection para impactos
+- Motion blur para movimento
+- Perspectiva 3D do cone
+- Presets: Sub/EDM, Hi-Fi, Studio, Rock/MPB
+
+### ✅ Auto-Next Track
+
+**Implementação:**
+- `useGrooveflixPlayer.js` detecta evento `ended` do áudio
+- Automaticamente toca próxima faixa da queue
+- Continua até a última faixa do álbum
+
+### ✅ Equalizador de 10 Bandas
+
+**Arquivos:**
+- `src/components/EqualizerPanel.jsx`
+- `src/hooks/useEqualizer.js`
+
+**Features:**
+- 10 bandas: 32Hz, 64Hz, 125Hz, 250Hz, 500Hz, 1KHz, 2KHz, 4KHz, 8KHz, 16KHz
+- Sliders arrastáveis com mouse
+- Visual "black piano" com efeito de fibra de carbono
+- LEDs verdes brilhantes (5px) no centro de cada knob
+- LEDs desligam quando equalizador está OFF
+- Presets em dropdown: Flat, Rock, Pop, Jazz, Clássico, EDM, Hip-Hop, Acústico, Vocal, Bass Boost
+
+**Integração com Áudio:**
+- Filtros Biquad Peaking EQ no grafo Web Audio
+- merger → filtros → gain → destination
+
+---
+
+## Próximos Passos
+
+- [ ] Testar equalizador em reprodução real
+- [ ] Ajustar valores de preset se necessário
+- [ ] Considerar visualização de espectro em tempo real
+
+---
+
+*Última atualização: 2026-04-01 00:50 UTC-3*
