@@ -15,17 +15,17 @@ export function LCDDisplay(props) {
   };
 
   const controlStyle = {
-    position: 'absolute',
-    top: '30px',
-    left: '100%',
-    marginLeft: '10px',
-    background: 'rgba(0,0,0,0.9)',
-    padding: '10px',
-    borderRadius: '8px',
-    zIndex: 100,
-    fontSize: '10px',
+    position: 'fixed',
+    top: '60px',
+    right: '10px',
+    background: 'rgba(0,0,0,0.95)',
+    padding: '15px',
+    borderRadius: '10px',
+    zIndex: 9998,
+    fontSize: '12px',
     color: 'white',
-    width: '180px',
+    width: '200px',
+    border: '2px solid yellow',
   };
 
   const sliderStyle = {
@@ -91,22 +91,19 @@ export function LCDDisplay(props) {
       )}
 
       <button
-        onClick={() => {
-          console.log('Toggle controls, showControls:', !showControls);
-          setShowControls(!showControls);
-        }}
+        onClick={() => setShowControls(!showControls)}
         style={{
-          position: 'absolute',
-          top: '5px',
-          right: '5px',
-          zIndex: 50,
-          background: 'rgba(255,0,0,0.8)',
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 9999,
+          background: 'rgba(255,0,0,0.9)',
           color: 'white',
-          border: '1px solid red',
-          padding: '4px 8px',
-          fontSize: '14px',
+          border: '2px solid yellow',
+          padding: '8px 12px',
+          fontSize: '16px',
           cursor: 'pointer',
-          borderRadius: '3px',
+          borderRadius: '5px',
         }}
       >
         ⚙️
