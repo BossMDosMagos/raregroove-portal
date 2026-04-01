@@ -1,36 +1,14 @@
-import { useState } from 'react';
-
 const LCD_DISPLAY_FONT = '/fonts/5x7-dot-matrix.otf';
 
 export function LCDDisplay(props) {
   const { line1, line2, line3, line4, isPlaying, showBounds } = props;
-  const [bounds, setBounds] = useState({ top: 5, right: 48, bottom: 10, left: 48 });
-  const [showControls, setShowControls] = useState(false);
+  const bounds = { top: 5, right: 48, bottom: 10, left: 48 };
 
   const textStyle = {
     fontFamily: "'5x7DotMatrix', 'Courier New', monospace",
     color: '#1a1a1a',
     fontWeight: 'bold',
     textShadow: '1px 1px 0 rgba(255,255,255,0.3)',
-  };
-
-  const controlStyle = {
-    position: 'fixed',
-    top: '60px',
-    right: '10px',
-    background: 'rgba(0,0,0,0.95)',
-    padding: '15px',
-    borderRadius: '10px',
-    zIndex: 9998,
-    fontSize: '12px',
-    color: 'white',
-    width: '200px',
-    border: '2px solid yellow',
-  };
-
-  const sliderStyle = {
-    width: '100%',
-    marginBottom: '4px',
   };
 
   return (
@@ -58,56 +36,6 @@ export function LCDDisplay(props) {
           100% { transform: translateX(-50%); }
         }
       `}</style>
-
-      {showControls && (
-        <div style={controlStyle}>
-          <div style={{display:'flex', justifyContent:'space-between', marginBottom:'8px'}}>
-            <span>Bounds Control</span>
-            <button onClick={() => setShowControls(false)} style={{background:'red', border:'none', padding:'2px 6px', cursor:'pointer'}}>✕</button>
-          </div>
-          {Object.keys(bounds).map(key => (
-            <div key={key}>
-              <label style={{display:'flex', justifyContent:'space-between'}}>
-                <span>{key}:</span>
-                <span>{bounds[key]}px</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="50"
-                value={bounds[key]}
-                onChange={(e) => setBounds({...bounds, [key]: parseInt(e.target.value)})}
-                style={sliderStyle}
-              />
-            </div>
-          ))}
-          <button 
-            onClick={() => setBounds({top:10, right:10, bottom:10, left:10})}
-            style={{width:'100%', marginTop:'8px', padding:'4px', background:'#333', color:'white', border:'none', cursor:'pointer'}}
-          >
-            Reset
-          </button>
-        </div>
-      )}
-
-      <button
-        onClick={() => setShowControls(!showControls)}
-        style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          zIndex: 9999,
-          background: 'rgba(255,0,0,0.9)',
-          color: 'white',
-          border: '2px solid yellow',
-          padding: '8px 12px',
-          fontSize: '16px',
-          cursor: 'pointer',
-          borderRadius: '5px',
-        }}
-      >
-        ⚙️
-      </button>
 
       <div 
         className="absolute flex flex-col items-center justify-start"
