@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function LCDDisplay({ 
   line1 = '', 
   line2 = '', 
   line3 = '', 
   line4 = '',
-  isPlaying = false 
-}) {
-  const marqueeRef = useRef(null);
+  isPlaying = false,
+  showBounds = true
+}) => {
   const [currentTime, setCurrentTime] = useState('00:00');
 
   useEffect(() => {
@@ -20,12 +20,15 @@ export function LCDDisplay({
     }
   }, [isPlaying]);
 
+  const bounds = { top: 10, right: 10, bottom: 10, left: 10 };
+
   return (
     <div 
       className="relative rounded-lg overflow-hidden"
       style={{
         width: '600px',
         height: '150px',
+        position: 'relative',
       }}
     >
       <img 
@@ -34,65 +37,19 @@ export function LCDDisplay({
         className="absolute inset-0 w-full h-full object-contain"
       />
 
-      <div className="absolute inset-0 flex flex-col p-4">
+      {showBounds && (
         <div 
-          className="flex items-center justify-between text-xs mb-1"
-          style={{ 
-            color: '#1a1a1a',
-            fontFamily: '"Courier New", monospace',
-            fontWeight: 'bold',
-            letterSpacing: '1px',
-            height: '14px',
+          className="absolute pointer-events-none"
+          style={{
+            top: `${bounds.top}px`,
+            right: `${bounds.right}px`,
+            bottom: `${bounds.bottom}px`,
+            left: `${bounds.left}px`,
+            border: '1px solid red',
+            borderRadius: '4px',
           }}
-        >
-          <div className="flex items-center gap-2">
-            <span style={{ 
-              display: 'inline-block',
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: isPlaying ? '#1a1a1a' : '#666'
-            }} />
-            <span>{isPlaying ? 'PLAYING' : 'PAUSED'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span style={{ opacity: 0.7 }}>◉</span>
-            <span>{currentTime}</span>
-          </div>
-        </div>
-
-        <div 
-          className="flex-1 flex items-center overflow-hidden"
-        >
-          <div 
-            className="absolute whitespace-nowrap"
-            style={{
-              color: '#1a1a1a',
-              fontFamily: '"Courier New", monospace',
-              fontWeight: 'bold',
-              fontSize: '18px',
-              letterSpacing: '2px',
-              left: '24px',
-              right: '24px',
-            }}
-          >
-            {line1 || 'RARE GROOVE'}
-          </div>
-        </div>
-
-        <div 
-          className="flex items-center justify-between text-xs mt-1"
-          style={{ 
-            color: '#1a1a1a',
-            fontFamily: '"Courier New", monospace',
-            height: '14px',
-          }}
-        >
-          <span>{line2}</span>
-          <span>{line3}</span>
-          <span>{line4}</span>
-        </div>
-      </div>
+        />
+      )}
     </div>
   );
 }
