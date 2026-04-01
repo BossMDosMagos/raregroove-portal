@@ -4,7 +4,7 @@ const LCD_DISPLAY_FONT = '/fonts/5x7-dot-matrix.otf';
 
 export function LCDDisplay(props) {
   const { line1, line2, line3, line4, isPlaying, showBounds } = props;
-  const [bounds, setBounds] = useState({ top: 10, right: 10, bottom: 10, left: 10 });
+  const [bounds, setBounds] = useState({ top: 5, right: 48, bottom: 10, left: 48 });
   const [showControls, setShowControls] = useState(false);
 
   const textStyle = {
