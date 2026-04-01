@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
+import { initEqualizer, getEqualizerFilters } from './useEqualizer.js';
 
 let audioContextInstance = null;
 let sharedAnalyserL = null;
@@ -8,12 +9,16 @@ let sharedAnalyserR = null;
 let sharedSplitter = null;
 let sharedMerger = null;
 let sharedGain = null;
+let equalizerInitialized = false;
 
 function initAudioGraph() {
   if (audioContextInstance) return audioContextInstance;
   
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   audioContextInstance = ctx;
+  
+  initEqualizer(ctx);
+  equalizerInitialized = true;
   
   const splitter = ctx.createChannelSplitter(2);
   sharedSplitter = splitter;
@@ -35,13 +40,21 @@ function initAudioGraph() {
   gain.gain.value = 1;
   sharedGain = gain;
   
+  const eqFilters = getEqualizerFilters();
+  
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
   
   analyserL.connect(merger, 0, 0);
   analyserR.connect(merger, 0, 1);
   
-  merger.connect(gain);
+  if (eqFilters && eqFilters.length > 0) {
+    merger.connect(eqFilters[0]);
+    eqFilters[eqFilters.length - 1].connect(gain);
+  } else {
+    merger.connect(gain);
+  }
+  
   gain.connect(ctx.destination);
   
   registerAnalysers({
