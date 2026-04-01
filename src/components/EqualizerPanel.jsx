@@ -18,12 +18,13 @@ const PRESETS = [
 function DraggableSlider({ value, onChange, frequency, isEnabled }) {
   const sliderRef = useRef(null);
   
-  const trackHeight = 100;
-  const trackWidth = 16;
+  const trackHeight = 90;
+  const trackWidth = 14;
   const normalizedValue = (value + 12) / 24;
   const knobY = trackHeight - (normalizedValue * trackHeight);
-  const knobHeight = 24;
-  const knobWidth = 20;
+  const knobHeight = 18;
+  const knobWidth = 16;
+  const ledSize = 5;
   
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -61,9 +62,9 @@ function DraggableSlider({ value, onChange, frequency, isEnabled }) {
     onChange(Math.max(-12, Math.min(12, newValue)));
   }, [onChange, trackHeight]);
   
-  const ledColor = !isEnabled ? '#333333' : value > 0 ? '#22c55e' : value < 0 ? '#3b82f6' : '#22c55e';
-  const glowColor = !isEnabled ? 'transparent' : value > 0 ? 'rgba(34, 197, 94, 0.8)' : value < 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(34, 197, 94, 0.5)';
-  const knobOpacity = !isEnabled ? 0.4 : 1;
+  const ledColor = !isEnabled ? '#222222' : value > 0 ? '#22c55e' : value < 0 ? '#3b82f6' : '#22c55e';
+  const glowColor = !isEnabled ? 'transparent' : value > 0 ? 'rgba(34, 197, 94, 0.9)' : value < 0 ? 'rgba(59, 130, 246, 0.9)' : 'rgba(34, 197, 94, 0.6)';
+  const knobOpacity = !isEnabled ? 0.5 : 1;
   
   return (
     <div className="flex flex-col items-center gap-1 select-none">
@@ -112,22 +113,31 @@ function DraggableSlider({ value, onChange, frequency, isEnabled }) {
           <div 
             className="w-full h-full rounded-[40%]"
             style={{
-              background: 'radial-gradient(circle at 30% 30%, #5a5a5a, #1a1a1a)',
-              boxShadow: `
-                0 2px 4px rgba(0,0,0,0.8),
-                inset 0 1px 2px rgba(255,255,255,0.15),
-                inset 0 -1px 2px rgba(0,0,0,0.3),
-                0 0 12px ${glowColor}
+              background: `
+                radial-gradient(ellipse at 30% 20%, rgba(80,80,80,0.4) 0%, transparent 50%),
+                linear-gradient(135deg, #2a2a2a 0%, #0a0a0a 50%, #1a1a1a 100%)
               `,
-              border: '1px solid #555',
+              boxShadow: `
+                0 3px 6px rgba(0,0,0,0.9),
+                0 1px 2px rgba(255,255,255,0.05),
+                inset 0 1px 1px rgba(255,255,255,0.1),
+                inset 0 -1px 2px rgba(0,0,0,0.5),
+                inset 0 0 8px rgba(0,0,0,0.8),
+                0 0 10px ${glowColor}
+              `,
+              border: '1px solid #333',
+              borderTopColor: '#444',
+              borderLeftColor: '#222',
               opacity: knobOpacity,
             }}
           >
             <div 
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full transition-all"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all"
               style={{
+                width: `${ledSize}px`,
+                height: `${ledSize}px`,
                 background: ledColor,
-                boxShadow: isEnabled ? `0 0 6px ${ledColor}, 0 0 10px ${ledColor}` : 'none',
+                boxShadow: isEnabled ? `0 0 4px ${ledColor}, 0 0 8px ${ledColor}` : 'none',
               }}
             />
           </div>
