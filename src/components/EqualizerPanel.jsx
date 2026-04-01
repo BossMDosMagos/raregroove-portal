@@ -15,7 +15,7 @@ const PRESETS = [
   { key: 'bass', name: 'Bass Boost' },
 ];
 
-function DraggableSlider({ value, onChange, frequency }) {
+function DraggableSlider({ value, onChange, frequency, isEnabled }) {
   const sliderRef = useRef(null);
   
   const trackHeight = 100;
@@ -61,8 +61,9 @@ function DraggableSlider({ value, onChange, frequency }) {
     onChange(Math.max(-12, Math.min(12, newValue)));
   }, [onChange, trackHeight]);
   
-  const ledColor = value > 0 ? '#22c55e' : value < 0 ? '#3b82f6' : '#22c55e';
-  const glowColor = value > 0 ? 'rgba(34, 197, 94, 0.8)' : value < 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(34, 197, 94, 0.5)';
+  const ledColor = !isEnabled ? '#333333' : value > 0 ? '#22c55e' : value < 0 ? '#3b82f6' : '#22c55e';
+  const glowColor = !isEnabled ? 'transparent' : value > 0 ? 'rgba(34, 197, 94, 0.8)' : value < 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(34, 197, 94, 0.5)';
+  const knobOpacity = !isEnabled ? 0.4 : 1;
   
   return (
     <div className="flex flex-col items-center gap-1 select-none">
@@ -119,13 +120,14 @@ function DraggableSlider({ value, onChange, frequency }) {
                 0 0 12px ${glowColor}
               `,
               border: '1px solid #555',
+              opacity: knobOpacity,
             }}
           >
             <div 
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full transition-all"
               style={{
                 background: ledColor,
-                boxShadow: `0 0 6px ${ledColor}, 0 0 10px ${ledColor}`,
+                boxShadow: isEnabled ? `0 0 6px ${ledColor}, 0 0 10px ${ledColor}` : 'none',
               }}
             />
           </div>
@@ -134,8 +136,8 @@ function DraggableSlider({ value, onChange, frequency }) {
       
       <div className="text-center">
         <div className="text-[8px] font-bold text-white/70">{frequency}</div>
-        <div className={`text-[9px] font-black ${value > 0 ? 'text-pink-400' : value < 0 ? 'text-blue-400' : 'text-green-400'}`}>
-          {value > 0 ? '+' : ''}{value}
+        <div className={`text-[9px] font-black ${!isEnabled ? 'text-white/20' : value > 0 ? 'text-pink-400' : value < 0 ? 'text-blue-400' : 'text-green-400'}`}>
+          {!isEnabled ? '-' : value > 0 ? '+' + value : value}
         </div>
       </div>
     </div>
@@ -196,6 +198,7 @@ export default function EqualizerPanel({
             frequency={freq}
             value={gains[idx]}
             onChange={(val) => onBandChange(idx, val)}
+            isEnabled={isEnabled}
           />
         ))}
       </div>
