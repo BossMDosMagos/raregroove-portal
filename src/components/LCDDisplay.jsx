@@ -57,12 +57,12 @@ export function LCDDisplay(props) {
         }}
       >
         {line1 && (
-          <div className="text-center" style={{ ...textStyle, fontSize: '16px', marginBottom: '4px' }}>
+          <div className="text-center" style={{ ...textStyle, fontSize: '18px', marginBottom: '4px' }}>
             {line1}
           </div>
         )}
         {line2 && (
-          <div className="text-center" style={{ ...textStyle, fontSize: '14px', opacity: 0.8 }}>
+          <div className="text-center" style={{ ...textStyle, fontSize: '16px', opacity: 0.8 }}>
             {line2}
           </div>
         )}
