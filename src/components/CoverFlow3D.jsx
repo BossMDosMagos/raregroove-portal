@@ -331,7 +331,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
         <LCDDisplay
           line1={focusedItem?.title}
           line2={focusedItem?.artist}
-          line3={currentTrack?.title || currentTrack?.name || ''}
+          line3={currentTrack?.title || currentTrack?.name || focusedItem?.title || ''}
           line4=""
           isPlaying={isPlaying}
           showBounds={false}
