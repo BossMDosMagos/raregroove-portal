@@ -329,11 +329,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
       {/* Info do Álbum Central */}
       <div className="flex flex-col items-center gap-4 py-4 px-4">
         <LCDDisplay
-          line1=""
-          line2=""
+          line1={focusedItem?.title}
+          line2={focusedItem?.artist}
           line3=""
           line4=""
           isPlaying={isPlaying}
+          showBounds={true}
         />
         
         <div className="flex items-center justify-center gap-3 mt-2">
