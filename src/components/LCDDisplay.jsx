@@ -45,6 +45,10 @@ export function LCDDisplay(props) {
           font-family: '5x7DotMatrix';
           src: url('${LCD_DISPLAY_FONT}') format('opentype');
         }
+        @keyframes marquee-left {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
       `}</style>
 
       <div 
@@ -68,8 +72,20 @@ export function LCDDisplay(props) {
           </div>
         )}
         {line3 && (
-          <div style={{ ...textStyle, fontSize: '12px', marginTop: '4px' }}>
-            {line3}
+          <div className="relative w-full overflow-hidden h-6 flex items-center mt-2">
+            <div 
+              className="absolute whitespace-nowrap flex items-center"
+              style={{
+                ...textStyle,
+                fontSize: '12px',
+                animation: 'marquee-left 12s linear infinite',
+              }}
+            >
+              <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
+              <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
+              <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
+              <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
+            </div>
           </div>
         )}
         {line4 && (
