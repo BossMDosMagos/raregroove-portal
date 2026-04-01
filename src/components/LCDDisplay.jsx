@@ -48,13 +48,13 @@ export function LCDDisplay(props) {
       `}</style>
 
       <div 
-        className="absolute flex flex-col items-center justify-center"
+        className="absolute flex flex-col items-center justify-start"
         style={{
           top: bounds.top + 'px',
           right: bounds.right + 'px',
           bottom: bounds.bottom + 'px',
           left: bounds.left + 'px',
-          paddingTop: '8px',
+          paddingTop: '25px',
         }}
       >
         {line1 && (
