@@ -334,7 +334,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
           line3={currentTrack?.title || currentTrack?.name || ''}
           line4=""
           isPlaying={isPlaying}
-          showBounds={true}
+          showBounds={false}
         />
         
         <div className="flex items-center justify-center gap-3 mt-2">

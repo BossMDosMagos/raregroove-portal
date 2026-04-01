@@ -16,8 +16,9 @@ export function LCDDisplay(props) {
 
   const controlStyle = {
     position: 'absolute',
-    top: '10px',
-    left: '-200px',
+    top: '30px',
+    left: '100%',
+    marginLeft: '10px',
     background: 'rgba(0,0,0,0.9)',
     padding: '10px',
     borderRadius: '8px',
@@ -90,22 +91,25 @@ export function LCDDisplay(props) {
       )}
 
       <button
-        onClick={() => setShowControls(!showControls)}
+        onClick={() => {
+          console.log('Toggle controls, showControls:', !showControls);
+          setShowControls(!showControls);
+        }}
         style={{
           position: 'absolute',
           top: '5px',
           right: '5px',
           zIndex: 50,
-          background: 'rgba(255,0,0,0.5)',
+          background: 'rgba(255,0,0,0.8)',
           color: 'white',
-          border: 'none',
-          padding: '2px 6px',
-          fontSize: '10px',
+          border: '1px solid red',
+          padding: '4px 8px',
+          fontSize: '14px',
           cursor: 'pointer',
           borderRadius: '3px',
         }}
       >
-        ⚙
+        ⚙️
       </button>
 
       <div 
