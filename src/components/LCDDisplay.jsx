@@ -54,6 +54,7 @@ export function LCDDisplay(props) {
           right: bounds.right + 'px',
           bottom: bounds.bottom + 'px',
           left: bounds.left + 'px',
+          paddingTop: '8px',
         }}
       >
         {line1 && (
