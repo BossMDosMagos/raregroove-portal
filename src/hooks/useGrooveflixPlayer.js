@@ -108,6 +108,8 @@ export function useGrooveflixPlayer() {
     isLoadingRef.current = false;
   }, []);
   
+  const loadAndPlayTrackRef = useRef(null);
+  
   const loadAndPlayTrack = useCallback(async (track) => {
     if (!track?.audioPath) return;
     if (isLoadingRef.current) return;
@@ -137,6 +139,20 @@ export function useGrooveflixPlayer() {
     audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
     audio.addEventListener('ended', () => {
       setIsPlaying(false);
+      
+      const queue = audioPlayer?.queue || [];
+      const currentTrackId = audioPlayer?.currentTrack?.id;
+      
+      if (queue.length > 0 && currentTrackId) {
+        const currentIdx = queue.findIndex(t => t.id === currentTrackId);
+        if (currentIdx >= 0 && currentIdx < queue.length - 1) {
+          const nextTrack = queue[currentIdx + 1];
+          if (nextTrack && audioPlayer?.setCurrentTrack && loadAndPlayTrackRef.current) {
+            audioPlayer.setCurrentTrack(nextTrack);
+            loadAndPlayTrackRef.current(nextTrack);
+          }
+        }
+      }
     });
     audio.addEventListener('play', () => {
       setIsPlaying(true);
@@ -160,7 +176,11 @@ export function useGrooveflixPlayer() {
     });
     
   }, [audioPlayer, cleanup, connectMediaSource]);
-  
+
+  useEffect(() => {
+    loadAndPlayTrackRef.current = loadAndPlayTrack;
+  }, [loadAndPlayTrack]);
+
   const play = useCallback(async () => {
     const audio = audioElementRef.current;
     if (!audio) return;
