@@ -1,6 +1,19 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useState } from 'react';
 
 const FREQUENCY_LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
+
+const PRESETS = [
+  { key: 'flat', name: 'Flat' },
+  { key: 'rock', name: 'Rock' },
+  { key: 'pop', name: 'Pop' },
+  { key: 'jazz', name: 'Jazz' },
+  { key: 'classical', name: 'Clássico' },
+  { key: 'electronic', name: 'EDM' },
+  { key: 'hiphop', name: 'Hip-Hop' },
+  { key: 'acoustic', name: 'Acústico' },
+  { key: 'vocal', name: 'Vocal' },
+  { key: 'bass', name: 'Bass Boost' },
+];
 
 function DraggableSlider({ value, onChange, frequency }) {
   const sliderRef = useRef(null);
@@ -129,21 +142,6 @@ function DraggableSlider({ value, onChange, frequency }) {
   );
 }
 
-function PresetButton({ name, isActive, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${
-        isActive 
-          ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white shadow-lg shadow-fuchsia-500/30' 
-          : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
-      }`}
-    >
-      {name}
-    </button>
-  );
-}
-
 export default function EqualizerPanel({
   gains = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   activePreset = 'flat',
@@ -153,18 +151,12 @@ export default function EqualizerPanel({
   onReset,
   onToggle,
 }) {
-  const presets = useMemo(() => [
-    { key: 'flat', name: 'Flat' },
-    { key: 'rock', name: 'Rock' },
-    { key: 'pop', name: 'Pop' },
-    { key: 'jazz', name: 'Jazz' },
-    { key: 'classical', name: 'Cláss' },
-    { key: 'electronic', name: 'EDM' },
-    { key: 'hiphop', name: 'Hip-H' },
-    { key: 'acoustic', name: 'Acúst' },
-    { key: 'vocal', name: 'Vocal' },
-    { key: 'bass', name: 'Bass' },
-  ], []);
+  const [showDropdown, setShowDropdown] = useState(false);
+  
+  const activePresetName = useMemo(() => {
+    const preset = PRESETS.find(p => p.key === activePreset);
+    return preset ? preset.name : 'Flat';
+  }, [activePreset]);
 
   return (
     <div 
@@ -208,30 +200,50 @@ export default function EqualizerPanel({
         ))}
       </div>
 
-      <div className="mb-2">
-        <div className="text-[8px] text-white/40 uppercase tracking-wider mb-1.5 px-1">Presets</div>
-        <div className="flex flex-wrap gap-1">
-          {presets.map(preset => (
-            <PresetButton
-              key={preset.key}
-              name={preset.name}
-              isActive={activePreset === preset.key && isEnabled}
-              onClick={() => onPresetChange(preset.key)}
-            />
-          ))}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="relative flex-1">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="w-full py-1.5 px-3 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white/70 hover:bg-white/10 hover:text-white transition flex items-center justify-between"
+          >
+            <span>{activePresetName}</span>
+            <span className="text-white/40">▼</span>
+          </button>
+          
+          {showDropdown && (
+            <div 
+              className="absolute bottom-full left-0 right-0 mb-1 bg-charcoal-deep border border-white/10 rounded-lg overflow-hidden shadow-xl z-50"
+              style={{ maxHeight: '150px', overflowY: 'auto' }}
+            >
+              {PRESETS.map(preset => (
+                <button
+                  key={preset.key}
+                  onClick={() => {
+                    onPresetChange(preset.key);
+                    setShowDropdown(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wider transition ${
+                    activePreset === preset.key 
+                      ? 'bg-fuchsia-500/20 text-fuchsia-300' 
+                      : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-
-      <div className="flex gap-2">
+        
         <button
           onClick={onReset}
-          className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition"
+          className="py-1.5 px-3 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white/60 hover:bg-white/10 hover:text-white transition"
         >
           Reset
         </button>
       </div>
 
-      <div className="mt-2 pt-2 border-t border-white/5">
+      <div className="mt-1 pt-2 border-t border-white/5">
         <div className="flex items-center justify-between text-[8px] text-white/40 px-1">
           <span>10 Band EQ</span>
           <span className={isEnabled ? 'text-green-400' : 'text-red-400'}>
