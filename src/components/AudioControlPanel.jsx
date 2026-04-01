@@ -5,6 +5,8 @@ import { SpectrumLeft, SpectrumRight } from './SpectrumVisualizer.jsx';
 import { VolumeKnob } from './VolumeKnob.jsx';
 import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
+import EqualizerPanel from './EqualizerPanel.jsx';
+import { useEqualizer } from '../hooks/useEqualizer.js';
 
 export default function AudioControlPanel({ 
   isPlaying,
@@ -17,6 +19,8 @@ export default function AudioControlPanel({
   onNextTrack,
   onEject
 }) {
+  const equalizer = useEqualizer();
+  
   return (
     <>
       {/* Painel Esquerdo */}
@@ -136,6 +140,19 @@ export default function AudioControlPanel({
           {/* Spectrum Direito */}
           <div className="flex justify-center mb-3">
             <SpectrumRight isPlaying={isPlaying} />
+          </div>
+
+          {/* Equalizer */}
+          <div className="flex justify-center mb-3">
+            <EqualizerPanel
+              gains={equalizer.gains}
+              activePreset={equalizer.activePreset}
+              isEnabled={equalizer.isEnabled}
+              onBandChange={equalizer.setBandGain}
+              onPresetChange={equalizer.applyPreset}
+              onReset={equalizer.resetEqualizer}
+              onToggle={equalizer.toggleEqualizer}
+            />
           </div>
 
           {/* Woofer Direito */}
