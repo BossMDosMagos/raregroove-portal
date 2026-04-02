@@ -66,8 +66,8 @@ export function useGrooveflixPlayer() {
   const audioElementRef = useRef(null);
   const mediaSourceRef = useRef(null);
   const isConnectedRef = useRef(false);
-  const isLoadingRef = useRef(false);
   const currentTrackIdRef = useRef(null);
+  const pendingTrackIdRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -111,7 +111,6 @@ export function useGrooveflixPlayer() {
     }
     
     isConnectedRef.current = false;
-    isLoadingRef.current = false;
     currentTrackIdRef.current = null;
     setCurrentTime(0);
     setDuration(0);
@@ -120,10 +119,13 @@ export function useGrooveflixPlayer() {
   
   const loadAndPlayTrack = useCallback(async (track) => {
     if (!track?.audioPath) return;
-    if (isLoadingRef.current && currentTrackIdRef.current === track.id) return;
     
-    isLoadingRef.current = true;
-    currentTrackIdRef.current = track.id;
+    const trackId = track.id;
+    pendingTrackIdRef.current = trackId;
+    
+    if (audioElementRef.current && currentTrackIdRef.current === trackId) {
+      return;
+    }
     
     stopAudio();
     setCurrentTime(0);
@@ -135,29 +137,29 @@ export function useGrooveflixPlayer() {
     }
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
-    if (!url || currentTrackIdRef.current !== track.id) {
-      isLoadingRef.current = false;
-      return;
-    }
+    if (!url) return;
+    if (pendingTrackIdRef.current !== trackId) return;
     
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.preload = 'metadata';
     
+    currentTrackIdRef.current = trackId;
+    
     const onTimeUpdate = () => {
-      if (currentTrackIdRef.current === track.id) {
+      if (currentTrackIdRef.current === trackId) {
         setCurrentTime(audio.currentTime);
       }
     };
     
     const onLoadedMetadata = () => {
-      if (currentTrackIdRef.current === track.id) {
+      if (currentTrackIdRef.current === trackId) {
         setDuration(audio.duration);
       }
     };
     
     const onEnded = () => {
-      if (currentTrackIdRef.current !== track.id) return;
+      if (currentTrackIdRef.current !== trackId) return;
       
       const queue = audioPlayer?.queue || [];
       const currentTrackId = audioPlayer?.currentTrack?.id;
@@ -174,21 +176,15 @@ export function useGrooveflixPlayer() {
     };
     
     const onPlay = () => {
-      if (currentTrackIdRef.current === track.id) {
+      if (currentTrackIdRef.current === trackId) {
         setIsPlaying(true);
         connectMediaSource(audio);
       }
     };
     
     const onPause = () => {
-      if (currentTrackIdRef.current === track.id) {
+      if (currentTrackIdRef.current === trackId) {
         setIsPlaying(false);
-      }
-    };
-    
-    const onError = () => {
-      if (currentTrackIdRef.current === track.id) {
-        isLoadingRef.current = false;
       }
     };
     
@@ -197,18 +193,15 @@ export function useGrooveflixPlayer() {
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
-    audio.addEventListener('error', onError);
     
     audioElementRef.current = audio;
     audio.src = url;
     
     try {
       await audio.play();
-    } catch {
-      isLoadingRef.current = false;
+    } catch (err) {
+      console.error('[Player] Play error:', err);
     }
-    
-    isLoadingRef.current = false;
     
   }, [audioPlayer, stopAudio, connectMediaSource]);
 
@@ -234,8 +227,9 @@ export function useGrooveflixPlayer() {
   
   const seek = useCallback((time) => {
     const audio = audioElementRef.current;
-    if (!audio || !duration) return;
-    const clampedTime = Math.max(0, Math.min(time, audio.duration || duration));
+    if (!audio) return;
+    const maxTime = audio.duration || duration;
+    const clampedTime = Math.max(0, Math.min(time, maxTime));
     audio.currentTime = clampedTime;
     setCurrentTime(clampedTime);
   }, [duration]);
