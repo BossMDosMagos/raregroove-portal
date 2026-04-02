@@ -65,10 +65,9 @@ export function useGrooveflixPlayer() {
   
   const audioElementRef = useRef(null);
   const mediaSourceRef = useRef(null);
-  const audioEventsRef = useRef([]);
   const isConnectedRef = useRef(false);
   const isLoadingRef = useRef(false);
-  const loadAndPlayTrackRef = useRef(null);
+  const currentTrackIdRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -96,27 +95,14 @@ export function useGrooveflixPlayer() {
       mediaSourceRef.current = mediaSource;
       isConnectedRef.current = true;
     } catch {
-      // Silently handle - already connected
+      // Silently handle
     }
   }, []);
   
-  const removeAudioEvents = useCallback(() => {
-    const audio = audioElementRef.current;
-    if (!audio) return;
-    
-    audioEventsRef.current.forEach(({ event, handler }) => {
-      audio.removeEventListener(event, handler);
-    });
-    audioEventsRef.current = [];
-  }, []);
-  
-  const cleanup = useCallback(() => {
-    removeAudioEvents();
-    
+  const stopAudio = useCallback(() => {
     if (audioElementRef.current) {
       audioElementRef.current.pause();
       audioElementRef.current.src = '';
-      audioElementRef.current = null;
     }
     
     if (mediaSourceRef.current) {
@@ -126,16 +112,22 @@ export function useGrooveflixPlayer() {
     
     isConnectedRef.current = false;
     isLoadingRef.current = false;
-  }, [removeAudioEvents]);
+    currentTrackIdRef.current = null;
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+  }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
     if (!track?.audioPath) return;
-    if (isLoadingRef.current) return;
-    isLoadingRef.current = true;
+    if (isLoadingRef.current && currentTrackIdRef.current === track.id) return;
     
-    cleanup();
-    setIsPlaying(false);
+    isLoadingRef.current = true;
+    currentTrackIdRef.current = track.id;
+    
+    stopAudio();
     setCurrentTime(0);
+    setDuration(0);
     
     const ctx = initAudioGraph();
     if (ctx.state === 'suspended') {
@@ -143,21 +135,30 @@ export function useGrooveflixPlayer() {
     }
     
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
-    if (!url) {
+    if (!url || currentTrackIdRef.current !== track.id) {
       isLoadingRef.current = false;
       return;
     }
     
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
-    audio.preload = 'none';
+    audio.preload = 'metadata';
     
-    const events = [];
+    const onTimeUpdate = () => {
+      if (currentTrackIdRef.current === track.id) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
     
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      if (currentTrackIdRef.current === track.id) {
+        setDuration(audio.duration);
+      }
+    };
+    
     const onEnded = () => {
-      setIsPlaying(false);
+      if (currentTrackIdRef.current !== track.id) return;
+      
       const queue = audioPlayer?.queue || [];
       const currentTrackId = audioPlayer?.currentTrack?.id;
       
@@ -165,19 +166,31 @@ export function useGrooveflixPlayer() {
         const currentIdx = queue.findIndex(t => t.id === currentTrackId);
         if (currentIdx >= 0 && currentIdx < queue.length - 1) {
           const nextTrack = queue[currentIdx + 1];
-          if (nextTrack && audioPlayer?.setCurrentTrack && loadAndPlayTrackRef.current) {
+          if (nextTrack && audioPlayer?.setCurrentTrack) {
             audioPlayer.setCurrentTrack(nextTrack);
-            loadAndPlayTrackRef.current(nextTrack);
           }
         }
       }
     };
+    
     const onPlay = () => {
-      setIsPlaying(true);
-      connectMediaSource(audio);
+      if (currentTrackIdRef.current === track.id) {
+        setIsPlaying(true);
+        connectMediaSource(audio);
+      }
     };
-    const onPause = () => setIsPlaying(false);
-    const onError = () => { isLoadingRef.current = false; };
+    
+    const onPause = () => {
+      if (currentTrackIdRef.current === track.id) {
+        setIsPlaying(false);
+      }
+    };
+    
+    const onError = () => {
+      if (currentTrackIdRef.current === track.id) {
+        isLoadingRef.current = false;
+      }
+    };
     
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -186,53 +199,43 @@ export function useGrooveflixPlayer() {
     audio.addEventListener('pause', onPause);
     audio.addEventListener('error', onError);
     
-    events.push(
-      { event: 'timeupdate', handler: onTimeUpdate },
-      { event: 'loadedmetadata', handler: onLoadedMetadata },
-      { event: 'ended', handler: onEnded },
-      { event: 'play', handler: onPlay },
-      { event: 'pause', handler: onPause },
-      { event: 'error', handler: onError }
-    );
-    
-    audioEventsRef.current = events;
     audioElementRef.current = audio;
     audio.src = url;
-    audio.load();
     
-    audio.play().catch(() => {
+    try {
+      await audio.play();
+    } catch {
       isLoadingRef.current = false;
-    });
+    }
     
-  }, [audioPlayer, cleanup, connectMediaSource]);
-
-  useEffect(() => {
-    loadAndPlayTrackRef.current = loadAndPlayTrack;
-  }, [loadAndPlayTrack]);
+    isLoadingRef.current = false;
+    
+  }, [audioPlayer, stopAudio, connectMediaSource]);
 
   const play = useCallback(async () => {
     const audio = audioElementRef.current;
     if (!audio) return;
     await ensureContextRunning();
-    audio.play().catch(() => {});
+    try { await audio.play(); } catch {}
   }, [ensureContextRunning]);
   
   const pause = useCallback(() => {
-    audioElementRef.current?.pause();
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+    }
   }, []);
   
   const stop = useCallback(() => {
-    const audio = audioElementRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    audio.pause();
-    setCurrentTime(0);
-  }, []);
+    stopAudio();
+    if (audioPlayer?.setIsPlaying) {
+      audioPlayer.setIsPlaying(false);
+    }
+  }, [stopAudio, audioPlayer]);
   
   const seek = useCallback((time) => {
     const audio = audioElementRef.current;
-    if (!audio) return;
-    const clampedTime = Math.max(0, Math.min(time, duration));
+    if (!audio || !duration) return;
+    const clampedTime = Math.max(0, Math.min(time, audio.duration || duration));
     audio.currentTime = clampedTime;
     setCurrentTime(clampedTime);
   }, [duration]);
@@ -249,13 +252,9 @@ export function useGrooveflixPlayer() {
   }, [audioPlayer]);
   
   const dispose = useCallback(() => {
-    cleanup();
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch {}
-      mediaSourceRef.current = null;
-    }
+    stopAudio();
     unregisterAnalysers();
-  }, [cleanup]);
+  }, [stopAudio]);
   
   useEffect(() => {
     return () => { dispose(); };
