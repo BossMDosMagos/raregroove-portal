@@ -251,6 +251,7 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
             currentTime={currentTime || 0}
             duration={duration || 0}
             onSeek={onSeek}
+            isPlaying={isPlaying}
           />
         </div>
         
