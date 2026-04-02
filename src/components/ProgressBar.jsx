@@ -29,24 +29,28 @@ const ProgressBar = memo(function ProgressBar({
   }, [onSeek, duration]);
 
   return (
-    <div className="w-full px-4 py-2">
+    <div 
+      className="w-full px-6 py-2 bg-black/20 rounded-lg"
+      style={{ minWidth: '200px' }}
+    >
       <div 
-        className="relative h-2 bg-white/10 rounded-full cursor-pointer group"
+        className="relative h-3 bg-gradient-to-b from-white/5 to-white/10 rounded-full cursor-pointer group"
         onClick={handleClick}
         onMouseMove={handleMouseMove}
+        style={{ overflow: 'visible' }}
       >
         <div 
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-fuchsia-500 rounded-full transition-all"
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-400 via-cyan-500 to-fuchsia-500 rounded-full shadow-lg shadow-cyan-500/30 transition-all duration-100"
           style={{ width: `${progress}%` }}
         />
         <div 
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ left: `calc(${progress}% - 6px)` }}
+          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          style={{ left: `calc(${progress}% - 8px)`, zIndex: 10 }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-white/50 mt-1 px-1">
+      <div className="flex justify-between text-xs text-white/60 mt-1.5 px-1 font-mono">
         <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
+        <span className="text-cyan-400/70">{formatTime(duration)}</span>
       </div>
     </div>
   );
