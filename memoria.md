@@ -671,14 +671,54 @@ console.log(data.url);
 - Filtros Biquad Peaking EQ no grafo Web Audio
 - merger → filtros → gain → destination
 
+### ✅ Barra de Progresso
+
+**Arquivo:**
+- `src/components/ProgressBar.jsx`
+
+**Features:**
+- Posicionada abaixo do LCD Display
+- Gradiente cyan → fuchsia com sombra brilhante
+- Tempo atual / duração total em fonte monospace
+- Clicável para seek
+- Z-index máximo (99999) para visibilidade
+
+---
+
+## Otimizações de Performance (2026-04-02)
+
+### Memory Leaks Corrigidos
+- **CoverFlow3D**: Blob URLs revocados com `URL.revokeObjectURL()`
+- **useGrooveflixPlayer**: Event listeners limpos corretamente
+
+### Imports e Variáveis
+- Removidos: `Film`, `Music`, `Disc`, `useSubscription`, `isTrialing`, `isActive`
+- Removidos: `localIsPlaying`, `handleAlbumClick`, `isConnectedRef`, `console.log`
+
+### React.memo Adicionado
+- `DraggableSlider`
+- `LCDDisplay`
+- `ProgressBar`
+
+### useMemo/useCallback Otimizados
+- `sortedTracklist`, `visibleItems`, `filteredItems`, `textStyle`
+- Dependências de callbacks corrigidas
+
+### Código Limpo
+- Estilos CSS movidos para `index.css`
+- Componente `CrownSvg` extraído
+- `panelStyle` constante extraída
+- **529 linhas removidas, 241 adicionadas**
+
 ---
 
 ## Próximos Passos
 
 - [ ] Testar equalizador em reprodução real
 - [ ] Ajustar valores de preset se necessário
+- [ ] Testar barra de progresso com seek
 - [ ] Considerar visualização de espectro em tempo real
 
 ---
 
-*Última atualização: 2026-04-01 00:50 UTC-3*
+*Última atualização: 2026-04-02 12:52 UTC-3*
