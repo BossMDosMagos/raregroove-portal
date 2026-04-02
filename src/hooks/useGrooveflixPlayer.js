@@ -267,5 +267,6 @@ export function useGrooveflixPlayer() {
     loadAndPlayTrack,
     dispose,
     queue: audioPlayer?.queue || [],
+    playTrackFromQueue: audioPlayer?.playTrackFromQueue,
   };
 }

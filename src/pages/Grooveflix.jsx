@@ -49,6 +49,7 @@ export default function Grooveflix() {
   const { 
     setQueue, 
     playTrack, 
+    playTrackFromQueue,
     currentTrack: globalCurrentTrack, 
     isPlaying: isAudioContextPlaying, 
     playAlbum, 
@@ -111,9 +112,9 @@ export default function Grooveflix() {
     const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
     if (currentIndex >= 0 && currentIndex < queue.length - 1) {
       const nextTrack = queue[currentIndex + 1];
-      playTrack(nextTrack);
+      playTrackFromQueue(nextTrack);
     }
-  }, [queue, globalCurrentTrack, playTrack]);
+  }, [queue, globalCurrentTrack, playTrackFromQueue]);
 
   const handleEject = useCallback(() => {
     clearQueue();

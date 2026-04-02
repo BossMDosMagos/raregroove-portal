@@ -132,6 +132,12 @@ export function AudioPlayerProvider({ children }) {
     setIsPlaying(true);
   }, [expandAlbumTracks]);
 
+  const playTrackFromQueue = useCallback((track) => {
+    if (!track) return;
+    setCurrentTrack(track);
+    setIsPlaying(true);
+  }, []);
+
   const playAlbum = useCallback((albumItem, startIndex = 0) => {
     if (!albumItem) return;
     
@@ -184,6 +190,7 @@ export function AudioPlayerProvider({ children }) {
     setCurrentTime,
     setDuration,
     playTrack,
+    playTrackFromQueue,
     playAlbum,
     pauseTrack,
     resumeTrack,
@@ -202,6 +209,7 @@ export function AudioPlayerProvider({ children }) {
     userId,
     loadingTrackId,
     playTrack,
+    playTrackFromQueue,
     playAlbum,
     pauseTrack,
     resumeTrack,
