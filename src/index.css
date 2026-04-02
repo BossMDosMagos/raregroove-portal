@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: '5x7DotMatrix';
+  src: url('/fonts/5x7-dot-matrix.otf') format('opentype');
+}
+
+@keyframes marquee-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @theme {
 	/* Palette: LUXURY DARK GOLD */
 	--color-gold-premium: #D4AF37;

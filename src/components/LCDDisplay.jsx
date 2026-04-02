@@ -1,24 +1,19 @@
-const LCD_DISPLAY_FONT = '/fonts/5x7-dot-matrix.otf';
+import React, { useMemo } from 'react';
 
-export function LCDDisplay(props) {
-  const { line1, line2, line3, line4, isPlaying, showBounds } = props;
+export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, line4 }) {
   const bounds = { top: 5, right: 48, bottom: 10, left: 48 };
 
-  const textStyle = {
+  const textStyle = useMemo(() => ({
     fontFamily: "'5x7DotMatrix', 'Courier New', monospace",
     color: '#1a1a1a',
     fontWeight: 'bold',
     textShadow: '1px 1px 0 rgba(255,255,255,0.3)',
-  };
+  }), []);
 
   return (
     <div 
       className="relative rounded-lg overflow-hidden"
-      style={{
-        width: '600px',
-        height: '150px',
-        position: 'relative',
-      }}
+      style={{ width: '600px', height: '150px', position: 'relative' }}
     >
       <img 
         src="/images/painel/lcd.png"
@@ -26,24 +21,13 @@ export function LCDDisplay(props) {
         className="absolute inset-0 w-full h-full object-contain"
       />
 
-      <style>{`
-        @font-face {
-          font-family: '5x7DotMatrix';
-          src: url('${LCD_DISPLAY_FONT}') format('opentype');
-        }
-        @keyframes marquee-left {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-      `}</style>
-
       <div 
         className="absolute flex flex-col items-center justify-start"
         style={{
-          top: bounds.top + 'px',
-          right: bounds.right + 'px',
-          bottom: bounds.bottom + 'px',
-          left: bounds.left + 'px',
+          top: `${bounds.top}px`,
+          right: `${bounds.right}px`,
+          bottom: `${bounds.bottom}px`,
+          left: `${bounds.left}px`,
           paddingTop: '25px',
         }}
       >
@@ -61,11 +45,7 @@ export function LCDDisplay(props) {
           <div className="relative w-full overflow-hidden h-6 flex items-center mt-2">
             <div 
               className="absolute whitespace-nowrap flex items-center"
-              style={{
-                ...textStyle,
-                fontSize: '12px',
-                animation: 'marquee-left 12s linear infinite',
-              }}
+              style={{ ...textStyle, fontSize: '12px', animation: 'marquee-left 12s linear infinite' }}
             >
               <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
               <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
@@ -80,20 +60,6 @@ export function LCDDisplay(props) {
           </div>
         )}
       </div>
-
-      {showBounds && (
-        <div 
-          className="absolute pointer-events-none"
-          style={{
-            top: bounds.top + 'px',
-            right: bounds.right + 'px',
-            bottom: bounds.bottom + 'px',
-            left: bounds.left + 'px',
-            border: '1px solid red',
-            borderRadius: '4px',
-          }}
-        />
-      )}
     </div>
   );
-}
+});

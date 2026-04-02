@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { Film, Sparkles, Plus, Music, RotateCw, Disc } from 'lucide-react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { Sparkles, Plus, RotateCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { Howler } from 'howler';
@@ -7,7 +7,6 @@ import GrooveflixUploader from '../components/GrooveflixUploader';
 import CoverFlow3D from '../components/CoverFlow3D';
 import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
-import { useSubscription } from '../contexts/SubscriptionContext.jsx';
 
 import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
@@ -44,24 +43,15 @@ function normalizeTracks(items = []) {
 
 export default function Grooveflix() {
   const { t } = useI18n();
-  const { isTrialing, isActive } = useSubscription();
   const player = useGrooveflixPlayer();
   const { 
-    setQueue, 
-    playTrack, 
     playTrackFromQueue,
     currentTrack: globalCurrentTrack, 
     isPlaying: isAudioContextPlaying, 
-    playAlbum, 
-    pauseTrack, 
-    resumeTrack, 
     clearQueue,
     loadAndPlayTrack,
     volume,
     setVolume,
-    currentTime,
-    duration,
-    seek,
     play,
     pause,
     stop,
@@ -91,22 +81,17 @@ export default function Grooveflix() {
     };
   }, []);
 
-  const handlePause = useCallback(() => {
-    pause();
-  }, [pause]);
-
-  const handleStop = useCallback(() => {
-    stop();
-    clearQueue();
-  }, [stop, clearQueue]);
+  const handlePause = useCallback(() => pause(), [pause]);
+  const handleStop = useCallback(() => { stop(); clearQueue(); }, [stop, clearQueue]);
+  const handleEject = useCallback(() => clearQueue(), [clearQueue]);
 
   const handlePreviousTrack = useCallback(() => {
     const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
     if (currentIndex > 0) {
       const prevTrack = queue[currentIndex - 1];
-      playTrack(prevTrack);
+      playTrackFromQueue(prevTrack);
     }
-  }, [queue, globalCurrentTrack, playTrack]);
+  }, [queue, globalCurrentTrack, playTrackFromQueue]);
 
   const handleNextTrack = useCallback(() => {
     const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
@@ -116,10 +101,6 @@ export default function Grooveflix() {
     }
   }, [queue, globalCurrentTrack, playTrackFromQueue]);
 
-  const handleEject = useCallback(() => {
-    clearQueue();
-  }, [clearQueue]);
-
   const lastTrackIdRef = useRef(null);
 
   useEffect(() => {
@@ -128,11 +109,10 @@ export default function Grooveflix() {
       lastTrackIdRef.current = trackId;
       loadAndPlayTrack(globalCurrentTrack);
     }
-  }, [globalCurrentTrack]);
+  }, [globalCurrentTrack, loadAndPlayTrack]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [focusedItem, setFocusedItem] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -173,9 +153,7 @@ export default function Grooveflix() {
         .order('created_at', { ascending: false })
         .limit(120);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       const allItems = data || [];
       const grooveflixItems = allItems.filter(item =>
@@ -185,17 +163,9 @@ export default function Grooveflix() {
       setDebugInfo({
         totalItems: allItems.length,
         grooveflixItems: grooveflixItems.length,
-        sampleItem: grooveflixItems[0] ? {
-          id: grooveflixItems[0].id,
-          title: grooveflixItems[0].title,
-          audioPath: grooveflixItems[0].metadata?.grooveflix?.audio_path,
-          coverPath: grooveflixItems[0].metadata?.grooveflix?.cover_path,
-        } : null,
       });
 
-      const tracks = normalizeTracks(grooveflixItems);
-
-      setItems(tracks);
+      setItems(normalizeTracks(grooveflixItems));
       setLoading(false);
 
     } catch (e) {
@@ -205,15 +175,13 @@ export default function Grooveflix() {
   }, [userId, t]);
 
   useEffect(() => {
-    if (userId) {
-      loadItems();
-    }
-  }, [userId]);
+    if (userId) loadItems();
+  }, [userId, loadItems]);
 
-  const filteredItems = items.filter((item) => {
-    if (categoryFilter === 'all') return true;
-    return item.category === categoryFilter;
-  });
+  const filteredItems = useMemo(() => {
+    if (categoryFilter === 'all') return items;
+    return items.filter(item => item.category === categoryFilter);
+  }, [items, categoryFilter]);
 
   return (
     <div className="h-screen bg-black text-white overflow-hidden">
@@ -258,17 +226,11 @@ export default function Grooveflix() {
             ))}
             
             <div className="flex items-center gap-2 ml-4">
-              <button
-                onClick={() => loadItems()}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition"
-              >
+              <button onClick={() => loadItems()} className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition">
                 <RotateCw className="w-4 h-4" /> {t('grooveflix.reload')}
               </button>
               {isAdmin && (
-                <button
-                  onClick={() => setShowUploader(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition"
-                >
+                <button onClick={() => setShowUploader(true)} className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition">
                   <Plus className="w-4 h-4" /> {t('grooveflix.upload')}
                 </button>
               )}
@@ -286,15 +248,10 @@ export default function Grooveflix() {
             <Disc className="w-16 h-16 text-white/20 mx-auto mb-4" />
             <p className="text-xl font-bold mb-2">{t('grooveflix.empty.title')}</p>
             <p className="text-white/60 mb-6">
-              {!userId ? t('grooveflix.empty.login') :
-               debugInfo?.grooveflixItems === 0 ? t('grooveflix.empty.upload') :
-               t('grooveflix.empty.filter')}
+              {!userId ? t('grooveflix.empty.login') : debugInfo?.grooveflixItems === 0 ? t('grooveflix.empty.upload') : t('grooveflix.empty.filter')}
             </p>
             {isAdmin && (
-              <button
-                onClick={() => setShowUploader(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold"
-              >
+              <button onClick={() => setShowUploader(true)} className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full font-bold">
                 <Plus className="w-5 h-5" />
                 Adicionar Primeiro Álbum
               </button>
@@ -303,15 +260,11 @@ export default function Grooveflix() {
         ) : (
           <CoverFlow3D
             items={filteredItems}
-            onUpdateFocus={setFocusedItem}
-            onOpenUploader={() => setShowUploader(true)}
+            onUpdateFocus={() => {}}
             isAdmin={isAdmin}
-            onAlbumDeleted={(id) => {
-              setItems(prev => prev.filter(item => item.id !== id));
-            }}
+            onAlbumDeleted={(id) => setItems(prev => prev.filter(item => item.id !== id))}
             currentTrack={globalCurrentTrack}
             isPlaying={isAudioContextPlaying}
-            volume={volume}
           />
         )}
       </div>
@@ -319,10 +272,7 @@ export default function Grooveflix() {
       <GrooveflixUploader
         isOpen={showUploader}
         onClose={() => setShowUploader(false)}
-        onSuccess={() => {
-          setShowUploader(false);
-          loadItems();
-        }}
+        onSuccess={() => { setShowUploader(false); loadItems(); }}
         isAdmin={isAdmin}
       />
     </div>

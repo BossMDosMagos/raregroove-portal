@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useState } from 'react';
+import React, { useMemo, useRef, useCallback, useState, memo } from 'react';
 
 const FREQUENCY_LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
 
@@ -15,7 +15,7 @@ const PRESETS = [
   { key: 'bass', name: 'Bass Boost' },
 ];
 
-function DraggableSlider({ value, onChange, frequency, isEnabled }) {
+const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequency, isEnabled }) {
   const sliderRef = useRef(null);
   
   const trackHeight = 90;
@@ -71,10 +71,7 @@ function DraggableSlider({ value, onChange, frequency, isEnabled }) {
       <div 
         ref={sliderRef}
         className="relative cursor-pointer"
-        style={{ 
-          width: `${trackWidth}px`, 
-          height: `${trackHeight}px` 
-        }}
+        style={{ width: `${trackWidth}px`, height: `${trackHeight}px` }}
         onClick={handleTrackClick}
       >
         <div 
@@ -93,38 +90,21 @@ function DraggableSlider({ value, onChange, frequency, isEnabled }) {
           style={{
             bottom: '2px',
             height: `${Math.abs(knobY - trackHeight/2)}px`,
-            background: value >= 0 
-              ? 'linear-gradient(180deg, #ec4899 0%, #a855f7 100%)'
-              : 'linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%)',
+            background: value >= 0 ? 'linear-gradient(180deg, #ec4899 0%, #a855f7 100%)' : 'linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%)',
             opacity: 0.6,
           }}
         />
         
         <div
           className="absolute left-1/2 transition-all duration-75 cursor-grab active:cursor-grabbing"
-          style={{
-            top: `${knobY}px`,
-            width: `${knobWidth}px`,
-            height: `${knobHeight}px`,
-            transform: 'translate(-50%, -50%)',
-          }}
+          style={{ top: `${knobY}px`, width: `${knobWidth}px`, height: `${knobHeight}px`, transform: 'translate(-50%, -50%)' }}
           onMouseDown={handleMouseDown}
         >
           <div 
             className="w-full h-full rounded-[40%]"
             style={{
-              background: `
-                radial-gradient(ellipse at 30% 20%, rgba(80,80,80,0.4) 0%, transparent 50%),
-                linear-gradient(135deg, #2a2a2a 0%, #0a0a0a 50%, #1a1a1a 100%)
-              `,
-              boxShadow: `
-                0 3px 6px rgba(0,0,0,0.9),
-                0 1px 2px rgba(255,255,255,0.05),
-                inset 0 1px 1px rgba(255,255,255,0.1),
-                inset 0 -1px 2px rgba(0,0,0,0.5),
-                inset 0 0 8px rgba(0,0,0,0.8),
-                0 0 10px ${glowColor}
-              `,
+              background: `radial-gradient(ellipse at 30% 20%, rgba(80,80,80,0.4) 0%, transparent 50%), linear-gradient(135deg, #2a2a2a 0%, #0a0a0a 50%, #1a1a1a 100%)`,
+              boxShadow: `0 3px 6px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.1), inset 0 -1px 2px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.8), 0 0 10px ${glowColor}`,
               border: '1px solid #333',
               borderTopColor: '#444',
               borderLeftColor: '#222',
@@ -147,12 +127,12 @@ function DraggableSlider({ value, onChange, frequency, isEnabled }) {
       <div className="text-center">
         <div className="text-[8px] font-bold text-white/70">{frequency}</div>
         <div className={`text-[9px] font-black ${!isEnabled ? 'text-white/20' : value > 0 ? 'text-pink-400' : value < 0 ? 'text-blue-400' : 'text-green-400'}`}>
-          {!isEnabled ? '-' : value > 0 ? '+' + value : value}
+          {!isEnabled ? '-' : value > 0 ? `+${value}` : value}
         </div>
       </div>
     </div>
   );
-}
+});
 
 export default function EqualizerPanel({
   gains = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -170,16 +150,16 @@ export default function EqualizerPanel({
     return preset ? preset.name : 'Flat';
   }, [activePreset]);
 
+  const handleBandChange = useCallback((idx, val) => {
+    onBandChange(idx, val);
+  }, [onBandChange]);
+
   return (
     <div 
       className="flex flex-col rounded-xl overflow-hidden"
       style={{
         background: 'linear-gradient(145deg, #1a1a1a, #0d0d0d)',
-        boxShadow: `
-          inset 0 1px 2px rgba(255,255,255,0.05),
-          inset 0 -1px 2px rgba(0,0,0,0.5),
-          0 4px 20px rgba(0,0,0,0.6)
-        `,
+        boxShadow: `inset 0 1px 2px rgba(255,255,255,0.05), inset 0 -1px 2px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.6)`,
         padding: '12px',
         width: '100%',
       }}
@@ -192,9 +172,7 @@ export default function EqualizerPanel({
         <button
           onClick={onToggle}
           className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wider ${
-            isEnabled 
-              ? 'bg-green-500/20 text-green-400 border border-green-500/40' 
-              : 'bg-red-500/20 text-red-400 border border-red-500/40'
+            isEnabled ? 'bg-green-500/20 text-green-400 border border-green-500/40' : 'bg-red-500/20 text-red-400 border border-red-500/40'
           }`}
         >
           {isEnabled ? 'ON' : 'OFF'}
@@ -207,7 +185,7 @@ export default function EqualizerPanel({
             key={idx}
             frequency={freq}
             value={gains[idx]}
-            onChange={(val) => onBandChange(idx, val)}
+            onChange={(val) => handleBandChange(idx, val)}
             isEnabled={isEnabled}
           />
         ))}
@@ -231,14 +209,9 @@ export default function EqualizerPanel({
               {PRESETS.map(preset => (
                 <button
                   key={preset.key}
-                  onClick={() => {
-                    onPresetChange(preset.key);
-                    setShowDropdown(false);
-                  }}
+                  onClick={() => { onPresetChange(preset.key); setShowDropdown(false); }}
                   className={`w-full px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wider transition ${
-                    activePreset === preset.key 
-                      ? 'bg-fuchsia-500/20 text-fuchsia-300' 
-                      : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    activePreset === preset.key ? 'bg-fuchsia-500/20 text-fuchsia-300' : 'text-white/60 hover:bg-white/5 hover:text-white'
                   }`}
                 >
                   {preset.name}
