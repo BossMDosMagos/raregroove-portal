@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import { toast } from 'sonner';
 import { LCDDisplay } from './LCDDisplay.jsx';
+import ProgressBar from './ProgressBar.jsx';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -43,7 +44,7 @@ const getItemPosition = (index, focusedIndex) => {
   return 'hidden';
 };
 
-export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted, currentTrack, isPlaying }) {
+export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDeleted, currentTrack, isPlaying, currentTime, duration, onSeek }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
   const [showDetails, setShowDetails] = useState(false);
@@ -243,6 +244,12 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
           line3={currentTrack?.title || currentTrack?.name || focusedItem?.title || ''}
           line4=""
           isPlaying={isPlaying}
+        />
+        
+        <ProgressBar
+          currentTime={currentTime || 0}
+          duration={duration || 0}
+          onSeek={onSeek}
         />
         
         <div className="flex items-center justify-center gap-3 mt-2">

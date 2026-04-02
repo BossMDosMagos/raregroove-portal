@@ -55,7 +55,10 @@ export default function Grooveflix() {
     play,
     pause,
     stop,
-    queue
+    seek,
+    queue,
+    currentTime,
+    duration,
   } = player;
 
   const handlePlay = useCallback(() => {
@@ -265,6 +268,9 @@ export default function Grooveflix() {
             onAlbumDeleted={(id) => setItems(prev => prev.filter(item => item.id !== id))}
             currentTrack={globalCurrentTrack}
             isPlaying={isAudioContextPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={seek}
           />
         )}
       </div>
