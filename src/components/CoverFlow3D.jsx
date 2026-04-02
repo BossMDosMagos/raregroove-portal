@@ -246,11 +246,13 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
           isPlaying={isPlaying}
         />
         
-        <ProgressBar
-          currentTime={currentTime || 0}
-          duration={duration || 0}
-          onSeek={onSeek}
-        />
+        <div style={{ position: 'relative', zIndex: 9999 }}>
+          <ProgressBar
+            currentTime={currentTime || 0}
+            duration={duration || 0}
+            onSeek={onSeek}
+          />
+        </div>
         
         <div className="flex items-center justify-center gap-3 mt-2">
           {grooveflixData.year && <span className="px-3 py-1 bg-white/10 rounded-full text-white/60 text-sm">{grooveflixData.year}</span>}

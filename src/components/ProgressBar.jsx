@@ -30,8 +30,8 @@ const ProgressBar = memo(function ProgressBar({
 
   return (
     <div 
-      className="w-full px-6 py-2 bg-black/20 rounded-lg"
-      style={{ minWidth: '200px' }}
+      className="w-full px-6 py-3 bg-black/40 rounded-xl border border-white/10 shadow-2xl"
+      style={{ minWidth: '300px', zIndex: 99999, position: 'relative' }}
     >
       <div 
         className="relative h-3 bg-gradient-to-b from-white/5 to-white/10 rounded-full cursor-pointer group"
