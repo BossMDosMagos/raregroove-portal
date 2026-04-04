@@ -39,9 +39,6 @@ function initAudioGraph() {
   initToneFilters(ctx);
   initEqFilters(ctx);
   
-  const splitter = ctx.createChannelSplitter(2);
-  sharedSplitter = splitter;
-  
   const analyserL = ctx.createAnalyser();
   analyserL.fftSize = 2048;
   analyserL.smoothingTimeConstant = 0.8;
@@ -52,9 +49,6 @@ function initAudioGraph() {
   analyserR.smoothingTimeConstant = 0.8;
   sharedAnalyserR = analyserR;
   
-  const merger = ctx.createChannelMerger(2);
-  sharedMerger = merger;
-  
   const gain = getSharedGain();
   sharedGain = gain;
   
@@ -63,20 +57,22 @@ function initAudioGraph() {
   const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   
-  const vuSplitter = ctx.createChannelSplitter(2);
+  registerAnalysers({ analyserL, analyserR, vuGainNode });
   
-  splitter.connect(vuGainNode);
-  vuGainNode.connect(vuSplitter);
-  vuSplitter.connect(analyserL);
-  vuSplitter.connect(analyserR);
+  const savedSettings = loadSettings();
+  applyAllSettings(savedSettings);
   
-  splitter.connect(merger, 0, 0);
-  splitter.connect(merger, 0, 1);
+  return ctx;
+}
+
+function connectSourceToAudioGraph(source) {
+  const eqFilters = getEqFilters();
+  const toneFilters = getToneFilters();
+  const gain = getSharedGain();
   
-  const chainStart = merger;
-  
+  // ROTA DO SOM (o que você ouve)
   if (toneFilters.bass && toneFilters.mid && toneFilters.treble) {
-    chainStart.connect(toneFilters.bass);
+    source.connect(toneFilters.bass);
     toneFilters.bass.connect(toneFilters.mid);
     toneFilters.mid.connect(toneFilters.treble);
     
@@ -90,23 +86,21 @@ function initAudioGraph() {
       toneFilters.treble.connect(gain);
     }
   } else if (eqFilters?.length > 0) {
-    chainStart.connect(eqFilters[0]);
+    source.connect(eqFilters[0]);
     for (let i = 0; i < eqFilters.length - 1; i++) {
       eqFilters[i].connect(eqFilters[i + 1]);
     }
     eqFilters[eqFilters.length - 1].connect(gain);
   } else {
-    chainStart.connect(gain);
+    source.connect(gain);
   }
   
-  gain.connect(ctx.destination);
+  gain.connect(audioContextInstance.destination);
   
-  const savedSettings = loadSettings();
-  applyAllSettings(savedSettings);
-  
-  registerAnalysers({ analyserL, analyserR, splitter, merger });
-  
-  return ctx;
+  // ROTA DO VU (sinal para os ponteiros - INDEPENDENTE do volume)
+  source.connect(vuGainNode);
+  vuGainNode.connect(sharedAnalyserL);
+  vuGainNode.connect(sharedAnalyserR);
 }
 
 export function useGrooveflixPlayer() {
@@ -150,7 +144,7 @@ export function useGrooveflixPlayer() {
       }
       
       const mediaSource = audioContextInstance.createMediaElementSource(audioElement);
-      mediaSource.connect(sharedSplitter);
+      connectSourceToAudioGraph(mediaSource);
       mediaSourceRef.current = mediaSource;
       isConnectedRef.current = true;
     } catch {

@@ -8,8 +8,7 @@ function initSharedState() {
   sharedState = {
     analyserL: null,
     analyserR: null,
-    splitter: null,
-    merger: null,
+    vuGainNode: null,
     isConnected: false,
     listeners: new Set(),
   };
@@ -21,12 +20,11 @@ export function resetAnalysers() {
   sharedState = null;
 }
 
-export function registerAnalysers({ analyserL, analyserR, splitter, merger }) {
+export function registerAnalysers({ analyserL, analyserR, vuGainNode }) {
   const state = initSharedState();
   state.analyserL = analyserL;
   state.analyserR = analyserR;
-  state.splitter = splitter;
-  state.merger = merger;
+  state.vuGainNode = vuGainNode;
   state.isConnected = true;
   
   state.listeners.forEach(fn => fn());
@@ -36,8 +34,7 @@ export function unregisterAnalysers() {
   if (sharedState) {
     sharedState.analyserL = null;
     sharedState.analyserR = null;
-    sharedState.splitter = null;
-    sharedState.merger = null;
+    sharedState.vuGainNode = null;
     sharedState.isConnected = false;
   }
 }
