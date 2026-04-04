@@ -188,6 +188,7 @@ export function VirtualWooferLeft({ isPlaying }) {
   const shadowRef = useRef(null);
   const wrapRef = useRef(null);
   const animationRef = useRef(null);
+  const debugCountRef = useRef(0);
 
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
@@ -202,6 +203,13 @@ export function VirtualWooferLeft({ isPlaying }) {
       }
 
       const rawL = getBassEnergyL();
+      
+      // DEBUG: Log a cada 60 frames
+      debugCountRef.current++;
+      if (debugCountRef.current % 60 === 0) {
+        console.log("Woofer L - isReady:", isReady, "isPlaying:", isPlaying, "BassEnergy:", rawL.toFixed(6));
+      }
+      
       stepMSD(ch.L, rawL);
       applyVisuals(coneRef.current, glowRef.current, shadowRef.current, wrapRef.current, ch.L);
     };

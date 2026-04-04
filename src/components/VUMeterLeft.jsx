@@ -18,6 +18,7 @@ export function VUMeterLeft({ isPlaying }) {
   const targetRef = useRef(0);
   const lastTimeRef = useRef(null);
   const animationRef = useRef(null);
+  const debugCountRef = useRef(0);
   
   const { isReady, getRMSL } = useGlobalAudioAnalyser();
 
@@ -125,6 +126,12 @@ export function VUMeterLeft({ isPlaying }) {
       
       if (isReady && isPlaying) {
         leftRMS = getRMSL();
+        
+        // DEBUG: Log a cada 60 frames
+        debugCountRef.current++;
+        if (debugCountRef.current % 60 === 0) {
+          console.log("VU L - isReady:", isReady, "isPlaying:", isPlaying, "RMS:", leftRMS.toFixed(6));
+        }
       }
 
       targetRef.current = leftRMS;

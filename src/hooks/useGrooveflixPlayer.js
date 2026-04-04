@@ -109,6 +109,15 @@ function connectSourceToAudioGraph(source) {
     splitter.connect(sharedAnalyserR, 1); // Canal Direito no VU R
     
     console.log("✅ VUs Conectados e Calibrados!");
+    console.log("  - vuGainNode:", vuGainNode);
+    console.log("  - sharedAnalyserL:", sharedAnalyserL);
+    console.log("  - sharedAnalyserR:", sharedAnalyserR);
+    console.log("  - source:", source);
+  } else {
+    console.log("❌ VUs NÃO conectados! Verificar:");
+    console.log("  - vuGainNode:", vuGainNode);
+    console.log("  - sharedAnalyserL:", sharedAnalyserL);
+    console.log("  - sharedAnalyserR:", sharedAnalyserR);
   }
 }
 
