@@ -112,11 +112,15 @@ function initAudioGraph() {
   const analyserL = ctx.createAnalyser();
   analyserL.fftSize = 2048;
   analyserL.smoothingTimeConstant = 0.8;
+  analyserL.minDecibels = -90;
+  analyserL.maxDecibels = 0;
   sharedAnalyserL = analyserL;
   
   const analyserR = ctx.createAnalyser();
   analyserR.fftSize = 2048;
   analyserR.smoothingTimeConstant = 0.8;
+  analyserR.minDecibels = -90;
+  analyserR.maxDecibels = 0;
   sharedAnalyserR = analyserR;
   
   const gain = getSharedGain();

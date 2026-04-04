@@ -43,12 +43,14 @@ export function useGlobalAudioAnalyser() {
   const state = initSharedState();
   const [isReady, setIsReady] = useState(false);
   const [, forceUpdate] = useState(0);
+  const debugLogRef = { lastLog: 0, frameCount: 0 };
   
   useEffect(() => {
     const checkReady = () => {
       const ready = state.isConnected && state.analyserL && state.analyserR;
       setIsReady(ready);
       forceUpdate(n => n + 1);
+      console.log('[Analyser] State updated - isConnected:', state.isConnected, 'analyserL:', state.analyserL ? 'OK' : 'NULL');
     };
     
     state.listeners.add(checkReady);
@@ -60,18 +62,34 @@ export function useGlobalAudioAnalyser() {
   }, []);
   
   const getRMSL = useCallback(() => {
-    if (!state.analyserL) return 0;
+    if (!state.analyserL) {
+      debugLogRef.frameCount++;
+      if (debugLogRef.frameCount % 120 === 0) {
+        console.warn('[Analyser] getRMSL: analyserL is NULL!');
+      }
+      return 0;
+    }
     
     const dataL = new Uint8Array(state.analyserL.frequencyBinCount);
     state.analyserL.getByteTimeDomainData(dataL);
     
     let sumL = 0;
+    let maxL = 0;
     for (let i = 0; i < dataL.length; i++) {
       const vL = (dataL[i] - 128) / 128;
       sumL += vL * vL;
+      maxL = Math.max(maxL, Math.abs(vL));
     }
     
-    return Math.sqrt(sumL / dataL.length);
+    const rms = Math.sqrt(sumL / dataL.length);
+    
+    // Debug log a cada 2 segundos
+    debugLogRef.frameCount++;
+    if (debugLogRef.frameCount % 120 === 0) {
+      console.log('[Analyser] getRMSL - max:', maxL.toFixed(4), 'rms:', rms.toFixed(6), 'firstSample:', dataL[0]);
+    }
+    
+    return rms;
   }, []);
   
   const getRMSR = useCallback(() => {
@@ -101,10 +119,18 @@ export function useGlobalAudioAnalyser() {
     
     let sumL = 0;
     let count = bassMaxBin - bassMinBin;
+    let maxFreqL = 0;
     
     for (let i = bassMinBin; i < bassMaxBin && i < freqL.length; i++) {
       const normL = freqL[i] / 255;
       sumL += normL * normL;
+      maxFreqL = Math.max(maxFreqL, freqL[i]);
+    }
+    
+    // Debug log a cada 2 segundos
+    debugLogRef.frameCount++;
+    if (debugLogRef.frameCount % 120 === 0) {
+      console.log('[Analyser] getBassEnergyL - maxFreq:', maxFreqL, 'bassEnergy:', Math.sqrt(sumL / Math.max(count, 1)).toFixed(6));
     }
     
     return Math.sqrt(sumL / Math.max(count, 1));
