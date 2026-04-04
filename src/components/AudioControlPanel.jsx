@@ -48,6 +48,7 @@ export default function AudioControlPanel({
     settingsRestored,
     setVolume,
     setToneGain,
+    setVuSensitivity,
     setEqBand,
     setAllEqBands,
     resetToDefaults,
@@ -59,12 +60,12 @@ export default function AudioControlPanel({
   const bassValue = (settings.bass + 12) / 24;
   const lowValue = (settings.bass + 12) / 24;
   const midValue = (settings.mid + 12) / 24;
-  const highValue = (settings.treble + 12) / 24;
+  const vuSensValue = settings.vuSensitivity / 2;
   
   const handleBassChange = (val) => setToneGain('bass', val * 24 - 12);
   const handleLowChange = (val) => setToneGain('bass', val * 24 - 12);
   const handleMidChange = (val) => setToneGain('mid', val * 24 - 12);
-  const handleTrebleChange = (val) => setToneGain('treble', val * 24 - 12);
+  const handleVuSensChange = (val) => setVuSensitivity(val * 2);
   
   const handleVolumeChange = (val) => {
     setVolume(val);
@@ -128,7 +129,7 @@ export default function AudioControlPanel({
             <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
             <ToneKnob value={lowValue} onChange={handleLowChange} size={70} label="Low" />
             <ToneKnob value={midValue} onChange={handleMidChange} size={70} label="Mid" />
-            <ToneKnob value={highValue} onChange={handleTrebleChange} size={70} label="High" />
+            <ToneKnob value={vuSensValue} onChange={handleVuSensChange} size={70} label="VU SENS" />
           </div>
           <div className="flex justify-center mb-3">
             <PlayerControls

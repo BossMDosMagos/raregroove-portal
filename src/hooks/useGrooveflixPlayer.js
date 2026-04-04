@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
-import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, applyAllSettings, loadSettings } from './useGrooveflixSettings.js';
+import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, getVuGainNode, applyAllSettings, loadSettings } from './useGrooveflixSettings.js';
 
 let audioContextInstance = null;
 let sharedAnalyserL = null;
@@ -9,6 +9,7 @@ let sharedAnalyserR = null;
 let sharedSplitter = null;
 let sharedMerger = null;
 let sharedGain = null;
+let vuGainNode = null;
 
 function initAudioGraph() {
   if (audioContextInstance) return audioContextInstance;
@@ -38,6 +39,8 @@ function initAudioGraph() {
   const gain = getSharedGain();
   sharedGain = gain;
   
+  vuGainNode = getVuGainNode();
+  
   const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   
@@ -46,6 +49,19 @@ function initAudioGraph() {
   
   analyserL.connect(merger, 0, 0);
   analyserR.connect(merger, 0, 1);
+  
+  const vuSplitter = ctx.createChannelSplitter(2);
+  
+  merger.connect(vuSplitter);
+  vuSplitter.connect(vuGainNode, 0, 0);
+  vuSplitter.connect(vuGainNode, 0, 1);
+  
+  const vuMerger = ctx.createChannelMerger(2);
+  vuGainNode.connect(vuMerger, 0, 0);
+  vuGainNode.connect(vuMerger, 0, 1);
+  
+  vuMerger.connect(analyserL);
+  vuMerger.connect(analyserR);
   
   const chainStart = merger;
   

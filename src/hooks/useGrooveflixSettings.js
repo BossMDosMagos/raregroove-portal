@@ -7,6 +7,7 @@ const DEFAULTS = {
   bass: 0,
   mid: 0,
   treble: 0,
+  vuSensitivity: 1.0,
   eq_bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
@@ -16,6 +17,7 @@ let midFilter = null;
 let trebleFilter = null;
 let eqFilters = [];
 let sharedGainNode = null;
+let vuGainNode = null;
 
 export function initToneFilters(audioContext) {
   if (bassFilter) return;
@@ -68,6 +70,9 @@ export function initEqFilters(audioContext) {
   sharedGainNode.gain.value = 1;
   eqFilters[eqFilters.length - 1].connect(sharedGainNode);
   
+  vuGainNode = audioContext.createGain();
+  vuGainNode.gain.value = 1.0;
+  
   return eqFilters;
 }
 
@@ -77,6 +82,10 @@ export function getEqFilters() {
 
 export function getSharedGain() {
   return sharedGainNode;
+}
+
+export function getVuGainNode() {
+  return vuGainNode;
 }
 
 function loadSettings() {
@@ -117,6 +126,11 @@ export function applyAllSettings(settings, isEnabled = true) {
   
   if (sharedGainNode) {
     sharedGainNode.gain.setTargetAtTime(settings.volume, now, 0.01);
+  }
+  
+  if (vuGainNode) {
+    const sensitivity = settings.vuSensitivity !== undefined ? settings.vuSensitivity : 1.0;
+    vuGainNode.gain.setTargetAtTime(sensitivity, now, 0.01);
   }
 }
 
@@ -164,6 +178,14 @@ export function useGrooveflixSettings() {
     }
   }, [updateSetting]);
   
+  const setVuSensitivity = useCallback((value) => {
+    updateSetting('vuSensitivity', value);
+    if (vuGainNode && audioContextRef) {
+      const now = audioContextRef.currentTime;
+      vuGainNode.gain.setTargetAtTime(value, now, 0.01);
+    }
+  }, [updateSetting]);
+  
   const setEqBand = useCallback((index, value) => {
     setSettings(prev => {
       const newBands = [...prev.eq_bands];
@@ -201,6 +223,7 @@ export function useGrooveflixSettings() {
     settingsRestored,
     setVolume,
     setToneGain,
+    setVuSensitivity,
     setEqBand,
     setAllEqBands,
     resetToDefaults,
