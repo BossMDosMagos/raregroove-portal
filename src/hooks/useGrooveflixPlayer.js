@@ -66,6 +66,9 @@ function initAudioGraph() {
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
   
+  splitter.connect(merger, 0, 0);
+  splitter.connect(merger, 0, 1);
+  
   const chainStart = merger;
   
   if (toneFilters.bass && toneFilters.mid && toneFilters.treble) {
