@@ -64,6 +64,7 @@ export default function AudioControlPanel({
   const handleBassChange = (val) => setToneGain('bass', val * 24 - 12);
   const handleMidChange = (val) => setToneGain('mid', val * 24 - 12);
   const handleVuSensChange = (val) => setVuSensitivity(val * 2);
+  const handleLowChange = (val) => setToneGain('bass', val * 24 - 12);
   
   const handleVolumeChange = (val) => {
     setVolume(val);
@@ -125,6 +126,7 @@ export default function AudioControlPanel({
           </div>
           <div className="flex justify-center gap-3 mb-3">
             <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
+            <ToneKnob value={bassValue} onChange={handleLowChange} size={70} label="Low" />
             <ToneKnob value={midValue} onChange={handleMidChange} size={70} label="Mid" />
             <ToneKnob value={vuSensValue} onChange={handleVuSensChange} size={70} label="VU SENS" />
           </div>
