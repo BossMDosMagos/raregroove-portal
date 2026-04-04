@@ -63,8 +63,13 @@ function initAudioGraph() {
   const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   
-  splitter.connect(analyserL, 0);
-  splitter.connect(analyserR, 1);
+  const vuSplitter = ctx.createChannelSplitter(2);
+  
+  vuGainNode.connect(vuSplitter);
+  vuSplitter.connect(analyserL, 0);
+  vuSplitter.connect(analyserR, 1);
+  
+  splitter.connect(vuGainNode);
   
   splitter.connect(merger, 0, 0);
   splitter.connect(merger, 0, 1);
@@ -95,8 +100,7 @@ function initAudioGraph() {
     chainStart.connect(gain);
   }
   
-  gain.connect(vuGainNode);
-  vuGainNode.connect(ctx.destination);
+  gain.connect(ctx.destination);
   
   const savedSettings = loadSettings();
   applyAllSettings(savedSettings);
