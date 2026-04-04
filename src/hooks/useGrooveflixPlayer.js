@@ -65,11 +65,10 @@ function initAudioGraph() {
   
   const vuSplitter = ctx.createChannelSplitter(2);
   
-  vuGainNode.connect(vuSplitter);
-  vuSplitter.connect(analyserL, 0);
-  vuSplitter.connect(analyserR, 1);
-  
   splitter.connect(vuGainNode);
+  vuGainNode.connect(vuSplitter);
+  vuSplitter.connect(analyserL);
+  vuSplitter.connect(analyserR);
   
   splitter.connect(merger, 0, 0);
   splitter.connect(merger, 0, 1);

@@ -82,6 +82,8 @@ export function initEqFilters(audioContext) {
   
   vuGainNode = audioContext.createGain();
   vuGainNode.gain.value = 1.0;
+  vuGainNode.channelCount = 2;
+  vuGainNode.channelInterpretation = 'speakers';
   
   return eqFilters;
 }
