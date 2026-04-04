@@ -88,7 +88,7 @@ export function getVuGainNode() {
   return vuGainNode;
 }
 
-function loadSettings() {
+export function loadSettings() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
