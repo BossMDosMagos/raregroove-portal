@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
-import { initEqualizer, getEqualizerFilters } from './useEqualizer.js';
-import { initToneFilters, getToneFilters } from './useToneControl.js';
+import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, applyAllSettings, loadSettings } from './useGrooveflixSettings.js';
 
 let audioContextInstance = null;
 let sharedAnalyserL = null;
@@ -17,8 +16,8 @@ function initAudioGraph() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   audioContextInstance = ctx;
   
-  initEqualizer(ctx);
   initToneFilters(ctx);
+  initEqFilters(ctx);
   
   const splitter = ctx.createChannelSplitter(2);
   sharedSplitter = splitter;
@@ -36,11 +35,10 @@ function initAudioGraph() {
   const merger = ctx.createChannelMerger(2);
   sharedMerger = merger;
   
-  const gain = ctx.createGain();
-  gain.gain.value = 1;
+  const gain = getSharedGain();
   sharedGain = gain;
   
-  const eqFilters = getEqualizerFilters();
+  const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   
   splitter.connect(analyserL, 0);
@@ -76,6 +74,9 @@ function initAudioGraph() {
   }
   
   gain.connect(ctx.destination);
+  
+  const savedSettings = loadSettings();
+  applyAllSettings(savedSettings);
   
   registerAnalysers({ analyserL, analyserR, splitter, merger });
   
@@ -261,8 +262,9 @@ export function useGrooveflixPlayer() {
     if (audioElementRef.current) {
       audioElementRef.current.volume = vol;
     }
-    if (sharedGain) {
-      sharedGain.gain.value = vol;
+    const gainNode = getSharedGain();
+    if (gainNode) {
+      gainNode.gain.setTargetAtTime(vol, audioContextInstance?.currentTime || 0, 0.01);
     }
     audioPlayer.setVolume(vol);
   }, [audioPlayer]);
