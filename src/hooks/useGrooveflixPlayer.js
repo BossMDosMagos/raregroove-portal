@@ -10,6 +10,76 @@ let sharedSplitter = null;
 let sharedMerger = null;
 let sharedGain = null;
 let vuGainNode = null;
+let connectionLogPrinted = false;
+
+function printAudioPathDiagnostics() {
+  if (connectionLogPrinted) return;
+  connectionLogPrinted = true;
+  
+  console.log('%c🎛️ RAREGROOVE AUDIO PATH DIAGNOSTIC', 'background: #222; color: #0ff; font-size: 14px; font-weight: bold; padding: 5px;');
+  
+  console.log('%c─── NODE STATUS ───', 'color: #ff0');
+  console.log('  audioContextInstance:', audioContextInstance ? '✅ OK' : '❌ NULL');
+  console.log('  sharedAnalyserL:', sharedAnalyserL ? '✅ OK' : '❌ NULL');
+  console.log('  sharedAnalyserR:', sharedAnalyserR ? '✅ OK' : '❌ NULL');
+  console.log('  sharedGain:', sharedGain ? '✅ OK' : '❌ NULL');
+  console.log('  vuGainNode:', vuGainNode ? '✅ OK' : '❌ NULL');
+  
+  if (audioContextInstance) {
+    console.log('%c─── CONTEXT STATE ───', 'color: #ff0');
+    console.log('  State:', audioContextInstance.state);
+    console.log('  Sample Rate:', audioContextInstance.sampleRate);
+    
+    if (audioContextInstance.state === 'suspended') {
+      console.warn('⚠️  AUDIO CONTEXT IS SUSPENDED - attempting resume...');
+      audioContextInstance.resume().then(() => {
+        console.log('[ AUDIO CONTEXT RESUMED ]');
+      }).catch(err => {
+        console.error('Failed to resume:', err);
+      });
+    }
+  }
+  
+  if (vuGainNode) {
+    console.log('%c─── VU SENS ───', 'color: #ff0');
+    console.log('  vuGainNode.gain.value:', vuGainNode.gain.value);
+    if (vuGainNode.gain.value === 0) {
+      console.warn('⚠️  VU SENS ESTÁ EM ZERO (MUDO) - Audio vai chegar mas VU não vai mostrar nada!');
+    }
+  }
+  
+  console.log('%c✅ DIAGNOSTIC COMPLETE', 'color: #0f0; font-weight: bold');
+}
+
+function checkAnalyserSignal() {
+  if (!sharedAnalyserL) {
+    console.warn('⚠️  ANALYSER L É NULL');
+    return { hasSignal: false, rms: 0 };
+  }
+  
+  try {
+    const dataArrayL = new Uint8Array(sharedAnalyserL.frequencyBinCount);
+    sharedAnalyserL.getByteTimeDomainData(dataArrayL);
+    
+    const isSilent = dataArrayL.every(v => v === 0 || v === 128);
+    
+    if (isSilent) {
+      console.warn('⚠️  ANALYSER L RECEBENDO SILÊNCIO TOTAL - verificar source.connect(vuGainNode)');
+    }
+    
+    let sum = 0;
+    for (let i = 0; i < dataArrayL.length; i++) {
+      const v = (dataArrayL[i] - 128) / 128;
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / dataArrayL.length);
+    
+    return { hasSignal: !isSilent, rms };
+  } catch (e) {
+    console.error('Error reading analyser:', e);
+    return { hasSignal: false, rms: 0 };
+  }
+}
 
 function resetAudioGraph() {
   if (audioContextInstance && audioContextInstance.state !== 'closed') {
@@ -61,6 +131,8 @@ function initAudioGraph() {
   
   const savedSettings = loadSettings();
   applyAllSettings(savedSettings);
+  
+  printAudioPathDiagnostics();
   
   return ctx;
 }
@@ -344,3 +416,28 @@ export function useGrooveflixPlayer() {
     playTrackFromQueue: audioPlayer?.playTrackFromQueue,
   };
 }
+
+// DEBUG FUNCTIONS - Access via window.RareGrooveDebug
+window.RareGrooveDebug = {
+  printDiagnostics: printAudioPathDiagnostics,
+  checkSignal: checkAnalyserSignal,
+  getNodes: () => ({
+    audioContext: audioContextInstance,
+    analyserL: sharedAnalyserL,
+    analyserR: sharedAnalyserR,
+    vuGainNode: vuGainNode,
+    gain: sharedGain,
+  }),
+  forceResumeContext: async () => {
+    if (audioContextInstance && audioContextInstance.state === 'suspended') {
+      await audioContextInstance.resume();
+      console.log('[ AUDIO CONTEXT RESUMED ]');
+    }
+  },
+  setVuSensitivity: (value) => {
+    if (vuGainNode) {
+      vuGainNode.gain.value = value;
+      console.log('VU SENS set to:', value);
+    }
+  },
+};
