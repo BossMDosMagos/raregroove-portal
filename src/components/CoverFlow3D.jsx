@@ -130,7 +130,8 @@ export default function CoverFlow3D({ items, onUpdateFocus, isAdmin, onAlbumDele
     if (!focusedItem || audioFiles.length === 0) return;
     setActiveTrackIndex(index);
     if (playAlbum) {
-      playAlbum({ ...focusedItem, audio_files: audioFiles, tracklist: rawTracklist }, index);
+      const trackWithAudio = { ...track, audioPath: audioFiles[index]?.path || audioFiles[0]?.path };
+      playAlbum({ ...focusedItem, audio_files: audioFiles, tracklist: rawTracklist, audioPath: audioFiles[index]?.path || audioFiles[0]?.path }, index);
     }
   }, [focusedItem, audioFiles, playAlbum, rawTracklist]);
 

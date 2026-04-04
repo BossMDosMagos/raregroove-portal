@@ -58,12 +58,10 @@ export default function AudioControlPanel({
   const [eqEnabled, setEqEnabled] = React.useState(true);
   
   const bassValue = (settings.bass + 12) / 24;
-  const lowValue = (settings.bass + 12) / 24;
   const midValue = (settings.mid + 12) / 24;
   const vuSensValue = settings.vuSensitivity / 2;
   
   const handleBassChange = (val) => setToneGain('bass', val * 24 - 12);
-  const handleLowChange = (val) => setToneGain('bass', val * 24 - 12);
   const handleMidChange = (val) => setToneGain('mid', val * 24 - 12);
   const handleVuSensChange = (val) => setVuSensitivity(val * 2);
   
@@ -127,7 +125,6 @@ export default function AudioControlPanel({
           </div>
           <div className="flex justify-center gap-3 mb-3">
             <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
-            <ToneKnob value={lowValue} onChange={handleLowChange} size={70} label="Low" />
             <ToneKnob value={midValue} onChange={handleMidChange} size={70} label="Mid" />
             <ToneKnob value={vuSensValue} onChange={handleVuSensChange} size={70} label="VU SENS" />
           </div>
