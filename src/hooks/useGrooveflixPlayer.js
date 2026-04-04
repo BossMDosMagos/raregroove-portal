@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
 import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
 import { initEqualizer, getEqualizerFilters } from './useEqualizer.js';
+import { initToneFilters, getToneFilters } from './useToneControl.js';
 
 let audioContextInstance = null;
 let sharedAnalyserL = null;
@@ -17,6 +18,7 @@ function initAudioGraph() {
   audioContextInstance = ctx;
   
   initEqualizer(ctx);
+  initToneFilters(ctx);
   
   const splitter = ctx.createChannelSplitter(2);
   sharedSplitter = splitter;
@@ -39,6 +41,7 @@ function initAudioGraph() {
   sharedGain = gain;
   
   const eqFilters = getEqualizerFilters();
+  const toneFilters = getToneFilters();
   
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
@@ -46,11 +49,30 @@ function initAudioGraph() {
   analyserL.connect(merger, 0, 0);
   analyserR.connect(merger, 0, 1);
   
-  if (eqFilters?.length > 0) {
-    merger.connect(eqFilters[0]);
+  const chainStart = merger;
+  
+  if (toneFilters.bass && toneFilters.mid && toneFilters.treble) {
+    chainStart.connect(toneFilters.bass);
+    toneFilters.bass.connect(toneFilters.mid);
+    toneFilters.mid.connect(toneFilters.treble);
+    
+    if (eqFilters?.length > 0) {
+      toneFilters.treble.connect(eqFilters[0]);
+      for (let i = 0; i < eqFilters.length - 1; i++) {
+        eqFilters[i].connect(eqFilters[i + 1]);
+      }
+      eqFilters[eqFilters.length - 1].connect(gain);
+    } else {
+      toneFilters.treble.connect(gain);
+    }
+  } else if (eqFilters?.length > 0) {
+    chainStart.connect(eqFilters[0]);
+    for (let i = 0; i < eqFilters.length - 1; i++) {
+      eqFilters[i].connect(eqFilters[i + 1]);
+    }
     eqFilters[eqFilters.length - 1].connect(gain);
   } else {
-    merger.connect(gain);
+    chainStart.connect(gain);
   }
   
   gain.connect(ctx.destination);

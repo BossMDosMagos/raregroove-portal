@@ -8,6 +8,7 @@ import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
 import EqualizerPanel from './EqualizerPanel.jsx';
 import { useEqualizer } from '../hooks/useEqualizer.js';
+import { useToneControl } from '../hooks/useToneControl.js';
 
 const panelStyle = {
   background: 'linear-gradient(145deg, #1f1f1f, #151515)',
@@ -44,6 +45,10 @@ export default function AudioControlPanel({
   onEject
 }) {
   const equalizer = useEqualizer();
+  const bassTone = useToneControl('bass');
+  const lowTone = useToneControl('bass');
+  const midTone = useToneControl('mid');
+  const highTone = useToneControl('treble');
   
   return (
     <>
@@ -57,10 +62,10 @@ export default function AudioControlPanel({
             <VolumeKnob value={volume || 0} onChange={onVolumeChange || (() => {})} size={120} />
           </div>
           <div className="flex justify-center gap-3 mb-3">
-            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Bass" />
-            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Low" />
-            <ToneKnob value={0.5} onChange={() => {}} size={70} label="Mid" />
-            <ToneKnob value={0.5} onChange={() => {}} size={70} label="High" />
+            <ToneKnob value={bassTone.value} onChange={bassTone.onChange} size={70} label="Bass" />
+            <ToneKnob value={lowTone.value} onChange={lowTone.onChange} size={70} label="Low" />
+            <ToneKnob value={midTone.value} onChange={midTone.onChange} size={70} label="Mid" />
+            <ToneKnob value={highTone.value} onChange={highTone.onChange} size={70} label="High" />
           </div>
           <div className="flex justify-center mb-3">
             <PlayerControls
