@@ -19,6 +19,16 @@ let eqFilters = [];
 let sharedGainNode = null;
 let vuGainNode = null;
 
+export function resetAudioSettings() {
+  audioContextRef = null;
+  bassFilter = null;
+  midFilter = null;
+  trebleFilter = null;
+  eqFilters = [];
+  sharedGainNode = null;
+  vuGainNode = null;
+}
+
 export function initToneFilters(audioContext) {
   if (bassFilter) return;
   

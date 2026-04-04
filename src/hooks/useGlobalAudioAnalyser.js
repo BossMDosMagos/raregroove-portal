@@ -17,6 +17,10 @@ function initSharedState() {
   return sharedState;
 }
 
+export function resetAnalysers() {
+  sharedState = null;
+}
+
 export function registerAnalysers({ analyserL, analyserR, splitter, merger }) {
   const state = initSharedState();
   state.analyserL = analyserL;

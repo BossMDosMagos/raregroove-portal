@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
-import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
-import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, getVuGainNode, applyAllSettings, loadSettings } from './useGrooveflixSettings.js';
+import { registerAnalysers, unregisterAnalysers, resetAnalysers } from './useGlobalAudioAnalyser.js';
+import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, getVuGainNode, applyAllSettings, loadSettings, resetAudioSettings } from './useGrooveflixSettings.js';
 
 let audioContextInstance = null;
 let sharedAnalyserL = null;
@@ -11,8 +11,27 @@ let sharedMerger = null;
 let sharedGain = null;
 let vuGainNode = null;
 
+function resetAudioGraph() {
+  if (audioContextInstance && audioContextInstance.state !== 'closed') {
+    audioContextInstance.close().catch(() => {});
+  }
+  resetAudioSettings();
+  resetAnalysers();
+  audioContextInstance = null;
+  sharedAnalyserL = null;
+  sharedAnalyserR = null;
+  sharedSplitter = null;
+  sharedMerger = null;
+  sharedGain = null;
+  vuGainNode = null;
+}
+
 function initAudioGraph() {
-  if (audioContextInstance) return audioContextInstance;
+  if (audioContextInstance && audioContextInstance.state !== 'closed') {
+    return audioContextInstance;
+  }
+  
+  resetAudioGraph();
   
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   audioContextInstance = ctx;
@@ -44,8 +63,8 @@ function initAudioGraph() {
   const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   
-  splitter.connect(analyserL, 0, 0);
-  splitter.connect(analyserR, 0, 1);
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
   
   const chainStart = merger;
   
@@ -96,6 +115,16 @@ export function useGrooveflixPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      resetAudioGraph();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
   
   const ensureContextRunning = useCallback(async () => {
     const ctx = audioContextInstance;
@@ -273,6 +302,7 @@ export function useGrooveflixPlayer() {
   const dispose = useCallback(() => {
     stopAudio();
     unregisterAnalysers();
+    resetAudioGraph();
   }, [stopAudio]);
   
   useEffect(() => {
