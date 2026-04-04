@@ -66,41 +66,50 @@ function initAudioGraph() {
 }
 
 function connectSourceToAudioGraph(source) {
+  // 1. LIMPEZA TOTAL (Obrigatório para não estourar o áudio)
+  try { source.disconnect(); } catch(e) {}
+
   const eqFilters = getEqFilters();
   const toneFilters = getToneFilters();
   const gain = getSharedGain();
   
-  // ROTA DO SOM (o que você ouve)
+  // 2. ROTA DO SOM (Saída para as caixas)
+  let lastNode = source;
+
+  // Conecta Tone (Grave/Médio/Agudo)
   if (toneFilters.bass && toneFilters.mid && toneFilters.treble) {
-    source.connect(toneFilters.bass);
+    lastNode.connect(toneFilters.bass);
     toneFilters.bass.connect(toneFilters.mid);
     toneFilters.mid.connect(toneFilters.treble);
-    
-    if (eqFilters?.length > 0) {
-      toneFilters.treble.connect(eqFilters[0]);
-      for (let i = 0; i < eqFilters.length - 1; i++) {
-        eqFilters[i].connect(eqFilters[i + 1]);
-      }
-      eqFilters[eqFilters.length - 1].connect(gain);
-    } else {
-      toneFilters.treble.connect(gain);
-    }
-  } else if (eqFilters?.length > 0) {
-    source.connect(eqFilters[0]);
+    lastNode = toneFilters.treble;
+  }
+
+  // Conecta Equalizador de 10 bandas
+  if (eqFilters && eqFilters.length > 0) {
+    lastNode.connect(eqFilters[0]);
     for (let i = 0; i < eqFilters.length - 1; i++) {
       eqFilters[i].connect(eqFilters[i + 1]);
     }
-    eqFilters[eqFilters.length - 1].connect(gain);
-  } else {
-    source.connect(gain);
+    lastNode = eqFilters[eqFilters.length - 1];
   }
-  
+
+  // Finaliza no Volume Master e Destination
+  lastNode.connect(gain);
   gain.connect(audioContextInstance.destination);
   
-  // ROTA DO VU (sinal para os ponteiros - INDEPENDENTE do volume)
-  source.connect(vuGainNode);
-  vuGainNode.connect(sharedAnalyserL);
-  vuGainNode.connect(sharedAnalyserR);
+  // 3. ROTA DO VU (Independente e Blindada)
+  if (vuGainNode && sharedAnalyserL && sharedAnalyserR) {
+    source.connect(vuGainNode);
+    
+    // Separador de Canais para VU Independente (L e R reais)
+    const splitter = audioContextInstance.createChannelSplitter(2);
+    vuGainNode.connect(splitter);
+    
+    splitter.connect(sharedAnalyserL, 0); // Canal Esquerdo no VU L
+    splitter.connect(sharedAnalyserR, 1); // Canal Direito no VU R
+    
+    console.log("✅ VUs Conectados e Calibrados!");
+  }
 }
 
 export function useGrooveflixPlayer() {
