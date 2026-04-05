@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
-import { Sparkles, Plus, RotateCw, Disc } from 'lucide-react';
+import { Sparkles, Plus, RotateCw, Disc, Trash2, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
 import { Howler } from 'howler';
@@ -12,6 +12,9 @@ import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 function normalizeTracks(items = []) {
   return (items || []).map((item) => {
@@ -50,6 +53,7 @@ export default function Grooveflix() {
     isPlaying: isAudioContextPlaying, 
     clearQueue,
     loadAndPlayTrack,
+    playAlbum,
     volume,
     setVolume,
     play,
@@ -61,13 +65,106 @@ export default function Grooveflix() {
     duration,
   } = player;
 
+  const [focusedAlbum, setFocusedAlbum] = useState(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const focusedAlbumRef = useRef(null);
+
+  const handleOpenDeleteModal = () => {
+    if (!focusedAlbum) {
+      toast.error('Selecione um álbum primeiro');
+      return;
+    }
+    setDeletingItem(focusedAlbum);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteFiles = async () => {
+    if (!deletingItem) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/grooveflix-delete`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}`, 
+          'apikey': SUPABASE_ANON_KEY 
+        },
+        body: JSON.stringify({ itemId: deletingItem.id }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      
+      toast.success(`Arquivos de "${deletingItem.title}" deletados com sucesso!`);
+      
+      setItems(prev => prev.filter(item => item.id !== deletingItem.id));
+      setShowDeleteModal(false);
+      setDeletingItem(null);
+      
+      if (focusedAlbum?.id === deletingItem.id) {
+        setFocusedAlbum(null);
+      }
+      
+      loadItems();
+      
+    } catch (e) {
+      console.error('Delete error:', e);
+      toast.error('Erro ao deletar arquivos');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handlePlay = useCallback(() => {
+    console.log('[Grooveflix] handlePlay called');
+    console.log('[Grooveflix] isPlaying:', isAudioContextPlaying);
+    console.log('[Grooveflix] focusedAlbum:', focusedAlbumRef.current?.title || 'NULL');
+    
     if (isAudioContextPlaying) {
       pause();
-    } else if (globalCurrentTrack) {
-      play();
+      return;
     }
-  }, [isAudioContextPlaying, globalCurrentTrack, pause, play]);
+    
+    const album = focusedAlbumRef.current;
+    if (!album) {
+      console.warn('[Grooveflix] No album focused!');
+      return;
+    }
+    
+    const grooveflixData = album.metadata?.grooveflix || {};
+    const audioFiles = grooveflixData.audio_files || [];
+    
+    console.log('[Grooveflix] Playing album:', album.title);
+    console.log('[Grooveflix] Audio files:', audioFiles.length);
+    
+    if (audioFiles.length > 0) {
+      playAlbum(album, 0);
+    } else {
+      console.warn('[Grooveflix] Album has no audio files!');
+    }
+  }, [isAudioContextPlaying, pause, playAlbum]);
+
+  useEffect(() => {
+    focusedAlbumRef.current = focusedAlbum;
+  }, [focusedAlbum]);
+
+  const handlePlayTrack = useCallback((album, trackIndex) => {
+    console.log('[Grooveflix] handlePlayTrack:', album.title, 'track:', trackIndex);
+    playAlbum(album, trackIndex);
+  }, [playAlbum]);
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -116,11 +213,15 @@ export default function Grooveflix() {
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [showUploader, setShowUploader] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+
+  const filteredItems = useMemo(() => {
+    if (categoryFilter === 'all') return items;
+    return items.filter(item => item.category === categoryFilter);
+  }, [items, categoryFilter]);
 
   useEffect(() => {
     const init = async () => {
@@ -181,13 +282,15 @@ export default function Grooveflix() {
     if (userId) loadItems();
   }, [userId, loadItems]);
 
-  const filteredItems = useMemo(() => {
-    if (categoryFilter === 'all') return items;
-    return items.filter(item => item.category === categoryFilter);
-  }, [items, categoryFilter]);
+  useEffect(() => {
+    if (items.length > 0 && !focusedAlbum) {
+      console.log('[Grooveflix] Setting first album as focused:', items[0].title);
+      setFocusedAlbum(items[0]);
+    }
+  }, [items, focusedAlbum]);
 
   return (
-    <div className="h-screen bg-black text-white overflow-hidden">
+    <div className="min-h-screen bg-black text-white overflow-y-auto">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <EqualizerBackground isPlaying={isAudioContextPlaying} />
         <div className="absolute inset-0 bg-gradient-to-b from-charcoal-deep via-black to-black" />
@@ -207,8 +310,8 @@ export default function Grooveflix() {
         onEject={handleEject}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-20 overflow-hidden" style={{ marginLeft: '340px', marginRight: '340px', maxHeight: 'calc(100vh - 80px)' }}>
-        <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4">
+      <div className="relative mx-auto px-4 md:px-6 pt-24 pb-8" style={{ marginLeft: '340px', marginRight: '340px' }}>
+        <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 text-[10px] uppercase tracking-widest text-fuchsia-300">
@@ -231,6 +334,13 @@ export default function Grooveflix() {
             <div className="flex items-center gap-2 ml-4">
               <button onClick={() => loadItems()} className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 transition">
                 <RotateCw className="w-4 h-4" /> {t('grooveflix.reload')}
+              </button>
+              <button 
+                onClick={handleOpenDeleteModal} 
+                disabled={!focusedAlbum}
+                className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-red-300 hover:bg-red-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4" /> Deletar
               </button>
               {isAdmin && (
                 <button onClick={() => setShowUploader(true)} className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-200 hover:bg-fuchsia-500/20 transition">
@@ -263,7 +373,15 @@ export default function Grooveflix() {
         ) : (
           <CoverFlow3D
             items={filteredItems}
-            onUpdateFocus={() => {}}
+            focusedIndex={focusedIndex}
+            onUpdateFocus={(item, index) => {
+              setFocusedAlbum(item);
+              setFocusedIndex(index);
+            }}
+            onAlbumSelect={(item, index) => {
+              setSelectedAlbum(item);
+              setFocusedIndex(index);
+            }}
             isAdmin={isAdmin}
             onAlbumDeleted={(id) => setItems(prev => prev.filter(item => item.id !== id))}
             currentTrack={globalCurrentTrack}
@@ -271,6 +389,7 @@ export default function Grooveflix() {
             currentTime={currentTime}
             duration={duration}
             onSeek={seek}
+            playAlbum={playAlbum}
           />
         )}
       </div>
@@ -281,6 +400,71 @@ export default function Grooveflix() {
         onSuccess={() => { setShowUploader(false); loadItems(); }}
         isAdmin={isAdmin}
       />
+
+      {showDeleteModal && deletingItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isDeleting && setShowDeleteModal(false)} />
+          <div className="relative bg-gradient-to-b from-gray-900 to-black border border-red-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl shadow-red-500/20">
+            <button 
+              onClick={() => !isDeleting && setShowDeleteModal(false)}
+              disabled={isDeleting}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Confirmar Exclusão</h3>
+                <p className="text-sm text-white/60">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            <div className="bg-black/30 rounded-xl p-4 mb-6">
+              <p className="text-white font-medium mb-2">{deletingItem.title}</p>
+              <p className="text-white/60 text-sm">{deletingItem.artist}</p>
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <p className="text-red-400 text-xs">Isso deletará permanentemente:</p>
+                <ul className="text-white/50 text-xs mt-1 space-y-1">
+                  <li>• Capa do álbum</li>
+                  <li>• Todos os arquivos de áudio</li>
+                  <li>• Dados do banco de dados</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl border border-white/20 text-white/70 font-bold text-sm hover:bg-white/5 transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleDeleteFiles}
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-red-500/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deletando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Deletar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

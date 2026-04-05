@@ -7,11 +7,16 @@ export function PlayerControls({
   onNextTrack,
   onEject 
 }) {
+  const handlePlayClick = (e) => {
+    console.log('[PlayerControls] Play button clicked');
+    if (onPlay) onPlay();
+  };
+
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center justify-center gap-2 relative z-50">
       <button
         onClick={onStop}
-        className="w-10 h-10 hover:scale-110 transition-transform"
+        className="w-10 h-10 hover:scale-110 transition-transform relative z-50"
         title="Stop"
       >
         <img 
@@ -23,7 +28,7 @@ export function PlayerControls({
 
       <button
         onClick={onPreviousTrack}
-        className="w-10 h-10 hover:scale-110 transition-transform"
+        className="w-10 h-10 hover:scale-110 transition-transform relative z-50"
         title="Faixa Anterior"
       >
         <img 
@@ -36,7 +41,7 @@ export function PlayerControls({
       {isPlaying ? (
         <button
           onClick={onPause}
-          className="w-12 h-12 hover:scale-110 transition-transform"
+          className="w-12 h-12 hover:scale-110 transition-transform relative z-50"
           title="Pause"
         >
           <img 
@@ -47,8 +52,8 @@ export function PlayerControls({
         </button>
       ) : (
         <button
-          onClick={onPlay}
-          className="w-12 h-12 hover:scale-110 transition-transform"
+          onClick={handlePlayClick}
+          className="w-12 h-12 hover:scale-110 transition-transform relative z-50"
           title="Play"
         >
           <img 
@@ -61,7 +66,7 @@ export function PlayerControls({
 
       <button
         onClick={onNextTrack}
-        className="w-10 h-10 hover:scale-110 transition-transform"
+        className="w-10 h-10 hover:scale-110 transition-transform relative z-50"
         title="Próxima Faixa"
       >
         <img 
@@ -73,7 +78,7 @@ export function PlayerControls({
 
       <button
         onClick={onEject}
-        className="w-10 h-10 hover:scale-110 transition-transform"
+        className="w-10 h-10 hover:scale-110 transition-transform relative z-50"
         title="Eject"
       >
         <img 

@@ -148,7 +148,7 @@ export default function AudioControlPanel({
         </div>
       </div>
 
-      <div className="fixed top-20 right-4 z-50" style={{ perspective: '1000px' }}>
+      <div className="fixed top-20 right-4 z-40" style={{ perspective: '1000px' }}>
         <div className="relative flex flex-col rounded-xl" style={panelStyle}>
           <div className="absolute bottom-3 right-3 z-10"><CrownSvg id="R" /></div>
 

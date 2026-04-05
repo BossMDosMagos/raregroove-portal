@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext.jsx';
-import { registerAnalysers, unregisterAnalysers, resetAnalysers } from './useGlobalAudioAnalyser.js';
-import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, getVuGainNode, applyAllSettings, loadSettings, resetAudioSettings } from './useGrooveflixSettings.js';
+import { initAudioAnalysers, getAnalysers, connectToAnalysers, resetAnalysers } from './useGlobalAudioAnalyser.js';
+import { initToneFilters, getToneFilters, initEqFilters, getEqFilters, getSharedGain, applyAllSettings, loadSettings, resetAudioSettings } from './useGrooveflixSettings.js';
 
 let audioContextInstance = null;
-let sharedAnalyserL = null;
-let sharedAnalyserR = null;
-let sharedSplitter = null;
-let sharedMerger = null;
 let sharedGain = null;
-let vuGainNode = null;
 let connectionLogPrinted = false;
 
 function printAudioPathDiagnostics() {
@@ -18,12 +13,14 @@ function printAudioPathDiagnostics() {
   
   console.log('%c🎛️ RAREGROOVE AUDIO PATH DIAGNOSTIC', 'background: #222; color: #0ff; font-size: 14px; font-weight: bold; padding: 5px;');
   
+  const { analyserL, analyserR, vuGainNode: vg } = getAnalysers();
+  
   console.log('%c─── NODE STATUS ───', 'color: #ff0');
   console.log('  audioContextInstance:', audioContextInstance ? '✅ OK' : '❌ NULL');
-  console.log('  sharedAnalyserL:', sharedAnalyserL ? '✅ OK' : '❌ NULL');
-  console.log('  sharedAnalyserR:', sharedAnalyserR ? '✅ OK' : '❌ NULL');
+  console.log('  analyserL (from getAnalysers):', analyserL ? '✅ OK' : '❌ NULL');
+  console.log('  analyserR (from getAnalysers):', analyserR ? '✅ OK' : '❌ NULL');
   console.log('  sharedGain:', sharedGain ? '✅ OK' : '❌ NULL');
-  console.log('  vuGainNode:', vuGainNode ? '✅ OK' : '❌ NULL');
+  console.log('  vuGainNode:', vg ? '✅ OK' : '❌ NULL');
   
   if (audioContextInstance) {
     console.log('%c─── CONTEXT STATE ───', 'color: #ff0');
@@ -40,11 +37,11 @@ function printAudioPathDiagnostics() {
     }
   }
   
-  if (vuGainNode) {
+  if (vg) {
     console.log('%c─── VU SENS ───', 'color: #ff0');
-    console.log('  vuGainNode.gain.value:', vuGainNode.gain.value);
-    if (vuGainNode.gain.value === 0) {
-      console.warn('⚠️  VU SENS ESTÁ EM ZERO (MUDO) - Audio vai chegar mas VU não vai mostrar nada!');
+    console.log('  vuGainNode.gain.value:', vg.gain.value);
+    if (vg.gain.value === 0) {
+      console.warn('⚠️  VU SENS ESTÁ EM ZERO (MUDO)');
     }
   }
   
@@ -52,19 +49,21 @@ function printAudioPathDiagnostics() {
 }
 
 function checkAnalyserSignal() {
-  if (!sharedAnalyserL) {
-    console.warn('⚠️  ANALYSER L É NULL');
+  const { analyserL } = getAnalysers();
+  
+  if (!analyserL) {
+    console.warn('⚠️  ANALYSER L É NULL (via getAnalysers)');
     return { hasSignal: false, rms: 0 };
   }
   
   try {
-    const dataArrayL = new Uint8Array(sharedAnalyserL.frequencyBinCount);
-    sharedAnalyserL.getByteTimeDomainData(dataArrayL);
+    const dataArrayL = new Uint8Array(analyserL.frequencyBinCount);
+    analyserL.getByteTimeDomainData(dataArrayL);
     
     const isSilent = dataArrayL.every(v => v === 0 || v === 128);
     
     if (isSilent) {
-      console.warn('⚠️  ANALYSER L RECEBENDO SILÊNCIO TOTAL - verificar source.connect(vuGainNode)');
+      console.warn('⚠️  ANALYSER L RECEBENDO SILÊNCIO TOTAL');
     }
     
     let sum = 0;
@@ -88,12 +87,7 @@ function resetAudioGraph() {
   resetAudioSettings();
   resetAnalysers();
   audioContextInstance = null;
-  sharedAnalyserL = null;
-  sharedAnalyserR = null;
-  sharedSplitter = null;
-  sharedMerger = null;
   sharedGain = null;
-  vuGainNode = null;
 }
 
 function initAudioGraph() {
@@ -109,29 +103,10 @@ function initAudioGraph() {
   initToneFilters(ctx);
   initEqFilters(ctx);
   
-  const analyserL = ctx.createAnalyser();
-  analyserL.fftSize = 2048;
-  analyserL.smoothingTimeConstant = 0.8;
-  analyserL.minDecibels = -90;
-  analyserL.maxDecibels = 0;
-  sharedAnalyserL = analyserL;
-  
-  const analyserR = ctx.createAnalyser();
-  analyserR.fftSize = 2048;
-  analyserR.smoothingTimeConstant = 0.8;
-  analyserR.minDecibels = -90;
-  analyserR.maxDecibels = 0;
-  sharedAnalyserR = analyserR;
-  
   const gain = getSharedGain();
   sharedGain = gain;
   
-  vuGainNode = getVuGainNode();
-  
-  const eqFilters = getEqFilters();
-  const toneFilters = getToneFilters();
-  
-  registerAnalysers({ analyserL, analyserR, vuGainNode });
+  initAudioAnalysers(ctx, gain);
   
   const savedSettings = loadSettings();
   applyAllSettings(savedSettings);
@@ -142,7 +117,7 @@ function initAudioGraph() {
 }
 
 function connectSourceToAudioGraph(source) {
-  // 1. LIMPEZA TOTAL (Obrigatório para não estourar o áudio)
+  // 1. LIMPEZA TOTAL
   try { source.disconnect(); } catch(e) {}
 
   const eqFilters = getEqFilters();
@@ -152,7 +127,6 @@ function connectSourceToAudioGraph(source) {
   // 2. ROTA DO SOM (Saída para as caixas)
   let lastNode = source;
 
-  // Conecta Tone (Grave/Médio/Agudo)
   if (toneFilters.bass && toneFilters.mid && toneFilters.treble) {
     lastNode.connect(toneFilters.bass);
     toneFilters.bass.connect(toneFilters.mid);
@@ -160,7 +134,6 @@ function connectSourceToAudioGraph(source) {
     lastNode = toneFilters.treble;
   }
 
-  // Conecta Equalizador de 10 bandas
   if (eqFilters && eqFilters.length > 0) {
     lastNode.connect(eqFilters[0]);
     for (let i = 0; i < eqFilters.length - 1; i++) {
@@ -169,31 +142,19 @@ function connectSourceToAudioGraph(source) {
     lastNode = eqFilters[eqFilters.length - 1];
   }
 
-  // Finaliza no Volume Master e Destination
   lastNode.connect(gain);
   gain.connect(audioContextInstance.destination);
   
-  // 3. ROTA DO VU (Independente e Blindada)
-  if (vuGainNode && sharedAnalyserL && sharedAnalyserR) {
-    source.connect(vuGainNode);
-    
-    // Separador de Canais para VU Independente (L e R reais)
-    const splitter = audioContextInstance.createChannelSplitter(2);
-    vuGainNode.connect(splitter);
-    
-    splitter.connect(sharedAnalyserL, 0); // Canal Esquerdo no VU L
-    splitter.connect(sharedAnalyserR, 1); // Canal Direito no VU R
-    
-    console.log("✅ VUs Conectados e Calibrados!");
-    console.log("  - vuGainNode:", vuGainNode);
-    console.log("  - sharedAnalyserL:", sharedAnalyserL);
-    console.log("  - sharedAnalyserR:", sharedAnalyserR);
-    console.log("  - source:", source);
+  // 3. ROTA DO VU - conecta source no Analyser do useGlobalAudioAnalyser
+  const connected = connectToAnalysers(source);
+  if (connected) {
+    const { analyserL, analyserR, vuGainNode: vg } = getAnalysers();
+    console.log("✅ VUs Conectados!");
+    console.log("  - analyserL:", analyserL ? 'OK' : 'NULL');
+    console.log("  - analyserR:", analyserR ? 'OK' : 'NULL');
+    console.log("  - vuGainNode:", vg ? 'OK' : 'NULL');
   } else {
-    console.log("❌ VUs NÃO conectados! Verificar:");
-    console.log("  - vuGainNode:", vuGainNode);
-    console.log("  - sharedAnalyserL:", sharedAnalyserL);
-    console.log("  - sharedAnalyserR:", sharedAnalyserR);
+    console.error("❌ Falha ao conectar VUs!");
   }
 }
 
@@ -209,6 +170,7 @@ export function useGrooveflixPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [queue, setQueue] = useState([]);
   
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -230,7 +192,15 @@ export function useGrooveflixPlayer() {
   }, []);
   
   const connectMediaSource = useCallback((audioElement) => {
-    if (isConnectedRef.current || !audioContextInstance || !audioElement) return;
+    console.log('[DEBUG] connectMediaSource called');
+    console.log('[DEBUG] isConnectedRef.current:', isConnectedRef.current);
+    console.log('[DEBUG] audioContextInstance:', audioContextInstance ? 'OK' : 'NULL');
+    console.log('[DEBUG] audioElement:', audioElement ? 'OK' : 'NULL');
+    
+    if (isConnectedRef.current || !audioContextInstance || !audioElement) {
+      console.log('[DEBUG] connectMediaSource: early return');
+      return;
+    }
     
     try {
       if (mediaSourceRef.current) {
@@ -238,11 +208,15 @@ export function useGrooveflixPlayer() {
       }
       
       const mediaSource = audioContextInstance.createMediaElementSource(audioElement);
+      console.log('[DEBUG] MediaElementSource created:', mediaSource ? 'OK' : 'NULL');
+      console.log('[DEBUG] MediaElementSource channelCount:', mediaSource.channelCount);
+      
       connectSourceToAudioGraph(mediaSource);
       mediaSourceRef.current = mediaSource;
       isConnectedRef.current = true;
-    } catch {
-      // Silently handle
+      console.log('[DEBUG] Source connected successfully');
+    } catch (err) {
+      console.error('[DEBUG] connectMediaSource error:', err);
     }
   }, []);
   
@@ -381,6 +355,50 @@ export function useGrooveflixPlayer() {
     setCurrentTime(clampedTime);
   }, [duration]);
   
+  const playAlbum = useCallback(async (album, startIndex = 0) => {
+    if (!album?.audio_files || album.audio_files.length === 0) {
+      console.error('[Player] Album has no audio files');
+      return;
+    }
+    
+    const audioFiles = album.audio_files || [];
+    const tracklist = album.tracklist || [];
+    
+    const tracks = audioFiles.map((file, idx) => {
+      const trackInfo = tracklist[idx] || {};
+      return {
+        id: `${album.id}-${idx}`,
+        title: trackInfo.title || `Track ${idx + 1}`,
+        artist: album.artist || 'Unknown',
+        audioPath: file.path || file,
+        albumId: album.id,
+        albumTitle: album.title,
+        coverUrl: album.coverUrl || album.image_url || album.cover_path,
+        trackIndex: idx,
+      };
+    });
+    
+    setQueue(tracks);
+    
+    if (startIndex >= 0 && startIndex < tracks.length) {
+      const track = tracks[startIndex];
+      currentTrackIdRef.current = track.id;
+      await loadAndPlayTrack(track);
+    }
+  }, [loadAndPlayTrack]);
+  
+  const playTrackFromQueue = useCallback(async (track) => {
+    if (!track) return;
+    console.log('[Player] playTrackFromQueue:', track.title);
+    currentTrackIdRef.current = track.id;
+    await loadAndPlayTrack(track);
+  }, [loadAndPlayTrack]);
+  
+  const clearQueue = useCallback(() => {
+    setQueue([]);
+    stopAudio();
+  }, [stopAudio]);
+  
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
     if (audioElementRef.current) {
@@ -395,7 +413,6 @@ export function useGrooveflixPlayer() {
   
   const dispose = useCallback(() => {
     stopAudio();
-    unregisterAnalysers();
     resetAudioGraph();
   }, [stopAudio]);
   
@@ -415,9 +432,11 @@ export function useGrooveflixPlayer() {
     stop,
     seek,
     loadAndPlayTrack,
+    playAlbum,
+    playTrackFromQueue,
+    clearQueue,
     dispose,
-    queue: audioPlayer?.queue || [],
-    playTrackFromQueue: audioPlayer?.playTrackFromQueue,
+    queue,
   };
 }
 
@@ -427,9 +446,7 @@ window.RareGrooveDebug = {
   checkSignal: checkAnalyserSignal,
   getNodes: () => ({
     audioContext: audioContextInstance,
-    analyserL: sharedAnalyserL,
-    analyserR: sharedAnalyserR,
-    vuGainNode: vuGainNode,
+    ...getAnalysers(),
     gain: sharedGain,
   }),
   forceResumeContext: async () => {
@@ -439,8 +456,9 @@ window.RareGrooveDebug = {
     }
   },
   setVuSensitivity: (value) => {
-    if (vuGainNode) {
-      vuGainNode.gain.value = value;
+    const { vuGainNode: vg } = getAnalysers();
+    if (vg) {
+      vg.gain.value = value;
       console.log('VU SENS set to:', value);
     }
   },

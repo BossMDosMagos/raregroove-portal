@@ -129,7 +129,7 @@ export default function Navbar() {
   if (!user) return null;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50">
+    <nav className="fixed top-0 left-0 right-0 z-60">
       {/* Glassmorphism Navbar */}
       <div className="bg-black/70 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
@@ -229,7 +229,7 @@ export default function Navbar() {
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 mt-2 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[99999]">
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-white text-sm font-medium">Notificações</p>
                   </div>
@@ -291,7 +291,7 @@ export default function Navbar() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-60 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 mt-2 w-60 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[99999]">
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-white text-sm font-medium">
                       {profile?.full_name || 'Usuário'}
