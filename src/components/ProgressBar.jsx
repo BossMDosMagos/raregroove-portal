@@ -31,8 +31,8 @@ const ProgressBar = memo(function ProgressBar({
 
   return (
     <div 
-      className="w-full px-6 py-3 bg-black/40 rounded-xl border border-white/10 shadow-2xl"
-      style={{ minWidth: '300px', zIndex: 20, position: 'relative' }}
+      className="px-4 py-3 bg-black/40 rounded-xl border border-white/10 shadow-2xl"
+      style={{ width: '580px', zIndex: 20, position: 'relative' }}
     >
       <style>{`
         @keyframes pulse-led {
