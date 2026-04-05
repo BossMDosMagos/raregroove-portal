@@ -130,10 +130,55 @@ export default function Grooveflix() {
     }
   };
 
-  const handlePlayTrack = useCallback((album, trackIndex) => {
-    console.log('[Grooveflix] handlePlayTrack:', album?.title, 'track:', trackIndex);
+  const handlePlayTrack = useCallback(async (album, trackIndex) => {
+    console.log('===========================================');
+    console.log('[Grooveflix] handlePlayTrack called');
+    console.log('[Grooveflix] album.title:', album?.title);
+    console.log('[Grooveflix] album.id:', album?.id);
+    console.log('[Grooveflix] trackIndex:', trackIndex);
+    console.log('===========================================');
+    
     setCurrentTrackIndex(trackIndex);
-    playAlbum(album, trackIndex);
+    
+    const grooveflixData = album?.metadata?.grooveflix || {};
+    const audioFiles = grooveflixData.audio_files || [];
+    const tracklist = grooveflixData.tracklist || [];
+    
+    console.log('[Grooveflix] audioFiles.length:', audioFiles.length);
+    console.log('[Grooveflix] tracklist.length:', tracklist.length);
+    
+    if (audioFiles.length === 0) {
+      console.error('[Grooveflix] ERROR: Album has no audio files!');
+      return;
+    }
+    
+    if (trackIndex < 0 || trackIndex >= audioFiles.length) {
+      console.error('[Grooveflix] ERROR: Invalid trackIndex!');
+      return;
+    }
+    
+    const audioFile = audioFiles[trackIndex];
+    const trackInfo = tracklist[trackIndex] || {};
+    
+    console.log('[Grooveflix] audioFile:', audioFile);
+    console.log('[Grooveflix] audioFile.path:', audioFile?.path);
+    console.log('[Grooveflix] trackInfo.title:', trackInfo.title);
+    
+    const track = {
+      id: `${album.id}-${trackIndex}`,
+      title: trackInfo.title || `Track ${trackIndex + 1}`,
+      artist: album.artist || 'Unknown',
+      audioPath: audioFile?.path || audioFile,
+      albumId: album.id,
+      albumTitle: album.title,
+      trackIndex: trackIndex,
+    };
+    
+    console.log('[Grooveflix] Calling playAlbum with track:', track.title);
+    console.log('[Grooveflix] track.audioPath:', track.audioPath);
+    console.log('===========================================');
+    
+    await playAlbum(album, trackIndex);
   }, [playAlbum]);
 
   const handlePlay = useCallback(() => {
@@ -173,17 +218,31 @@ export default function Grooveflix() {
   }, [currentTrackIndex]);
 
   useEffect(() => {
-    const unlockAudio = () => {
-      const ctx = Howler.ctx;
-      if (ctx && ctx.state === 'suspended') {
-        ctx.resume();
+    console.log('[Grooveflix] Setting up audio unlock listeners');
+    
+    const unlockAudio = async () => {
+      console.log('[Grooveflix] User gesture detected - unlocking audio context');
+      
+      try {
+        const ctx = Howler.ctx;
+        if (ctx && ctx.state === 'suspended') {
+          console.log('[Grooveflix] Resuming Howler AudioContext...');
+          await ctx.resume();
+          console.log('[Grooveflix] Howler AudioContext resumed!');
+        }
+      } catch (err) {
+        console.error('[Grooveflix] Error unlocking Howler context:', err);
       }
     };
+    
     document.addEventListener('click', unlockAudio, { once: true });
     document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    
     return () => {
       document.removeEventListener('click', unlockAudio);
       document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
     };
   }, []);
 

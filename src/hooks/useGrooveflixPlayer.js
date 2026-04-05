@@ -239,33 +239,59 @@ export function useGrooveflixPlayer() {
   }, []);
   
   const loadAndPlayTrack = useCallback(async (track) => {
-    if (!track?.audioPath) return;
+    console.log('===========================================');
+    console.log('[Player] loadAndPlayTrack called');
+    console.log('[Player] track.title:', track?.title);
+    console.log('[Player] track.audioPath:', track?.audioPath);
+    console.log('[Player] track.id:', track?.id);
+    console.log('===========================================');
+    
+    if (!track?.audioPath) {
+      console.error('[Player] ERROR: No audioPath in track!');
+      return;
+    }
     
     const trackId = track.id;
     pendingTrackIdRef.current = trackId;
     
     if (audioElementRef.current && currentTrackIdRef.current === trackId) {
+      console.log('[Player] Track already loaded, skipping');
       return;
     }
     
+    console.log('[Player] Stopping previous audio...');
     stopAudio();
     setCurrentTime(0);
     setDuration(0);
     
+    console.log('[Player] Initializing audio context...');
     const ctx = initAudioGraph();
+    console.log('[Player] AudioContext state:', ctx.state);
+    
     if (ctx.state === 'suspended') {
+      console.log('[Player] Resuming suspended AudioContext...');
       await ctx.resume();
+      console.log('[Player] AudioContext resumed, state:', ctx.state);
     }
     
+    console.log('[Player] Getting presigned URL for:', track.audioPath);
     const url = await audioPlayer.getPresignedUrl(track.audioPath);
-    if (!url) return;
-    if (pendingTrackIdRef.current !== trackId) return;
+    console.log('[Player] Got URL:', url ? url.substring(0, 80) + '...' : 'NULL');
     
+    if (!url) {
+      console.error('[Player] ERROR: Could not get audio URL!');
+      return;
+    }
+    
+    if (pendingTrackIdRef.current !== trackId) {
+      console.log('[Player] Track changed during URL fetch, skipping');
+      return;
+    }
+    
+    console.log('[Player] Creating new Audio element...');
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.preload = 'metadata';
-    
-    currentTrackIdRef.current = trackId;
     
     const onTimeUpdate = () => {
       if (currentTrackIdRef.current === trackId) {
@@ -274,12 +300,14 @@ export function useGrooveflixPlayer() {
     };
     
     const onLoadedMetadata = () => {
+      console.log('[Player] Metadata loaded! duration:', audio.duration);
       if (currentTrackIdRef.current === trackId) {
         setDuration(audio.duration);
       }
     };
     
     const onEnded = () => {
+      console.log('[Player] Track ended');
       if (currentTrackIdRef.current !== trackId) return;
       
       const queue = audioPlayer?.queue || [];
@@ -297,16 +325,27 @@ export function useGrooveflixPlayer() {
     };
     
     const onPlay = () => {
+      console.log('[Player] onPlay fired! isPlaying should be true');
       if (currentTrackIdRef.current === trackId) {
         setIsPlaying(true);
+        console.log('[Player] Calling connectMediaSource...');
         connectMediaSource(audio);
       }
     };
     
     const onPause = () => {
+      console.log('[Player] onPause fired');
       if (currentTrackIdRef.current === trackId) {
         setIsPlaying(false);
       }
+    };
+    
+    const onError = (e) => {
+      console.error('===========================================');
+      console.error('[Player] AUDIO ERROR:', e);
+      console.error('[Player] audio.error:', audio.error);
+      console.error('[Player] audio.src:', audio.src);
+      console.error('===========================================');
     };
     
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -314,16 +353,23 @@ export function useGrooveflixPlayer() {
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
+    audio.addEventListener('error', onError);
     
+    currentTrackIdRef.current = trackId;
     audioElementRef.current = audio;
     audio.src = url;
     
+    console.log('[Player] Calling audio.play()...');
     try {
       await audio.play();
+      console.log('[Player] audio.play() succeeded!');
     } catch (err) {
-      console.error('[Player] Play error:', err);
+      console.error('===========================================');
+      console.error('[Player] ERRO DE AUDIO:', err);
+      console.error('[Player] Error name:', err.name);
+      console.error('[Player] Error message:', err.message);
+      console.error('===========================================');
     }
-    
   }, [audioPlayer, stopAudio, connectMediaSource]);
 
   const play = useCallback(async () => {
@@ -356,21 +402,31 @@ export function useGrooveflixPlayer() {
   }, [duration]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
-    if (!album?.audio_files || album.audio_files.length === 0) {
+    console.log('===========================================');
+    console.log('[Player] playAlbum called');
+    console.log('[Player] album.title:', album?.title);
+    console.log('[Player] album.id:', album?.id);
+    console.log('[Player] startIndex:', startIndex);
+    console.log('[Player] album.audio_files:', album?.audio_files?.length);
+    console.log('[Player] album.tracklist:', album?.tracklist?.length);
+    console.log('===========================================');
+    
+    const audioFiles = album?.audio_files || [];
+    const tracklist = album?.tracklist || [];
+    
+    if (audioFiles.length === 0) {
       console.error('[Player] Album has no audio files');
       return;
     }
     
-    const audioFiles = album.audio_files || [];
-    const tracklist = album.tracklist || [];
-    
     const tracks = audioFiles.map((file, idx) => {
       const trackInfo = tracklist[idx] || {};
+      console.log('[Player] Track', idx, '- file:', file, '| path:', file?.path);
       return {
         id: `${album.id}-${idx}`,
         title: trackInfo.title || `Track ${idx + 1}`,
         artist: album.artist || 'Unknown',
-        audioPath: file.path || file,
+        audioPath: file?.path || file,
         albumId: album.id,
         albumTitle: album.title,
         coverUrl: album.coverUrl || album.image_url || album.cover_path,
@@ -378,13 +434,18 @@ export function useGrooveflixPlayer() {
       };
     });
     
+    console.log('[Player] Built', tracks.length, 'tracks');
+    console.log('[Player] Track at index', startIndex, ':', tracks[startIndex]?.title, '| audioPath:', tracks[startIndex]?.audioPath);
+    
     setQueue(tracks);
     
     if (startIndex >= 0 && startIndex < tracks.length) {
       const track = tracks[startIndex];
+      console.log('[Player] Calling loadAndPlayTrack for:', track.title, '| audioPath:', track.audioPath);
       currentTrackIdRef.current = track.id;
       await loadAndPlayTrack(track);
     }
+    console.log('===========================================');
   }, [loadAndPlayTrack]);
   
   const playTrackFromQueue = useCallback(async (track) => {
