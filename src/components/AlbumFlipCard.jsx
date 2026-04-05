@@ -7,7 +7,6 @@ export default function AlbumFlipCard({
   isActive, 
   isPlaying, 
   currentTrack,
-  currentTrackIndex,
   onPlayTrack,
   style,
   showFlipHint = false 
@@ -168,7 +167,7 @@ export default function AlbumFlipCard({
               <div className="divide-y divide-amber-500/10 flip-scroll">
                 {tracklist.slice(0, 6).map((track, index) => {
                   const trackId = `${album?.id}-${index}`;
-                  const isTrackActive = currentTrackIndex === index || currentTrack?.id === trackId;
+                  const isTrackActive = currentTrack?.id === trackId;
                   const hasAudio = audioFiles[index]?.path || audioFiles[index];
 
                   return (

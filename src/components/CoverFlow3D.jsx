@@ -43,7 +43,7 @@ const getItemPosition = (index, focusedIndex) => {
   return 'hidden';
 };
 
-export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex, onUpdateFocus, onAlbumSelect, isAdmin, onAlbumDeleted, currentTrack, currentTrackIndex, isPlaying, currentTime, duration, onSeek, playAlbum }) {
+export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex, onUpdateFocus, onAlbumSelect, isAdmin, onAlbumDeleted, currentTrack, isPlaying, currentTime, duration, onSeek, playAlbum }) {
   const [internalFocusedIndex, setInternalFocusedIndex] = useState(0);
   const [coverUrls, setCoverUrls] = useState({});
   const blobUrlsRef = useRef(new Set());
@@ -277,7 +277,6 @@ export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex,
                   isActive={isCurrentAlbum}
                   isPlaying={isPlaying}
                   currentTrack={currentTrack}
-                  currentTrackIndex={currentTrackIndex}
                   onPlayTrack={handlePlayTrack}
                   style={{ width: '280px', height: '280px' }}
                   showFlipHint={true}

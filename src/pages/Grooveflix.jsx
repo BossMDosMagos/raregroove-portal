@@ -72,11 +72,6 @@ export default function Grooveflix() {
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const focusedAlbumRef = useRef(null);
-  
-  const [albumTracklist, setAlbumTracklist] = useState([]);
-  const [albumAudioFiles, setAlbumAudioFiles] = useState([]);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
-  const currentTrackIndexRef = useRef(-1);
 
   const handleOpenDeleteModal = () => {
     if (!focusedAlbum) {
@@ -152,34 +147,22 @@ export default function Grooveflix() {
     const grooveflixData = album.metadata?.grooveflix || {};
     const audioFiles = grooveflixData.audio_files || [];
     
-    if (audioFiles.length === 0) {
-      console.warn('[Grooveflix] Album has no audio files!');
-      return;
-    }
+    console.log('[Grooveflix] Playing album:', album.title);
+    console.log('[Grooveflix] Audio files:', audioFiles.length);
     
-    const trackIdx = currentTrackIndexRef.current >= 0 ? currentTrackIndexRef.current : 0;
-    handlePlayTrack(album, trackIdx);
-  }, [isAudioContextPlaying, pause, handlePlayTrack]);
+    if (audioFiles.length > 0) {
+      playAlbum(album, 0);
+    } else {
+      console.warn('[Grooveflix] Album has no audio files!');
+    }
+  }, [isAudioContextPlaying, pause, playAlbum]);
 
   useEffect(() => {
     focusedAlbumRef.current = focusedAlbum;
   }, [focusedAlbum]);
 
-  useEffect(() => {
-    currentTrackIndexRef.current = currentTrackIndex;
-  }, [currentTrackIndex]);
-
   const handlePlayTrack = useCallback((album, trackIndex) => {
-    console.log('[Grooveflix] handlePlayTrack:', album?.title, 'track:', trackIndex);
-    
-    const grooveflixData = album?.metadata?.grooveflix || {};
-    const tracklist = grooveflixData.tracklist || [];
-    const audioFiles = grooveflixData.audio_files || [];
-    
-    setAlbumTracklist(tracklist);
-    setAlbumAudioFiles(audioFiles);
-    setCurrentTrackIndex(trackIndex);
-    
+    console.log('[Grooveflix] handlePlayTrack:', album.title, 'track:', trackIndex);
     playAlbum(album, trackIndex);
   }, [playAlbum]);
 
@@ -203,26 +186,20 @@ export default function Grooveflix() {
   const handleEject = useCallback(() => clearQueue(), [clearQueue]);
 
   const handlePreviousTrack = useCallback(() => {
-    const currentIdx = currentTrackIndexRef.current;
-    if (currentIdx > 0) {
-      const prevIndex = currentIdx - 1;
-      const album = focusedAlbumRef.current;
-      if (album) {
-        handlePlayTrack(album, prevIndex);
-      }
+    const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
+    if (currentIndex > 0) {
+      const prevTrack = queue[currentIndex - 1];
+      playTrackFromQueue(prevTrack);
     }
-  }, [handlePlayTrack]);
+  }, [queue, globalCurrentTrack, playTrackFromQueue]);
 
   const handleNextTrack = useCallback(() => {
-    const currentIdx = currentTrackIndexRef.current;
-    if (currentIdx >= 0 && currentIdx < albumAudioFiles.length - 1) {
-      const nextIndex = currentIdx + 1;
-      const album = focusedAlbumRef.current;
-      if (album) {
-        handlePlayTrack(album, nextIndex);
-      }
+    const currentIndex = queue.findIndex(t => t.id === globalCurrentTrack?.id);
+    if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+      const nextTrack = queue[currentIndex + 1];
+      playTrackFromQueue(nextTrack);
     }
-  }, [handlePlayTrack, albumAudioFiles.length]);
+  }, [queue, globalCurrentTrack, playTrackFromQueue]);
 
   const lastTrackIdRef = useRef(null);
 
@@ -402,13 +379,12 @@ export default function Grooveflix() {
               setFocusedIndex(index);
             }}
             onAlbumSelect={(item, index) => {
-              setFocusedAlbum(item);
+              setSelectedAlbum(item);
               setFocusedIndex(index);
             }}
             isAdmin={isAdmin}
             onAlbumDeleted={(id) => setItems(prev => prev.filter(item => item.id !== id))}
             currentTrack={globalCurrentTrack}
-            currentTrackIndex={currentTrackIndex}
             isPlaying={isAudioContextPlaying}
             currentTime={currentTime}
             duration={duration}
