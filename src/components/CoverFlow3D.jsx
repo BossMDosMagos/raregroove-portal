@@ -326,7 +326,7 @@ export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex,
           isPlaying={isPlaying}
         />
         
-        <div style={{ position: 'relative', zIndex: 9999 }}>
+        <div style={{ position: 'relative', zIndex: 20 }}>
           <ProgressBar
             currentTime={currentTime || 0}
             duration={duration || 0}
