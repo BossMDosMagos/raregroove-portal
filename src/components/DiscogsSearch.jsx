@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Search, Check, Disc, Loader2, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Check, Disc, Loader2, ExternalLink, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { getExchangeRates, formatBRL, convertToBRL } from '../utils/currency';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
@@ -40,6 +41,23 @@ async function getReleaseDetails(releaseId) {
   return data.data;
 }
 
+async function getPriceSuggestions(releaseId) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ type: 'price_suggestions', releaseId }),
+  });
+
+  if (!response.ok) throw new Error(`Erro ${response.status}`);
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data.data;
+}
+
 export function DiscogsSearch({ onImport }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -47,6 +65,13 @@ export function DiscogsSearch({ onImport }) {
   const [fullDetails, setFullDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [priceSuggestions, setPriceSuggestions] = useState(null);
+  const [fetchingPrices, setFetchingPrices] = useState(false);
+  const [exchangeRates, setExchangeRates] = useState(null);
+
+  useEffect(() => {
+    getExchangeRates().then(setExchangeRates);
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -76,10 +101,15 @@ export function DiscogsSearch({ onImport }) {
     setSelected(release);
     setFetchingDetails(true);
     setFullDetails(null);
+    setPriceSuggestions(null);
 
     try {
-      const details = await getReleaseDetails(release.id);
+      const [details, prices] = await Promise.all([
+        getReleaseDetails(release.id),
+        getPriceSuggestions(release.id).catch(() => null),
+      ]);
       setFullDetails(details);
+      setPriceSuggestions(prices);
     } catch (error) {
       toast.error('Erro ao buscar detalhes', { description: error.message });
     }
@@ -106,6 +136,7 @@ export function DiscogsSearch({ onImport }) {
       discogsId: selected.id,
       discogsMasterId: fullDetails.master_id,
       description: description,
+      priceSuggestions: priceSuggestions,
     });
 
     toast.success('Dados importados do Discogs!', {
@@ -201,6 +232,45 @@ export function DiscogsSearch({ onImport }) {
               </div>
             </div>
           </div>
+
+          {priceSuggestions && (
+            <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                <DollarSign className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Preços de Mercado (USD)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {priceSuggestions.VG && (
+                  <div className="bg-white/5 rounded-lg p-2">
+                    <div className="text-[10px] text-white/50 uppercase">Very Good</div>
+                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.VG * (exchangeRates?.USD || 5))}</div>
+                    <div className="text-[9px] text-white/30">${priceSuggestions.VG}</div>
+                  </div>
+                )}
+                {priceSuggestions.NM && (
+                  <div className="bg-white/5 rounded-lg p-2">
+                    <div className="text-[10px] text-white/50 uppercase">Near Mint</div>
+                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.NM * (exchangeRates?.USD || 5))}</div>
+                    <div className="text-[9px] text-white/30">${priceSuggestions.NM}</div>
+                  </div>
+                )}
+                {priceSuggestions.M && (
+                  <div className="bg-white/5 rounded-lg p-2">
+                    <div className="text-[10px] text-white/50 uppercase">Mint</div>
+                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.M * (exchangeRates?.USD || 5))}</div>
+                    <div className="text-[9px] text-white/30">${priceSuggestions.M}</div>
+                  </div>
+                )}
+              </div>
+              {priceSuggestions.Median && (
+                <div className="text-center pt-2 border-t border-white/10 mt-2">
+                  <span className="text-[10px] text-white/40 uppercase">Preço Médio: </span>
+                  <span className="text-sm font-bold text-emerald-400">{formatBRL(priceSuggestions.Median * (exchangeRates?.USD || 5))}</span>
+                  <span className="text-xs text-white/30 ml-1">(Median)</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <a

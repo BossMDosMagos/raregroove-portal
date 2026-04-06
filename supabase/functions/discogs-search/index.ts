@@ -110,6 +110,8 @@ serve(async (req) => {
       apiUrl = `${baseUrl}/masters/${releaseId}`
     } else if (type === 'artist' && releaseId) {
       apiUrl = `${baseUrl}/artists/${releaseId}`
+    } else if (type === 'price_suggestions' && releaseId) {
+      apiUrl = `${baseUrl}/marketplace/price_suggestions/${releaseId}`
     } else {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,

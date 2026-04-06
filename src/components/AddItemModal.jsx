@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { X, Upload, Loader2 } from 'lucide-react';
+import { X, Upload, Loader2, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { DiscogsSearch } from './DiscogsSearch.jsx';
+import { getExchangeRates, formatBRL } from '../utils/currency';
 
 const emptyFormData = {
   title: '',
@@ -28,6 +29,13 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
+  const [priceSuggestions, setPriceSuggestions] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState(null);
+  const [applyingPrice, setApplyingPrice] = useState(false);
+
+  useEffect(() => {
+    getExchangeRates().then(setExchangeRates);
+  }, []);
 
   useEffect(() => {
     if (itemToEdit) {
@@ -65,6 +73,17 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       discogsMasterId: data.discogsMasterId || prev.discogsMasterId,
       description: data.description || prev.description,
     }));
+    setPriceSuggestions(data.priceSuggestions || null);
+  };
+
+  const handleApplyMedianPrice = async () => {
+    if (!priceSuggestions?.Median || !exchangeRates) return;
+    
+    setApplyingPrice(true);
+    const rate = exchangeRates.USD || 5.0;
+    const medianBRL = priceSuggestions.Median * rate;
+    setFormData(prev => ({ ...prev, price: medianBRL.toFixed(2) }));
+    setApplyingPrice(false);
   };
 
   const handleSubmit = async (e) => {
@@ -204,9 +223,44 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
               </div>
               <div>
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.price')}</label>
-                <input required type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
-                  value={formData.price}
-                  onChange={e => setFormData({...formData, price: e.target.value})} />
+                <div className="relative">
+                  <input required type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                    value={formData.price}
+                    onChange={e => setFormData({...formData, price: e.target.value})} />
+                  {priceSuggestions && priceSuggestions.Median && (
+                    <button
+                      type="button"
+                      onClick={handleApplyMedianPrice}
+                      disabled={applyingPrice}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg text-[10px] font-bold text-emerald-400 transition-colors"
+                    >
+                      <TrendingUp className="w-3 h-3" />
+                      {applyingPrice ? 'Aplicando...' : 'Ajustar ao Mercado'}
+                    </button>
+                  )}
+                </div>
+                {priceSuggestions && (
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    {priceSuggestions.VG && (
+                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
+                        <div className="text-[9px] text-white/40 uppercase">VG</div>
+                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.VG * (exchangeRates?.USD || 5))}</div>
+                      </div>
+                    )}
+                    {priceSuggestions.NM && (
+                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
+                        <div className="text-[9px] text-white/40 uppercase">NM</div>
+                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.NM * (exchangeRates?.USD || 5))}</div>
+                      </div>
+                    )}
+                    {priceSuggestions.M && (
+                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
+                        <div className="text-[9px] text-white/40 uppercase">M</div>
+                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.M * (exchangeRates?.USD || 5))}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.condition')}</label>
