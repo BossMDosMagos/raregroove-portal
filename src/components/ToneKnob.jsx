@@ -178,7 +178,7 @@ export function ToneKnob({
             width: '60%',
             height: '60%',
             transform: `translate(-50%, -50%) rotate(${knobRotation}deg)`,
-            zIndex: 20,
+            zIndex: 35,
           }}
         >
           <img 
