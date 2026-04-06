@@ -161,6 +161,8 @@ export default function Grooveflix() {
     
     console.log('[Grooveflix] audioFiles.length:', audioFiles.length);
     console.log('[Grooveflix] tracklist.length:', tracklist.length);
+    console.log('[Grooveflix] audioFiles[trackIndex]:', audioFiles[trackIndex]);
+    console.log('[Grooveflix] audioFiles[trackIndex]?.path:', audioFiles[trackIndex]?.path);
     
     if (audioFiles.length === 0) {
       console.error('[Grooveflix] ERROR: Album has no audio files!');

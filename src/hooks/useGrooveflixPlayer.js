@@ -251,21 +251,11 @@ export function useGrooveflixPlayer() {
     const trackId = track.id;
     pendingTrackIdRef.current = trackId;
     
-    const isSameTrack = audioElementRef.current && currentTrackIdRef.current === trackId && audioElementRef.current.src;
+    console.log('[Player] currentTrackIdRef.current:', currentTrackIdRef.current);
+    console.log('[Player] trackId:', trackId);
+    console.log('[Player] isSameTrack:', currentTrackIdRef.current === trackId);
     
-    if (isSameTrack) {
-      console.log('[Player] Same track, resuming play...');
-      audioElementRef.current.currentTime = 0;
-      try {
-        await audioElementRef.current.play();
-        console.log('[Player] Resumed play successfully');
-      } catch (err) {
-        console.error('[Player] Failed to resume:', err);
-      }
-      return;
-    }
-    
-    console.log('[Player] New track or no src, loading from scratch...');
+    console.log('[Player] Always loading new track (no resume optimization)...');
     currentTrackIdRef.current = trackId;
     stopAudio();
     setCurrentTime(0);
