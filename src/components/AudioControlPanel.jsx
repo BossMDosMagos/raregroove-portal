@@ -122,7 +122,8 @@ export default function AudioControlPanel({
           <LCDDisplay 
             line1={currentTrack.title || 'Unknown Track'}
             line2={currentTrack.artist || 'Unknown Artist'}
-            line3={currentTrack.albumTitle || ''}
+            line3={`Album: ${currentTrack.albumTitle || 'Unknown Album'}`}
+            line4={`Track ${currentTrack.trackIndex !== undefined ? currentTrack.trackIndex + 1 : '--'} | ${currentTrack.albumId ? 'Playing' : ''}`}
           />
         </div>
       )}
