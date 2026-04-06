@@ -127,7 +127,7 @@ export function ToneKnob({
             const isOn = getLedState(i);
             const ledAngle = -135 + (i * 270 / 11);
             const rad = (ledAngle * Math.PI) / 180;
-            const radius = 38;
+            const radius = 44;
             const x = 50 + radius * Math.sin(rad);
             const y = 50 - radius * Math.cos(rad);
             const color = LED_COLORS[colorKey];
