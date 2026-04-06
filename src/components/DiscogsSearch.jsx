@@ -58,7 +58,7 @@ async function getPriceSuggestions(releaseId) {
   return data.data;
 }
 
-export function DiscogsSearch({ onImport }) {
+export function DiscogsSearch({ onImport, onPriceUpdate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -66,7 +66,7 @@ export function DiscogsSearch({ onImport }) {
   const [loading, setLoading] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
   const [priceSuggestions, setPriceSuggestions] = useState(null);
-  const [fetchingPrices, setFetchingPrices] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [exchangeRates, setExchangeRates] = useState(null);
 
   useEffect(() => {
@@ -82,6 +82,7 @@ export function DiscogsSearch({ onImport }) {
     setSelected(null);
     setFullDetails(null);
     setResults([]);
+    setHasSearched(true);
 
     try {
       const data = await searchDiscogs(searchQuery, 20);
@@ -98,13 +99,18 @@ export function DiscogsSearch({ onImport }) {
   };
 
   const handleSelect = async (release) => {
+    if (!release?.id) {
+      toast.error('Release inválido');
+      return;
+    }
+
     setSelected(release);
     setFetchingDetails(true);
     setFullDetails(null);
     setPriceSuggestions(null);
 
     try {
-      const [details, stats] = await Promise.all([
+      const [details, statsResponse] = await Promise.all([
         getReleaseDetails(release.id),
         fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
           method: 'POST',
@@ -114,27 +120,47 @@ export function DiscogsSearch({ onImport }) {
             'apikey': SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ type: 'release_stats', releaseId: release.id }),
-        }).then(r => r.json()).catch(() => null),
+        }).then(async (r) => {
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error || `Erro ${r.status}`);
+          }
+          return r.json();
+        }).catch((e) => {
+          console.error('Stats fetch error:', e);
+          return { data: null, error: e.message };
+        }),
       ]);
       
+      const stats = statsResponse?.data || null;
+
       setFullDetails(details);
       
       const suggestions = {};
-      const lowestValue = (stats?.data?.lowest_price?.value ?? stats?.data?.lowest_price ?? details?.lowest_price ?? null);
+      const lowestValue = (stats?.lowest_price?.value ?? stats?.lowest_price ?? details?.lowest_price ?? null);
       if (lowestValue !== null) {
         suggestions.lowestPriceUSD = lowestValue;
-        suggestions.numForSale = stats?.data?.num_for_sale || null;
-        suggestions.blockedFromSale = stats?.data?.blocked_from_sale || null;
-        suggestions.sellerCredits = stats?.data?.seller_credits || null;
-        suggestions.lowestPriceCurrency = stats?.data?.lowest_price?.currency || 'USD';
-        suggestions.source = stats?.data?.lowest_price ? 'marketplace_stats' : 'release_details';
-        suggestions.releaseId = selected.id;
+        suggestions.numForSale = stats?.num_for_sale || null;
+        suggestions.blockedFromSale = stats?.blocked_from_sale || null;
+        suggestions.sellerCredits = stats?.seller_credits || null;
+        suggestions.lowestPriceCurrency = stats?.lowest_price?.currency || 'USD';
+        suggestions.source = stats?.lowest_price ? 'marketplace_stats' : 'release_details';
+        suggestions.releaseId = release.id;
       } else {
         suggestions.source = 'none';
       }
       setPriceSuggestions(suggestions);
+
+      if (onPriceUpdate) {
+        onPriceUpdate(suggestions);
+      }
+
+      if (lowestValue === null) {
+        toast.info('Preço mínimo não disponível para este lançamento');
+      }
     } catch (error) {
       toast.error('Erro ao buscar detalhes', { description: error.message });
+      console.error('Discogs handleSelect error:', error);
     }
 
     setFetchingDetails(false);

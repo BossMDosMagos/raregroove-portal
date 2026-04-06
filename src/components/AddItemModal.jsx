@@ -74,7 +74,10 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       discogsMasterId: data.discogsMasterId || prev.discogsMasterId,
       description: data.description || prev.description,
     }));
-    setPriceSuggestions(data.priceSuggestions || null);
+  };
+
+  const handlePriceUpdate = (suggestions) => {
+    setPriceSuggestions(suggestions);
   };
 
   const handleApplyMedianPrice = async () => {
@@ -211,7 +214,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
 
         <div className="overflow-y-auto flex-1">
           <div className="p-6 pt-4">
-            <DiscogsSearch onImport={handleDiscogsImport} />
+            <DiscogsSearch onImport={handleDiscogsImport} onPriceUpdate={handlePriceUpdate} />
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 pt-0 space-y-4">
