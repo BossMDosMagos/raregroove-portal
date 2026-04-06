@@ -154,9 +154,10 @@ export default function AlbumFlipCard({
             }}
           >
             <style>{`
-              .flip-scroll::-webkit-scrollbar { width: 3px; }
+              .flip-scroll::-webkit-scrollbar { width: 4px; }
               .flip-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
               .flip-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.5); border-radius: 2px; }
+              .flip-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.8); }
             `}</style>
             
             {tracklist.length === 0 ? (
@@ -165,8 +166,8 @@ export default function AlbumFlipCard({
                 <p className="text-xs">Sem tracks</p>
               </div>
             ) : (
-              <div className="divide-y divide-amber-500/10 flip-scroll">
-                {tracklist.slice(0, 6).map((track, index) => {
+              <div className="divide-y divide-amber-500/10 flip-scroll py-1">
+                {tracklist.map((track, index) => {
                   const trackId = `${album?.id}-${index}`;
                   const isTrackActive = currentTrackIndex === index || currentTrack?.id === trackId;
                   const hasAudio = audioFiles[index]?.path || audioFiles[index];
@@ -206,11 +207,6 @@ export default function AlbumFlipCard({
                     </button>
                   );
                 })}
-                {tracklist.length > 6 && (
-                  <div className="py-1.5 text-center text-amber-500/50 text-[10px]">
-                    +{tracklist.length - 6} tracks
-                  </div>
-                )}
               </div>
             )}
           </div>
