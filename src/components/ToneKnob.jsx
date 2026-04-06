@@ -120,7 +120,7 @@ export function ToneKnob({
           }}
         />
 
-        <div className="absolute inset-2 rounded-full overflow-hidden z-5" style={{
+        <div className="absolute inset-1 rounded-full overflow-hidden z-5" style={{
           background: '#0f0f0f',
         }}>
           {ledColors.map((colorKey, i) => {
@@ -156,8 +156,8 @@ export function ToneKnob({
           style={{
             top: '50%',
             left: '50%',
-            width: '65%',
-            height: '65%',
+            width: '50%',
+            height: '50%',
             transform: 'translate(-50%, -50%)',
             background: '#151515',
           }}
@@ -168,8 +168,8 @@ export function ToneKnob({
           style={{
             top: '50%',
             left: '50%',
-            width: '65%',
-            height: '65%',
+            width: '50%',
+            height: '50%',
             transform: `translate(-50%, -50%) rotate(${knobRotation}deg)`,
           }}
         >
