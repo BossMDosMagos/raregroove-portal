@@ -221,20 +221,15 @@ export function useGrooveflixPlayer() {
   }, []);
   
   const stopAudio = useCallback(() => {
+    console.log('[Player] stopAudio called - pausing and resetting');
+    
     if (audioElementRef.current) {
       audioElementRef.current.pause();
-      audioElementRef.current.src = '';
-    }
-    
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch {}
-      mediaSourceRef.current = null;
+      audioElementRef.current.currentTime = 0;
     }
     
     isConnectedRef.current = false;
-    currentTrackIdRef.current = null;
     setCurrentTime(0);
-    setDuration(0);
     setIsPlaying(false);
   }, []);
   
