@@ -341,6 +341,9 @@ export function useGrooveflixPlayer() {
     };
     
     const onError = (e) => {
+      if (!audio.src || audio.src === '') {
+        return;
+      }
       console.error('===========================================');
       console.error('[Player] AUDIO ERROR:', e);
       console.error('[Player] audio.error:', audio.error);
