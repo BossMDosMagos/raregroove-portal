@@ -6,11 +6,17 @@ import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
 import { GlobalPlayerProvider, useGlobalPlayer } from './hooks/useGlobalAudioPlayer.jsx';
+import GlobalPlayerControls from './components/GlobalPlayerControls.jsx';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
 import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
 import { validateSecretVault } from './utils/secretVaultTest';
+
+function GlobalPlayerControlsWrapper() {
+  const player = useGlobalPlayer();
+  return <GlobalPlayerControls player={player} />;
+}
 
 // Componentes de carregamento
 const LoadingFallback = () => (
@@ -220,6 +226,7 @@ export default function App() {
     <HelmetProvider>
       <ErrorBoundary>
         <GlobalPlayerProvider>
+          <GlobalPlayerControlsWrapper />
           <Router>
           <UnreadMessagesProvider>
             <CartProvider>
