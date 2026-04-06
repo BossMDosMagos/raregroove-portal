@@ -104,12 +104,18 @@ export function DiscogsSearch({ onImport }) {
     setPriceSuggestions(null);
 
     try {
-      const [details, prices] = await Promise.all([
-        getReleaseDetails(release.id),
-        getPriceSuggestions(release.id).catch(() => null),
-      ]);
+      const details = await getReleaseDetails(release.id);
       setFullDetails(details);
-      setPriceSuggestions(prices);
+      
+      const suggestions = {};
+      if (details?.lowest_price) {
+        suggestions.VG = Math.round(details.lowest_price * 1.5 * 100) / 100;
+        suggestions.NM = Math.round(details.lowest_price * 2 * 100) / 100;
+        suggestions.M = Math.round(details.lowest_price * 3 * 100) / 100;
+        suggestions.Median = details.lowest_price;
+        suggestions.source = 'lowest_price';
+      }
+      setPriceSuggestions(suggestions);
     } catch (error) {
       toast.error('Erro ao buscar detalhes', { description: error.message });
     }

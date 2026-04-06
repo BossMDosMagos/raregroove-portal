@@ -112,6 +112,7 @@ serve(async (req) => {
       apiUrl = `${baseUrl}/artists/${releaseId}`
     } else if (type === 'price_suggestions' && releaseId) {
       apiUrl = `${baseUrl}/marketplace/price_suggestions/${releaseId}`
+      console.log(`[Discogs] Price suggestions URL: ${apiUrl}`)
     } else {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,
@@ -132,7 +133,8 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[Discogs] Discogs API error: ${response.status}`, errorText)
-      return new Response(JSON.stringify({ error: `Discogs error: ${response.status}` }), {
+      console.error(`[Discogs] URL was: ${apiUrl}`)
+      return new Response(JSON.stringify({ error: `Discogs error: ${response.status}`, details: errorText }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
