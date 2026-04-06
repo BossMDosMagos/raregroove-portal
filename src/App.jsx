@@ -5,6 +5,7 @@ import { Toaster, toast } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
+import { GlobalPlayerProvider, useGlobalPlayer } from './hooks/useGlobalAudioPlayer.jsx';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
 import CartDrawer from './components/CartDrawer.jsx';
@@ -218,7 +219,8 @@ export default function App() {
   return (
     <HelmetProvider>
       <ErrorBoundary>
-        <Router>
+        <GlobalPlayerProvider>
+          <Router>
           <UnreadMessagesProvider>
             <CartProvider>
               <Toaster position="top-center" expand={false} richColors theme="dark" />
@@ -520,13 +522,14 @@ export default function App() {
 
           {/* Rota 404 - Catch All */}
           <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </div>
-            </CartProvider>
-          </UnreadMessagesProvider>
-        </Router>
-      </ErrorBoundary>
-    </HelmetProvider>
+                </Routes>
+              </Suspense>
+            </div>
+          </CartProvider>
+        </UnreadMessagesProvider>
+      </Router>
+    </GlobalPlayerProvider>
+  </ErrorBoundary>
+</HelmetProvider>
   );
 }
