@@ -142,12 +142,12 @@ export function ToneKnob({
                 style={{
                   left: `${x}%`,
                   top: `${y}%`,
-                  width: 6,
-                  height: 6,
+                  width: 3,
+                  height: 3,
                   transform: 'translate(-50%, -50%)',
                   background: isOn ? color.on : '#0a0a0a',
                   boxShadow: isOn 
-                    ? `0 0 6px ${color.glow}, 0 0 12px ${color.glowOuter}, 0 0 20px ${color.glowOuter}, inset 0 0 3px rgba(255,255,255,0.3)` 
+                    ? `0 0 4px ${color.glow}, 0 0 8px ${color.glowOuter}` 
                     : 'none',
                 }}
               />
