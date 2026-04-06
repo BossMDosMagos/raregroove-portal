@@ -364,7 +364,7 @@ export function useGlobalAudioPlayer() {
     audio.src = url;
     
     try { await audio.play(); } catch (err) { console.error('[GlobalPlayer] Play error:', err); }
-  }, [initAudioGraph, getPresignedUrl, createAudioSource, stopAudio, queue]);
+  }, [initAudioGraph, getPresignedUrl, createAudioElement, stopAudio, queue]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
     const audioFiles = album?.audio_files || album?.metadata?.grooveflix?.audio_files || [];
