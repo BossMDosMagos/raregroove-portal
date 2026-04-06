@@ -7,7 +7,6 @@ import { VolumeKnob } from './VolumeKnob.jsx';
 import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
 import EqualizerPanel from './EqualizerPanel.jsx';
-import { LCDDisplay } from './LCDDisplay.jsx';
 import { useGrooveflixSettings } from '../hooks/useGrooveflixSettings.js';
 
 const panelStyle = {
@@ -39,8 +38,6 @@ export default function AudioControlPanel({
   currentTime,
   duration,
   onSeek,
-  focusedAlbum,
-  currentTrackIndex,
   onVolumeChange,
   onPlay,
   onPause,
@@ -113,21 +110,6 @@ export default function AudioControlPanel({
   
   return (
     <>
-      {focusedAlbum && currentTrackIndex >= 0 && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200]">
-          <LCDDisplay 
-            line1={focusedAlbum.title || 'Unknown Album'}
-            line2={focusedAlbum.artist || 'Unknown Artist'}
-            line3={(() => {
-              const grooveflix = focusedAlbum?.metadata?.grooveflix || {};
-              const tracklist = grooveflix.tracklist || focusedAlbum?.tracklist || [];
-              const currentTrackName = tracklist[currentTrackIndex]?.title || `Track ${currentTrackIndex + 1}`;
-              return `${currentTrackIndex + 1}. ${currentTrackName}`;
-            })()}
-          />
-        </div>
-      )}
-      
       <div className="fixed top-20 left-4 z-50" style={{ perspective: '1000px' }}>
         <div className="relative flex flex-col rounded-xl" style={panelStyle}>
           <div className="absolute bottom-3 left-3 z-10"><CrownSvg id="L" /></div>
