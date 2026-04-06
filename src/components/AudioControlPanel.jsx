@@ -113,16 +113,7 @@ export default function AudioControlPanel({
   
   return (
     <>
-      {settingsRestored && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-pulse">
-          <LCDDisplay 
-            line1="[ ALL SETTINGS RESTORED ]"
-            line2="RareGroove Audio System"
-          />
-        </div>
-      )}
-
-      {!settingsRestored && focusedAlbum && currentTrackIndex >= 0 && (
+      {focusedAlbum && currentTrackIndex >= 0 && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200]">
           <LCDDisplay 
             line1={focusedAlbum.title || 'Unknown Album'}

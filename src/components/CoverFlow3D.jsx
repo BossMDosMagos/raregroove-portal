@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Disc3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AlbumFlipCard from './AlbumFlipCard.jsx';
-import { LCDDisplay } from './LCDDisplay.jsx';
 import ProgressBar from './ProgressBar.jsx';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
@@ -319,14 +318,6 @@ export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex,
       </div>
 
       <div className="flex flex-col items-center gap-4 py-4 px-4">
-        <LCDDisplay
-          line1={focusedItem?.title}
-          line2={focusedItem?.artist}
-          line3={currentTrack?.title || currentTrack?.name || focusedItem?.title || ''}
-          line4=""
-          isPlaying={isPlaying}
-        />
-        
         <div style={{ position: 'relative', zIndex: 20 }}>
           <ProgressBar
             currentTime={currentTime || 0}
