@@ -165,11 +165,6 @@ export function DiscogsSearch({ onImport }) {
     toast.success('Dados importados do Discogs!', {
       description: `${albumTitle} - ${artistName}`,
     });
-
-    setSearchQuery('');
-    setResults([]);
-    setSelected(null);
-    setFullDetails(null);
   };
 
   return (
