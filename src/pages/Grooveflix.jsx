@@ -280,6 +280,9 @@ export default function Grooveflix() {
   const handleNextTrack = useCallback(() => {
     const currentIdx = currentTrackIndexRef.current;
     console.log('[Grooveflix] handleNextTrack called, currentIdx:', currentIdx);
+    console.log('[Grooveflix] focusedAlbum:', focusedAlbumRef.current?.title);
+    console.log('[Grooveflix] focusedAlbum audio_files:', focusedAlbumRef.current?.audio_files?.length);
+    console.log('[Grooveflix] focusedAlbum metadata.grooveflix.audio_files:', focusedAlbumRef.current?.metadata?.grooveflix?.audio_files?.length);
     
     const album = focusedAlbumRef.current;
     if (!album) {
@@ -295,10 +298,12 @@ export default function Grooveflix() {
     }
     
     console.log('[Grooveflix] Next - audioFiles.length:', audioFiles.length);
+    console.log('[Grooveflix] Next - currentIdx < audioFiles.length - 1:', currentIdx, '<', audioFiles.length - 1, '=', currentIdx < audioFiles.length - 1);
     
     if (currentIdx >= 0 && currentIdx < audioFiles.length - 1) {
-      console.log('[Grooveflix] Playing track index:', currentIdx + 1);
-      handlePlayTrack(album, currentIdx + 1);
+      const nextIndex = currentIdx + 1;
+      console.log('[Grooveflix] Playing track index:', nextIndex);
+      handlePlayTrack(album, nextIndex);
     } else {
       console.log('[Grooveflix] Already at last track or invalid state');
     }

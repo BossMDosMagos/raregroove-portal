@@ -251,7 +251,9 @@ export function useGrooveflixPlayer() {
     const trackId = track.id;
     pendingTrackIdRef.current = trackId;
     
-    if (audioElementRef.current && currentTrackIdRef.current === trackId && audioElementRef.current.src) {
+    const isSameTrack = audioElementRef.current && currentTrackIdRef.current === trackId && audioElementRef.current.src;
+    
+    if (isSameTrack) {
       console.log('[Player] Same track, resuming play...');
       audioElementRef.current.currentTime = 0;
       try {
@@ -264,6 +266,7 @@ export function useGrooveflixPlayer() {
     }
     
     console.log('[Player] New track or no src, loading from scratch...');
+    currentTrackIdRef.current = trackId;
     stopAudio();
     setCurrentTime(0);
     setDuration(0);
