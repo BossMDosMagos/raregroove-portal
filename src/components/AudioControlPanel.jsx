@@ -35,6 +35,7 @@ function CrownSvg({ id }) {
 
 export default function AudioControlPanel({ 
   isPlaying,
+  currentTrack,
   onVolumeChange,
   onPlay,
   onPause,
@@ -112,6 +113,16 @@ export default function AudioControlPanel({
           <LCDDisplay 
             line1="[ ALL SETTINGS RESTORED ]"
             line2="RareGroove Audio System"
+          />
+        </div>
+      )}
+
+      {!settingsRestored && currentTrack && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200]">
+          <LCDDisplay 
+            line1={currentTrack.title || 'Unknown Track'}
+            line2={currentTrack.artist || 'Unknown Artist'}
+            line3={currentTrack.albumTitle || ''}
           />
         </div>
       )}
