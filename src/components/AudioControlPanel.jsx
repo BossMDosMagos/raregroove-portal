@@ -123,13 +123,13 @@ export default function AudioControlPanel({
           <div className="flex justify-center mb-3"><VUMeterLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3"><SpectrumLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3">
-            <VolumeKnob value={settings.volume} onChange={handleVolumeChange} size={140} />
+            <VolumeKnob value={settings.volume} onChange={handleVolumeChange} size={120} />
           </div>
-          <div className="flex justify-center gap-4 mb-3">
-            <ToneKnob value={bassValue} onChange={handleBassChange} size={80} label="Bass" />
-            <ToneKnob value={trebleValue} onChange={handleTrebleChange} size={80} label="Treble" />
-            <ToneKnob value={midValue} onChange={handleMidChange} size={80} label="Midle" />
-            <ToneKnob value={vuSensValue} onChange={handleVuSensChange} size={80} label="VU SENS" />
+          <div className="flex justify-center gap-3 mb-3">
+            <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
+            <ToneKnob value={trebleValue} onChange={handleTrebleChange} size={70} label="Treble" />
+            <ToneKnob value={midValue} onChange={handleMidChange} size={70} label="Midle" />
+            <ToneKnob value={vuSensValue} onChange={handleVuSensChange} size={70} label="VU SENS" />
           </div>
           <div className="flex justify-center mb-3">
             <PlayerControls
