@@ -36,6 +36,11 @@ function CrownSvg({ id }) {
 export default function AudioControlPanel({ 
   isPlaying,
   currentTrack,
+  currentTime,
+  duration,
+  onSeek,
+  focusedAlbum,
+  currentTrackIndex,
   onVolumeChange,
   onPlay,
   onPause,
@@ -117,12 +122,17 @@ export default function AudioControlPanel({
         </div>
       )}
 
-      {!settingsRestored && currentTrack && (
+      {!settingsRestored && focusedAlbum && currentTrackIndex >= 0 && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200]">
           <LCDDisplay 
-            line1={currentTrack.title || 'Unknown Track'}
-            line2={currentTrack.artist || 'Unknown Artist'}
-            line3={`${currentTrack.title || 'Track ' + (currentTrack.trackIndex + 1)} - ${currentTrack.albumTitle || ''}`}
+            line1={focusedAlbum.title || 'Unknown Album'}
+            line2={focusedAlbum.artist || 'Unknown Artist'}
+            line3={(() => {
+              const grooveflix = focusedAlbum?.metadata?.grooveflix || {};
+              const tracklist = grooveflix.tracklist || focusedAlbum?.tracklist || [];
+              const currentTrackName = tracklist[currentTrackIndex]?.title || `Track ${currentTrackIndex + 1}`;
+              return `${currentTrackIndex + 1}. ${currentTrackName}`;
+            })()}
           />
         </div>
       )}

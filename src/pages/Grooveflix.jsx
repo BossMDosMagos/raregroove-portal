@@ -421,6 +421,8 @@ export default function Grooveflix() {
         onPreviousTrack={handlePreviousTrack}
         onNextTrack={handleNextTrack}
         onEject={handleEject}
+        focusedAlbum={focusedAlbum}
+        currentTrackIndex={currentTrackIndex}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-24 pb-8" style={{ marginLeft: '340px', marginRight: '340px' }}>
