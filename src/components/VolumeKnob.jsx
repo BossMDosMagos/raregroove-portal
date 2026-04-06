@@ -2,16 +2,16 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Howler } from 'howler';
 
 const LED_COLORS = {
-  green: { on: '#00ff00', glow: 'rgba(0, 255, 0, 0.8)' },
-  yellow: { on: '#ffff00', glow: 'rgba(255, 255, 0, 0.8)' },
-  orange: { on: '#ff8000', glow: 'rgba(255, 128, 0, 0.8)' },
-  red: { on: '#ff0000', glow: 'rgba(255, 0, 0, 0.8)' },
+  green: { on: '#00ff00', glow: 'rgba(0, 255, 0, 1)', glowOuter: 'rgba(0, 255, 0, 0.6)' },
+  yellow: { on: '#ffff00', glow: 'rgba(255, 255, 0, 1)', glowOuter: 'rgba(255, 255, 0, 0.6)' },
+  orange: { on: '#ff8000', glow: 'rgba(255, 128, 0, 1)', glowOuter: 'rgba(255, 128, 0, 0.6)' },
+  red: { on: '#ff0000', glow: 'rgba(255, 0, 0, 1)', glowOuter: 'rgba(255, 0, 0, 0.6)' },
 };
 
 export function VolumeKnob({ 
   value = 0.8, 
   onChange,
-  size = 180 
+  size = 120 
 }) {
   const [angle, setAngle] = useState(-135 + value * 270);
   const [isDragging, setIsDragging] = useState(false);
@@ -113,22 +113,25 @@ export function VolumeKnob({
       }}
       onTouchEnd={() => setIsDragging(false)}
     >
+      {/* Very thin base ring - just 1px border effect */}
       <div 
         className="absolute inset-0 rounded-full"
         style={{
           background: '#1a1a1a',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255,255,255,0.05)',
         }}
       />
 
-      <div className="absolute inset-2 rounded-full overflow-hidden z-5" style={{
-        background: '#0f0f0f',
-      }}>
+      {/* LED ring - positioned above base, below knob - NO overflow hidden */}
+      <div 
+        className="absolute inset-0"
+        style={{ zIndex: 10 }}
+      >
         {ledColors.map((colorKey, i) => {
           const isOn = getLedState(i);
           const ledAngle = -135 + (i * 270 / 11);
           const rad = (ledAngle * Math.PI) / 180;
-          const radius = 42;
+          const radius = 46;
           const x = 50 + radius * Math.sin(rad);
           const y = 50 - radius * Math.cos(rad);
           const color = LED_COLORS[colorKey];
@@ -140,38 +143,43 @@ export function VolumeKnob({
               style={{
                 left: `${x}%`,
                 top: `${y}%`,
-                width: 5,
-                height: 5,
+                width: 3,
+                height: 3,
                 transform: 'translate(-50%, -50%)',
-                background: isOn ? color.on : '#151515',
-                boxShadow: isOn ? `0 0 4px ${color.glow}, 0 0 8px ${color.glow}` : 'none',
-                border: '1px solid #222',
+                background: isOn ? color.on : '#0a0a0a',
+                boxShadow: isOn 
+                  ? `0 0 4px ${color.glow}, 0 0 8px ${color.glowOuter}` 
+                  : 'none',
               }}
             />
           );
         })}
       </div>
 
+      {/* Center dark circle */}
       <div 
         className="absolute rounded-full"
         style={{
           top: '50%',
           left: '50%',
-          width: '70%',
-          height: '70%',
+          width: '60%',
+          height: '60%',
           transform: 'translate(-50%, -50%)',
           background: '#151515',
+          zIndex: 15,
         }}
       />
 
+      {/* Gold Knob - top layer */}
       <div
-        className="absolute pointer-events-none z-20"
+        className="absolute pointer-events-none"
         style={{
           top: '50%',
           left: '50%',
-          width: '70%',
-          height: '70%',
+          width: '60%',
+          height: '60%',
           transform: `translate(-50%, -50%) rotate(${knobRotation}deg)`,
+          zIndex: 20,
         }}
       >
         <img 
@@ -184,13 +192,13 @@ export function VolumeKnob({
         <div 
           className="absolute rounded-full"
           style={{
-            top: '6%',
+            top: '8%',
             left: '50%',
-            width: 8,
-            height: 8,
+            width: 5,
+            height: 5,
             transform: 'translateX(-50%)',
             background: 'radial-gradient(circle, #ff0000 0%, #ff0000 40%, transparent 70%)',
-            boxShadow: '0 0 6px #ff0000, 0 0 12px #ff0000, 0 0 20px rgba(255, 0, 0, 0.5)',
+            boxShadow: '0 0 4px #ff0000, 0 0 8px #ff0000, 0 0 12px rgba(255, 0, 0, 0.5)',
           }}
         />
       </div>
