@@ -162,8 +162,8 @@ export function VolumeKnob({
         style={{
           top: '50%',
           left: '50%',
-          width: '60%',
-          height: '60%',
+          width: '75%',
+          height: '75%',
           transform: 'translate(-50%, -50%)',
           background: '#151515',
           zIndex: 15,
@@ -176,8 +176,8 @@ export function VolumeKnob({
         style={{
           top: '50%',
           left: '50%',
-          width: '60%',
-          height: '60%',
+          width: '75%',
+          height: '75%',
           transform: `translate(-50%, -50%) rotate(${knobRotation}deg)`,
           zIndex: 35,
         }}
