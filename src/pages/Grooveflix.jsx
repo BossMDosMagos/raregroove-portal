@@ -8,7 +8,7 @@ import CoverFlow3D from '../components/CoverFlow3D';
 import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
-import { useGrooveflixPlayer } from '../hooks/useGrooveflixPlayer.js';
+import { useGlobalPlayer } from '../hooks/useGlobalAudioPlayer.jsx';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
@@ -53,7 +53,7 @@ function normalizeTracks(items = []) {
 
 export default function Grooveflix() {
   const { t } = useI18n();
-  const player = useGrooveflixPlayer();
+  const player = useGlobalPlayer();
   const { 
     playTrackFromQueue,
     currentTrack: globalCurrentTrack, 

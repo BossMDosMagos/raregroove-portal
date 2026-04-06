@@ -427,6 +427,11 @@ export function useGlobalAudioPlayer() {
     setCurrentTrack(track);
   }, []);
   
+  const clearQueue = useCallback(() => {
+    setQueue([]);
+    currentTrackIndexRef.current = -1;
+  }, []);
+
   const playNext = useCallback(() => {
     if (queue.length > 0 && currentTrackIndexRef.current < queue.length - 1) {
       currentTrackIndexRef.current += 1;
@@ -458,6 +463,7 @@ export function useGlobalAudioPlayer() {
     updateCurrentTrack,
     playNext,
     playPrevious,
+    clearQueue,
     getAnalysers,
   };
 }
