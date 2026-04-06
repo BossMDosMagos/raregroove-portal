@@ -359,6 +359,10 @@ export function useGrooveflixPlayer() {
     audioElementRef.current = audio;
     audio.src = url;
     
+    if (audioPlayer?.setCurrentTrack) {
+      audioPlayer.setCurrentTrack(track);
+    }
+    
     console.log('[Player] Calling audio.play()...');
     try {
       await audio.play();

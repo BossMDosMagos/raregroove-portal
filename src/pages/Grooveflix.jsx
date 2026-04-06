@@ -411,7 +411,9 @@ export default function Grooveflix() {
       <AudioControlPanel
         isPlaying={isAudioContextPlaying}
         currentTrack={globalCurrentTrack}
-        volume={volume}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seek}
         onVolumeChange={setVolume}
         onPlay={handlePlay}
         onPause={handlePause}
