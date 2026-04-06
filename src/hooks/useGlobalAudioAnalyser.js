@@ -16,13 +16,13 @@ export function initAudioAnalysers(audioContext, gainNode) {
   
   sharedAnalyserL = audioContext.createAnalyser();
   sharedAnalyserL.fftSize = 2048;
-  sharedAnalyserL.smoothingTimeConstant = 0.8;
+  sharedAnalyserL.smoothingTimeConstant = 0.85;
   sharedAnalyserL.minDecibels = -90;
   sharedAnalyserL.maxDecibels = 0;
   
   sharedAnalyserR = audioContext.createAnalyser();
   sharedAnalyserR.fftSize = 2048;
-  sharedAnalyserR.smoothingTimeConstant = 0.8;
+  sharedAnalyserR.smoothingTimeConstant = 0.85;
   sharedAnalyserR.minDecibels = -90;
   sharedAnalyserR.maxDecibels = 0;
   

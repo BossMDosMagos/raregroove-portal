@@ -63,12 +63,15 @@ export default function AudioControlPanel({
   const bassValue = (settings.bass + 12) / 24;
   const midValue = (settings.mid + 12) / 24;
   const trebleValue = (settings.treble + 12) / 24;
-  const vuSensValue = settings.vuSensitivity / 2;
+  const vuSensValue = settings.vuSensitivity;
   
   const handleBassChange = (val) => setToneGain('bass', val * 24 - 12);
   const handleMidChange = (val) => setToneGain('mid', val * 24 - 12);
   const handleTrebleChange = (val) => setToneGain('treble', val * 24 - 12);
-  const handleVuSensChange = (val) => setVuSensitivity(val * 2);
+  const handleVuSensChange = (val) => {
+    const sensitivity = val <= 0.5 ? val : 0.5 + (val - 0.5) * 1.4;
+    setVuSensitivity(sensitivity);
+  };
   
   const handleVolumeChange = (val) => {
     setVolume(val);

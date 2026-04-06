@@ -7,7 +7,7 @@ const DEFAULTS = {
   bass: 0,
   mid: 0,
   treble: 0,
-  vuSensitivity: 1.0,
+  vuSensitivity: 0.5,
   eq_bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
