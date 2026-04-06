@@ -104,16 +104,33 @@ export function DiscogsSearch({ onImport }) {
     setPriceSuggestions(null);
 
     try {
-      const details = await getReleaseDetails(release.id);
+      const [details, stats] = await Promise.all([
+        getReleaseDetails(release.id),
+        fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ type: 'release_stats', releaseId: release.id }),
+        }).then(r => r.json()).catch(() => null),
+      ]);
+      
       setFullDetails(details);
       
       const suggestions = {};
-      if (details?.lowest_price) {
-        suggestions.VG = Math.round(details.lowest_price * 1.5 * 100) / 100;
-        suggestions.NM = Math.round(details.lowest_price * 2 * 100) / 100;
-        suggestions.M = Math.round(details.lowest_price * 3 * 100) / 100;
-        suggestions.Median = details.lowest_price;
-        suggestions.source = 'lowest_price';
+      const lowestValue = (stats?.data?.lowest_price?.value ?? stats?.data?.lowest_price ?? details?.lowest_price ?? null);
+      if (lowestValue !== null) {
+        suggestions.lowestPriceUSD = lowestValue;
+        suggestions.numForSale = stats?.data?.num_for_sale || null;
+        suggestions.blockedFromSale = stats?.data?.blocked_from_sale || null;
+        suggestions.sellerCredits = stats?.data?.seller_credits || null;
+        suggestions.lowestPriceCurrency = stats?.data?.lowest_price?.currency || 'USD';
+        suggestions.source = stats?.data?.lowest_price ? 'marketplace_stats' : 'release_details';
+        suggestions.releaseId = selected.id;
+      } else {
+        suggestions.source = 'none';
       }
       setPriceSuggestions(suggestions);
     } catch (error) {
@@ -240,39 +257,39 @@ export function DiscogsSearch({ onImport }) {
           </div>
 
           {priceSuggestions && (
-            <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2 text-emerald-400 mb-2">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400">
                 <DollarSign className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Preços de Mercado (USD)</span>
+                <span className="text-xs font-bold uppercase tracking-wider">Dados de Mercado</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {priceSuggestions.VG && (
-                  <div className="bg-white/5 rounded-lg p-2">
-                    <div className="text-[10px] text-white/50 uppercase">Very Good</div>
-                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.VG * (exchangeRates?.USD || 5))}</div>
-                    <div className="text-[9px] text-white/30">${priceSuggestions.VG}</div>
+              {priceSuggestions?.lowestPriceUSD && (
+                <>
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
+                    <div className="text-[10px] text-amber-400/80 uppercase">Piso de Mercado</div>
+                    <div className="text-[9px] text-white/40 mb-1">(Geralmente itens VG/G)</div>
+                    <div className="text-lg font-bold text-emerald-400">{formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates?.USD || 5))}</div>
+                    <div className="text-sm text-white/40">USD ${priceSuggestions.lowestPriceUSD}</div>
+                    {priceSuggestions.numForSale && (
+                      <div className="text-[10px] text-white/30 mt-1">{priceSuggestions.numForSale} à venda</div>
+                    )}
                   </div>
-                )}
-                {priceSuggestions.NM && (
-                  <div className="bg-white/5 rounded-lg p-2">
-                    <div className="text-[10px] text-white/50 uppercase">Near Mint</div>
-                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.NM * (exchangeRates?.USD || 5))}</div>
-                    <div className="text-[9px] text-white/30">${priceSuggestions.NM}</div>
+                  <div className="text-[9px] text-white/30 text-center leading-tight">
+                    Dados baseados no menor valor global disponível na Discogs API
                   </div>
-                )}
-                {priceSuggestions.M && (
-                  <div className="bg-white/5 rounded-lg p-2">
-                    <div className="text-[10px] text-white/50 uppercase">Mint</div>
-                    <div className="text-sm font-bold text-white">{formatBRL(priceSuggestions.M * (exchangeRates?.USD || 5))}</div>
-                    <div className="text-[9px] text-white/30">${priceSuggestions.M}</div>
-                  </div>
-                )}
-              </div>
-              {priceSuggestions.Median && (
-                <div className="text-center pt-2 border-t border-white/10 mt-2">
-                  <span className="text-[10px] text-white/40 uppercase">Preço Médio: </span>
-                  <span className="text-sm font-bold text-emerald-400">{formatBRL(priceSuggestions.Median * (exchangeRates?.USD || 5))}</span>
-                  <span className="text-xs text-white/30 ml-1">(Median)</span>
+                  <a
+                    href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-xs text-amber-400 transition-colors"
+                  >
+                    <TrendingUp className="w-3 h-3" />
+                    Ver Histórico Real de Vendas
+                  </a>
+                </>
+              )}
+              {priceSuggestions?.blockedFromSale && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 text-center">
+                  <span className="text-[10px] text-red-400">Item bloqueado para venda no Discogs</span>
                 </div>
               )}
             </div>

@@ -113,6 +113,9 @@ serve(async (req) => {
     } else if (type === 'price_suggestions' && releaseId) {
       apiUrl = `${baseUrl}/marketplace/price_suggestions/${releaseId}`
       console.log(`[Discogs] Price suggestions URL: ${apiUrl}`)
+    } else if (type === 'release_stats' && releaseId) {
+      apiUrl = `${baseUrl}/marketplace/stats/${releaseId}`
+      console.log(`[Discogs] Release stats URL: ${apiUrl}`)
     } else {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
         status: 400,

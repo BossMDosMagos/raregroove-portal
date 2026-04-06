@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { DiscogsSearch } from './DiscogsSearch.jsx';
-import { getExchangeRates, formatBRL } from '../utils/currency';
+import { getExchangeRates, formatBRL, psychologicalRound } from '../utils/currency';
 
 const emptyFormData = {
   title: '',
@@ -32,6 +32,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const [priceSuggestions, setPriceSuggestions] = useState(null);
   const [exchangeRates, setExchangeRates] = useState(null);
   const [applyingPrice, setApplyingPrice] = useState(false);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
 
   useEffect(() => {
     getExchangeRates().then(setExchangeRates);
@@ -77,12 +78,40 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   };
 
   const handleApplyMedianPrice = async () => {
-    if (!priceSuggestions?.Median || !exchangeRates) return;
+    if (!priceSuggestions?.lowestPriceUSD || !exchangeRates) return;
     
     setApplyingPrice(true);
     const rate = exchangeRates.USD || 5.0;
-    const medianBRL = priceSuggestions.Median * rate;
-    setFormData(prev => ({ ...prev, price: medianBRL.toFixed(2) }));
+    
+    const baseUSD = priceSuggestions.lowestPriceUSD;
+    const baseBRL = baseUSD * rate;
+    
+    const conditionMultipliers = {
+      'MINT': { label: 'Mint', increase: 0.4 },
+      'NM': { label: 'Near Mint', increase: 0.2 },
+      'VG+': { label: 'Very Good Plus', increase: 0.1 },
+      'VG': { label: 'Very Good', increase: 0 },
+    };
+    
+    const condition = conditionMultipliers[formData.condition] || conditionMultipliers['VG'];
+    const increaseBRL = baseBRL * condition.increase;
+    const rawTotal = baseBRL + increaseBRL;
+    const finalPrice = psychologicalRound(rawTotal);
+    
+    setFormData(prev => ({ ...prev, price: finalPrice.toFixed(2) }));
+    
+    window.priceCalculation = {
+      baseUSD,
+      rate,
+      baseBRL: baseBRL.toFixed(2),
+      condition: condition.label,
+      increasePct: (condition.increase * 100).toFixed(0),
+      increaseBRL: increaseBRL.toFixed(2),
+      rawTotal: rawTotal.toFixed(2),
+      finalPrice: finalPrice.toFixed(2),
+    };
+    
+    setShowPriceBreakdown(true);
     setApplyingPrice(false);
   };
 
@@ -227,36 +256,62 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   <input required type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
                     value={formData.price}
                     onChange={e => setFormData({...formData, price: e.target.value})} />
-                  {priceSuggestions && priceSuggestions.Median && (
+                  {priceSuggestions && priceSuggestions.lowestPriceUSD && (
                     <button
                       type="button"
                       onClick={handleApplyMedianPrice}
                       disabled={applyingPrice}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg text-[10px] font-bold text-emerald-400 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-lg text-[10px] font-bold text-amber-400 transition-colors"
                     >
                       <TrendingUp className="w-3 h-3" />
-                      {applyingPrice ? 'Aplicando...' : 'Ajustar ao Mercado'}
+                      {applyingPrice ? 'Aplicando...' : 'Sugerir Preço'}
                     </button>
                   )}
                 </div>
-                {priceSuggestions && (
-                  <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    {priceSuggestions.VG && (
-                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
-                        <div className="text-[9px] text-white/40 uppercase">VG</div>
-                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.VG * (exchangeRates?.USD || 5))}</div>
-                      </div>
+                {priceSuggestions && priceSuggestions.lowestPriceUSD && (
+                  <div className="mt-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2 space-y-1.5">
+                    <div className="text-[9px] text-amber-400/80 font-bold uppercase">Piso de Mercado (Geralmente itens G/VG)</div>
+                    <div className="text-sm font-bold text-emerald-400 text-center">
+                      {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates?.USD || 5))}
+                      <span className="text-xs text-white/40 ml-1">USD ${priceSuggestions.lowestPriceUSD}</span>
+                    </div>
+                    {priceSuggestions.numForSale && (
+                      <div className="text-[8px] text-white/30 text-center">{priceSuggestions.numForSale} à venda no Discogs</div>
                     )}
-                    {priceSuggestions.NM && (
-                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
-                        <div className="text-[9px] text-white/40 uppercase">NM</div>
-                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.NM * (exchangeRates?.USD || 5))}</div>
-                      </div>
-                    )}
-                    {priceSuggestions.M && (
-                      <div className="bg-white/5 rounded-lg p-1.5 text-center">
-                        <div className="text-[9px] text-white/40 uppercase">M</div>
-                        <div className="text-[10px] font-bold text-white">{formatBRL(priceSuggestions.M * (exchangeRates?.USD || 5))}</div>
+                    <div className="text-[8px] text-white/25 text-center leading-tight pt-1 border-t border-white/5">
+                      Dados baseados no menor valor global disponível na Discogs API
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mt-1">
+                      <select
+                        className="bg-white/5 border border-white/10 rounded px-2 py-1 text-[9px] text-white/60 focus:border-amber-500/50 outline-none"
+                        value={formData.condition}
+                        onChange={e => setFormData({...formData, condition: e.target.value})}
+                      >
+                        <option value="MINT">Mint (+40%)</option>
+                        <option value="NM">Near Mint (+20%)</option>
+                        <option value="VG+">VG+ (+10%)</option>
+                        <option value="VG">VG (base)</option>
+                      </select>
+                      <a
+                        href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[9px] text-amber-400/60 hover:text-amber-400 underline"
+                      >
+                        Ver Histórico
+                      </a>
+                    </div>
+                    {showPriceBreakdown && window.priceCalculation && (
+                      <div 
+                        className="mt-2 p-2 bg-black/30 rounded border border-white/10 text-[8px] text-white/60 cursor-help"
+                        title={`Base Discogs: $${window.priceCalculation.baseUSD} → R$ ${window.priceCalculation.baseBRL} | Condição: ${window.priceCalculation.condition} (+${window.priceCalculation.increasePct}%) | Aumento: R$ ${window.priceCalculation.increaseBRL} | Total: R$ ${window.priceCalculation.finalPrice}`}
+                      >
+                        <div className="font-bold text-white/80 mb-1">Cálculo Aplicado:</div>
+                        <div>USD {window.priceCalculation.baseUSD} × {window.priceCalculation.rate} = R$ {window.priceCalculation.baseBRL}</div>
+                        <div>{window.priceCalculation.condition} (+{window.priceCalculation.increasePct}%): +R$ {window.priceCalculation.increaseBRL}</div>
+                        <div className="border-t border-white/10 mt-1 pt-1 font-bold text-white/80">
+                          Total: R$ {window.priceCalculation.finalPrice}
+                        </div>
                       </div>
                     )}
                   </div>

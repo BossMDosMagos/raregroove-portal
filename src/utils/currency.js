@@ -35,6 +35,40 @@ export function formatBRL(value) {
   }).format(value);
 }
 
+export function psychologicalRound(value) {
+  if (value >= 30) {
+    const rounded = Math.ceil(value);
+    const remainder = rounded % 10;
+    if (remainder <= 9) {
+      return rounded - remainder + 9;
+    }
+    return rounded;
+  }
+  
+  if (value >= 10 && value < 30) {
+    const ceil = Math.ceil(value);
+    const cents = ceil - Math.floor(ceil);
+    if (cents < 0.5) {
+      return Math.floor(ceil) + 0.5;
+    }
+    return ceil;
+  }
+  
+  if (value < 10 && value > 0) {
+    const cents = value % 1;
+    const whole = Math.floor(value);
+    if (cents < 0.25) {
+      return whole;
+    }
+    if (cents < 0.75) {
+      return whole + 0.5;
+    }
+    return whole + 1;
+  }
+  
+  return Math.ceil(value);
+}
+
 export async function convertToBRL(amount, currency = 'USD') {
   const rates = await getExchangeRates();
   const rate = rates[currency] || rates.USD;
