@@ -239,6 +239,8 @@ export function useGrooveflixPlayer() {
     console.log('[Player] track.title:', track?.title);
     console.log('[Player] track.audioPath:', track?.audioPath);
     console.log('[Player] track.id:', track?.id);
+    console.log('[Player] current src:', audioElementRef.current?.src);
+    console.log('[Player] current isPlaying:', !audioElementRef.current?.paused);
     console.log('===========================================');
     
     if (!track?.audioPath) {
@@ -249,12 +251,19 @@ export function useGrooveflixPlayer() {
     const trackId = track.id;
     pendingTrackIdRef.current = trackId;
     
-    if (audioElementRef.current && currentTrackIdRef.current === trackId) {
-      console.log('[Player] Track already loaded, skipping');
+    if (audioElementRef.current && currentTrackIdRef.current === trackId && audioElementRef.current.src) {
+      console.log('[Player] Same track, resuming play...');
+      audioElementRef.current.currentTime = 0;
+      try {
+        await audioElementRef.current.play();
+        console.log('[Player] Resumed play successfully');
+      } catch (err) {
+        console.error('[Player] Failed to resume:', err);
+      }
       return;
     }
     
-    console.log('[Player] Stopping previous audio...');
+    console.log('[Player] New track or no src, loading from scratch...');
     stopAudio();
     setCurrentTime(0);
     setDuration(0);
@@ -371,10 +380,28 @@ export function useGrooveflixPlayer() {
   }, [audioPlayer, stopAudio, connectMediaSource]);
 
   const play = useCallback(async () => {
+    console.log('[Player] play() called');
     const audio = audioElementRef.current;
-    if (!audio) return;
+    if (!audio) {
+      console.log('[Player] No audio element, need to load track first');
+      return;
+    }
+    
+    if (!audio.src) {
+      console.log('[Player] No src, need to load track first');
+      return;
+    }
+    
+    console.log('[Player] Current state - paused:', audio.paused, 'src:', audio.src.substring(0, 50));
+    
     await ensureContextRunning();
-    try { await audio.play(); } catch {}
+    
+    try { 
+      await audio.play();
+      console.log('[Player] Play succeeded');
+    } catch (err) {
+      console.error('[Player] Play failed:', err);
+    }
   }, [ensureContextRunning]);
   
   const pause = useCallback(() => {

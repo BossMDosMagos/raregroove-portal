@@ -197,12 +197,13 @@ export default function Grooveflix() {
     await playAlbum(album, trackIndex);
   }, [playAlbum]);
 
-  const handlePlay = useCallback(() => {
+  const handlePlay = useCallback(async () => {
     console.log('[Grooveflix] handlePlay called');
     console.log('[Grooveflix] isPlaying:', isAudioContextPlaying);
     console.log('[Grooveflix] focusedAlbum:', focusedAlbumRef.current?.title || 'NULL');
     
     if (isAudioContextPlaying) {
+      console.log('[Grooveflix] Already playing, pausing...');
       pause();
       return;
     }
@@ -213,16 +214,9 @@ export default function Grooveflix() {
       return;
     }
     
-    const grooveflixData = album.metadata?.grooveflix || {};
-    const audioFiles = grooveflixData.audio_files || [];
-    
-    if (audioFiles.length === 0) {
-      console.warn('[Grooveflix] Album has no audio files!');
-      return;
-    }
-    
+    console.log('[Grooveflix] Calling handlePlayTrack...');
     const trackIdx = currentTrackIndexRef.current >= 0 ? currentTrackIndexRef.current : 0;
-    handlePlayTrack(album, trackIdx);
+    await handlePlayTrack(album, trackIdx);
   }, [isAudioContextPlaying, pause, handlePlayTrack]);
 
   useEffect(() => {
