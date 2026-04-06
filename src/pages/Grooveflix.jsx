@@ -36,9 +36,16 @@ function normalizeTracks(items = []) {
       coverPath,
       category,
       audioPath,
-      audioFiles,
-      tracklist,
-      metadata,
+      audio_files: audioFiles,
+      tracklist: tracklist,
+      metadata: {
+        ...metadata,
+        grooveflix: {
+          ...grooveflix,
+          audio_files: audioFiles,
+          tracklist: tracklist,
+        },
+      },
       raw: item,
     };
   }).filter((track) => track.id);
@@ -136,19 +143,28 @@ export default function Grooveflix() {
     console.log('[Grooveflix] album.title:', album?.title);
     console.log('[Grooveflix] album.id:', album?.id);
     console.log('[Grooveflix] trackIndex:', trackIndex);
+    console.log('[Grooveflix] album.audio_files:', album?.audio_files);
+    console.log('[Grooveflix] album.metadata?.grooveflix?.audio_files:', album?.metadata?.grooveflix?.audio_files);
     console.log('===========================================');
     
     setCurrentTrackIndex(trackIndex);
     
     const grooveflixData = album?.metadata?.grooveflix || {};
-    const audioFiles = grooveflixData.audio_files || [];
-    const tracklist = grooveflixData.tracklist || [];
+    let audioFiles = grooveflixData.audio_files || [];
+    
+    if (audioFiles.length === 0 && album?.audio_files) {
+      audioFiles = album.audio_files;
+      console.log('[Grooveflix] Using album.audio_files instead');
+    }
+    
+    const tracklist = grooveflixData.tracklist || album?.tracklist || [];
     
     console.log('[Grooveflix] audioFiles.length:', audioFiles.length);
     console.log('[Grooveflix] tracklist.length:', tracklist.length);
     
     if (audioFiles.length === 0) {
       console.error('[Grooveflix] ERROR: Album has no audio files!');
+      console.error('[Grooveflix] Full album object:', JSON.stringify(album, null, 2).substring(0, 500));
       return;
     }
     

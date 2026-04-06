@@ -411,11 +411,22 @@ export function useGrooveflixPlayer() {
     console.log('[Player] album.tracklist:', album?.tracklist?.length);
     console.log('===========================================');
     
-    const audioFiles = album?.audio_files || [];
-    const tracklist = album?.tracklist || [];
+    let audioFiles = album?.audio_files || [];
+    let tracklist = album?.tracklist || [];
+    
+    if (audioFiles.length === 0) {
+      audioFiles = album?.metadata?.grooveflix?.audio_files || [];
+      console.log('[Player] Trying metadata.grooveflix.audio_files:', audioFiles.length);
+    }
+    
+    if (tracklist.length === 0) {
+      tracklist = album?.metadata?.grooveflix?.tracklist || [];
+      console.log('[Player] Trying metadata.grooveflix.tracklist:', tracklist.length);
+    }
     
     if (audioFiles.length === 0) {
       console.error('[Player] Album has no audio files');
+      console.error('[Player] album:', JSON.stringify(album, null, 2).substring(0, 500));
       return;
     }
     
