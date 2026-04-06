@@ -268,25 +268,45 @@ export default function Grooveflix() {
 
   const handlePreviousTrack = useCallback(() => {
     const currentIdx = currentTrackIndexRef.current;
+    console.log('[Grooveflix] handlePreviousTrack called, currentIdx:', currentIdx);
+    
     if (currentIdx > 0) {
       const album = focusedAlbumRef.current;
+      console.log('[Grooveflix] Previous - album:', album?.title);
+      
       if (album) {
+        console.log('[Grooveflix] Playing track index:', currentIdx - 1);
         handlePlayTrack(album, currentIdx - 1);
       }
+    } else {
+      console.log('[Grooveflix] Already at first track');
     }
   }, [handlePlayTrack]);
 
   const handleNextTrack = useCallback(() => {
     const currentIdx = currentTrackIndexRef.current;
-    if (currentIdx >= 0) {
-      const album = focusedAlbumRef.current;
-      if (album) {
-        const grooveflixData = album.metadata?.grooveflix || {};
-        const audioFiles = grooveflixData.audio_files || [];
-        if (currentIdx < audioFiles.length - 1) {
-          handlePlayTrack(album, currentIdx + 1);
-        }
-      }
+    console.log('[Grooveflix] handleNextTrack called, currentIdx:', currentIdx);
+    
+    const album = focusedAlbumRef.current;
+    if (!album) {
+      console.log('[Grooveflix] No album focused!');
+      return;
+    }
+    
+    console.log('[Grooveflix] Next - album:', album.title);
+    
+    let audioFiles = album?.audio_files || [];
+    if (audioFiles.length === 0) {
+      audioFiles = album?.metadata?.grooveflix?.audio_files || [];
+    }
+    
+    console.log('[Grooveflix] Next - audioFiles.length:', audioFiles.length);
+    
+    if (currentIdx >= 0 && currentIdx < audioFiles.length - 1) {
+      console.log('[Grooveflix] Playing track index:', currentIdx + 1);
+      handlePlayTrack(album, currentIdx + 1);
+    } else {
+      console.log('[Grooveflix] Already at last track or invalid state');
     }
   }, [handlePlayTrack]);
 
