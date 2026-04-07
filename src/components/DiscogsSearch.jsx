@@ -348,15 +348,44 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                   <div className="text-[9px] text-white/30 text-center leading-tight">
                     Dados baseados no menor valor global disponível na Discogs API
                   </div>
-                  <a
-                    href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-xs text-amber-400 transition-colors"
-                  >
-                    <TrendingUp className="w-3 h-3" />
-                    Ver Histórico Real de Vendas
-                  </a>
+                  
+                  {(() => {
+                    const rawTerm = (priceSuggestions.artistName && priceSuggestions.albumTitle)
+                      ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
+                      : (priceSuggestions.albumTitle || '');
+                    const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
+                    const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
+                    return (
+                      <div className="flex gap-2">
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-[10px] text-blue-400 transition-colors"
+                        >
+                          <Search className="w-3 h-3" />
+                          Google
+                        </a>
+                        <a
+                          href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-[10px] text-yellow-400 transition-colors"
+                        >
+                          Mercado Livre
+                        </a>
+                        <a
+                          href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-[10px] text-amber-400 transition-colors"
+                        >
+                          <TrendingUp className="w-3 h-3" />
+                          Histórico
+                        </a>
+                      </div>
+                    );
+                  })()}
                 </>
               ) : (
                 <>
@@ -376,25 +405,25 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                     const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
                     const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
                     return (
-                      <>
+                      <div className="flex gap-2">
                         <a
                           href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-[10px] text-blue-400 transition-colors"
                         >
                           <Search className="w-3 h-3" />
-                          Pesquisar no Google
+                          Google
                         </a>
                         <a
                           href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-xs text-yellow-400 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-[10px] text-yellow-400 transition-colors"
                         >
-                          Pesquisar no Mercado Livre
+                          Mercado Livre
                         </a>
-                      </>
+                      </div>
                     );
                   })()}
                   
