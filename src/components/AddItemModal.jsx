@@ -84,10 +84,11 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
     if (!priceSuggestions?.lowestPriceUSD || !exchangeRates) return;
     
     setApplyingPrice(true);
-    const rate = exchangeRates.USD || 5.0;
+    const currency = priceSuggestions.priceCurrency || 'USD';
+    const rate = exchangeRates[currency] || exchangeRates.USD;
     
-    const baseUSD = priceSuggestions.lowestPriceUSD;
-    const baseBRL = baseUSD * rate;
+    const baseValue = priceSuggestions.lowestPriceUSD;
+    const baseBRL = baseValue * rate;
     
     const conditionMultipliers = {
       'MINT': { label: 'Mint', increase: 0.4 },
@@ -104,7 +105,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
     setFormData(prev => ({ ...prev, price: finalPrice.toFixed(2) }));
     
     window.priceCalculation = {
-      baseUSD,
+      baseValue,
+      currency,
       rate,
       baseBRL: baseBRL.toFixed(2),
       condition: condition.label,
@@ -282,8 +284,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       <div className="text-[9px] text-white/40">(Geralmente itens VG/G)</div>
                     </div>
                     <div className="text-xl font-bold text-emerald-400 text-center py-1">
-                      {formatBRL(priceSuggestions.lowestPriceUSD * exchangeRates.USD)}
-                      <span className="text-xs text-white/50 ml-2">USD ${priceSuggestions.lowestPriceUSD}</span>
+                      {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates[priceSuggestions.priceCurrency] || exchangeRates.USD))}
+                      <span className="text-xs text-white/50 ml-2">{priceSuggestions.priceCurrency} {priceSuggestions.lowestPriceUSD.toFixed(2)}</span>
                     </div>
                     <div className="text-[9px] text-white/30 text-center">
                       {priceSuggestions.numForSale ? `${priceSuggestions.numForSale} itens à venda no Discogs` : 'Preço mínimo disponível'}

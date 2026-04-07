@@ -119,7 +119,10 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'apikey': SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ type: 'release_stats', releaseId: release.id }),
+          body: JSON.stringify({ 
+            type: 'release_stats', 
+            releaseId: parseInt(release.id, 10) 
+          }),
         }).then(async (r) => {
           if (!r.ok) {
             const err = await r.json().catch(() => ({}));
@@ -133,22 +136,42 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       ]);
       
       const stats = statsResponse?.data || null;
+      console.log('[Discogs] Stats response:', JSON.stringify(stats, null, 2));
 
       setFullDetails(details);
       
       const suggestions = {};
-      const lowestValue = (stats?.lowest_price?.value ?? stats?.lowest_price ?? details?.lowest_price ?? null);
+      
+      const rawCurrency = stats?.lowest_price?.currency || details?.lowest_price?.currency || 'USD';
+      const currency = rawCurrency.toUpperCase();
+      const rawLowest = stats?.lowest_price?.value ?? stats?.lowest_price ?? details?.lowest_price ?? null;
+      
+      console.log('[Discogs] Raw lowest:', rawLowest, 'Currency:', currency);
+      
+      let lowestValue = null;
+      
+      if (rawLowest !== null && rawLowest >= 1) {
+        lowestValue = rawLowest;
+      } else if (rawLowest !== null && rawLowest > 0 && rawLowest < 1) {
+        console.log('[Discogs] Value below $1, checking for higher price from details');
+        lowestValue = details?.lowest_price || null;
+      }
+      
       if (lowestValue !== null) {
         suggestions.lowestPriceUSD = lowestValue;
+        suggestions.priceCurrency = currency;
         suggestions.numForSale = stats?.num_for_sale || null;
         suggestions.blockedFromSale = stats?.blocked_from_sale || null;
         suggestions.sellerCredits = stats?.seller_credits || null;
-        suggestions.lowestPriceCurrency = stats?.lowest_price?.currency || 'USD';
         suggestions.source = stats?.lowest_price ? 'marketplace_stats' : 'release_details';
         suggestions.releaseId = release.id;
+        
+        console.log('[Discogs] Final lowest value:', lowestValue, 'Currency:', currency);
       } else {
         suggestions.source = 'none';
+        console.log('[Discogs] No valid price found');
       }
+      
       setPriceSuggestions(suggestions);
 
       if (onPriceUpdate) {
@@ -288,8 +311,10 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                   <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
                     <div className="text-[10px] text-amber-400/80 uppercase">Piso de Mercado</div>
                     <div className="text-[9px] text-white/40 mb-1">(Geralmente itens VG/G)</div>
-                    <div className="text-lg font-bold text-emerald-400">{formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates?.USD || 5))}</div>
-                    <div className="text-sm text-white/40">USD ${priceSuggestions.lowestPriceUSD}</div>
+                    <div className="text-lg font-bold text-emerald-400">
+                      {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates?.[priceSuggestions.priceCurrency] || exchangeRates?.USD || 5))}
+                    </div>
+                    <div className="text-sm text-white/40">{priceSuggestions.priceCurrency} {priceSuggestions.lowestPriceUSD.toFixed(2)}</div>
                     {priceSuggestions.numForSale && (
                       <div className="text-[10px] text-white/30 mt-1">{priceSuggestions.numForSale} à venda</div>
                     )}
