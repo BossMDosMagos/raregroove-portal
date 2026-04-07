@@ -376,14 +376,15 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       
                       <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
                         {(() => {
-                          const baseSearch = priceSuggestions.artistName && priceSuggestions.albumTitle
+                          const rawTerm = (priceSuggestions.artistName && priceSuggestions.albumTitle)
                             ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
-                            : (priceSuggestions.albumTitle || formData.title || 'cd');
-                          const searchQuery = `${baseSearch} cd`;
+                            : (priceSuggestions.albumTitle || formData.title || '');
+                          const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
+                          const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
                           return (
                             <>
                               <a
-                                href={`https://www.google.com/search?q=${encodeURIComponent(searchQuery + ' preço')}`}
+                                href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
@@ -392,7 +393,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                                 Pesquisar no Google
                               </a>
                               <a
-                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery)}`}
+                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"

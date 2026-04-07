@@ -370,13 +370,15 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                   </div>
                   
                   {(() => {
-                    const searchQuery = priceSuggestions.artistName && priceSuggestions.albumTitle
-                      ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} cd`
-                      : (priceSuggestions.albumTitle || 'cd');
+                    const rawTerm = (priceSuggestions.artistName && priceSuggestions.albumTitle)
+                      ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
+                      : (priceSuggestions.albumTitle || '');
+                    const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
+                    const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
                     return (
                       <>
                         <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(searchQuery + ' preço')}`}
+                          href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"
@@ -385,7 +387,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                           Pesquisar no Google
                         </a>
                         <a
-                          href={`https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery)}`}
+                          href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center gap-1.5 px-3 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-xs text-yellow-400 transition-colors"
