@@ -191,8 +191,8 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         console.log('[Discogs] No valid price found - using fallback:', suggestions.fallbackPrice);
       }
       
-      suggestions.albumTitle = fullDetails?.title || selected.title;
-      suggestions.artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || selected.title.split(' - ')[0] || '';
+      suggestions.albumTitle = fullDetails?.title || selected?.title;
+      suggestions.artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || selected?.title?.split(' - ')[0] || '';
       
       setPriceSuggestions(suggestions);
 
@@ -214,11 +214,11 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
   const handleImport = () => {
     if (!selected || !fullDetails) return;
 
-    const artistName = fullDetails.artists_sort || fullDetails.artists?.[0]?.name || selected.title.split(' - ')[0] || '';
-    const albumTitle = fullDetails.title || selected.title;
-    const coverUrl = fullDetails.images?.[0]?.uri || fullDetails.images?.[0]?.uri150 || selected.thumb || '';
-    const genres = [...(fullDetails.genres || []), ...(fullDetails.styles || [])];
-    const description = fullDetails.notes || fullDetails.formats?.[0]?.descriptions?.join(', ') || '';
+    const artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || selected.title?.split(' - ')[0] || '';
+    const albumTitle = fullDetails?.title || selected.title;
+    const coverUrl = fullDetails?.images?.[0]?.uri || fullDetails?.images?.[0]?.uri150 || selected.thumb || '';
+    const genres = [...(fullDetails?.genres || []), ...(fullDetails?.styles || [])];
+    const description = fullDetails?.notes || fullDetails?.formats?.[0]?.descriptions?.join(', ') || '';
 
     onImport({
       title: albumTitle,
@@ -310,10 +310,10 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-white text-base leading-tight">
-                {fullDetails?.title || selected.title}
+                {fullDetails?.title || selected?.title || 'Carregando...'}
               </h3>
               <p className="text-white/60 text-sm mt-1">
-                {fullDetails?.artists_sort || selected.title.split(' - ')[0]}
+                {fullDetails?.artists_sort || selected?.title?.split(' - ')[0] || 'Carregando...'}
               </p>
               <div className="flex gap-2 mt-2">
                 {fullDetails?.year && <span className="text-xs text-white/40">{fullDetails.year}</span>}
