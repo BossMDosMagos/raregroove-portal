@@ -191,8 +191,9 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         console.log('[Discogs] No valid price found - using fallback:', suggestions.fallbackPrice);
       }
       
-      suggestions.albumTitle = fullDetails?.title || selected?.title;
-      suggestions.artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || selected?.title?.split(' - ')[0] || '';
+      suggestions.albumTitle = fullDetails?.title || selected?.title || '';
+      const artistFromSelected = selected?.title?.split(' - ')[0] || '';
+      suggestions.artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || artistFromSelected || '';
       
       setPriceSuggestions(suggestions);
 
@@ -369,7 +370,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                   </div>
                   
                   <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(`${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço`)}`}
+                    href={`https://www.google.com/search?q=${encodeURIComponent(priceSuggestions.artistName && priceSuggestions.albumTitle ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço` : priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD preço')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"

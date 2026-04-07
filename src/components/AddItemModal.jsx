@@ -375,23 +375,35 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       </div>
                       
                       <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(`${priceSuggestions.artistName || ''} ${priceSuggestions.albumTitle || ''} preço`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
-                        >
-                          <TrendingUp className="w-3 h-3" />
-                          Pesquisar no Google
-                        </a>
-                        <a
-                          href={`https://www.mercadolivre.com.br/j/search?q=${encodeURIComponent(`${priceSuggestions.artistName || ''} ${priceSuggestions.albumTitle || ''}`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"
-                        >
-                          ML
-                        </a>
+                        {(() => {
+                          const queryGoogle = priceSuggestions.artistName && priceSuggestions.albumTitle 
+                            ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço`
+                            : (priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD preço');
+                          const queryML = priceSuggestions.artistName && priceSuggestions.albumTitle
+                            ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
+                            : (priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD');
+                          return (
+                            <>
+                              <a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(queryGoogle)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
+                              >
+                                <TrendingUp className="w-3 h-3" />
+                                Pesquisar no Google
+                              </a>
+                              <a
+                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(queryML)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"
+                              >
+                                ML
+                              </a>
+                            </>
+                          );
+                        })()}
                       </div>
                       
                       <div className="text-[9px] text-white/40 text-center leading-tight pt-1">
