@@ -149,12 +149,15 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       console.log('[Discogs] Raw lowest:', rawLowest, 'Currency:', currency);
       
       let lowestValue = null;
+      let priceNote = '';
       
-      if (rawLowest !== null && rawLowest >= 1) {
+      if (rawLowest !== null && rawLowest >= 2) {
         lowestValue = rawLowest;
-      } else if (rawLowest !== null && rawLowest > 0 && rawLowest < 1) {
-        console.log('[Discogs] Value below $1, checking for higher price from details');
-        lowestValue = details?.lowest_price || null;
+        priceNote = 'lowest_price';
+      } else if (rawLowest !== null && rawLowest > 0 && rawLowest < 2) {
+        console.log('[Discogs] Value below $2, applying minimum floor of 3.00 in original currency');
+        lowestValue = 3.00;
+        priceNote = 'floor_applied';
       }
       
       if (lowestValue !== null) {
@@ -165,6 +168,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         suggestions.sellerCredits = stats?.seller_credits || null;
         suggestions.source = stats?.lowest_price ? 'marketplace_stats' : 'release_details';
         suggestions.releaseId = release.id;
+        suggestions.priceNote = priceNote;
         
         console.log('[Discogs] Final lowest value:', lowestValue, 'Currency:', currency);
       } else {
@@ -310,7 +314,9 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                 <>
                   <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
                     <div className="text-[10px] text-amber-400/80 uppercase">Piso de Mercado</div>
-                    <div className="text-[9px] text-white/40 mb-1">(Geralmente itens VG/G)</div>
+                    <div className="text-[9px] text-white/40 mb-1">
+                      {priceSuggestions.priceNote === 'floor_applied' ? '(Mínimo aplicado)' : '(Geralmente itens VG/G)'}
+                    </div>
                     <div className="text-lg font-bold text-emerald-400">
                       {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates?.[priceSuggestions.priceCurrency] || exchangeRates?.USD || 5))}
                     </div>

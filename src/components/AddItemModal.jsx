@@ -100,7 +100,14 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
     const condition = conditionMultipliers[formData.condition] || conditionMultipliers['VG'];
     const increaseBRL = baseBRL * condition.increase;
     const rawTotal = baseBRL + increaseBRL;
-    const finalPrice = psychologicalRound(rawTotal);
+    
+    let finalPrice = psychologicalRound(rawTotal);
+    let priceWarning = '';
+    
+    if (finalPrice < 15.90) {
+      finalPrice = 15.90;
+      priceWarning = 'Valor de mercado muito baixo, preço mínimo RareGroove aplicado';
+    }
     
     setFormData(prev => ({ ...prev, price: finalPrice.toFixed(2) }));
     
@@ -114,9 +121,13 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       increaseBRL: increaseBRL.toFixed(2),
       rawTotal: rawTotal.toFixed(2),
       finalPrice: finalPrice.toFixed(2),
+      priceWarning,
     };
     
     setShowPriceBreakdown(true);
+    if (priceWarning) {
+      toast.warning(priceWarning);
+    }
     setApplyingPrice(false);
   };
 
@@ -281,7 +292,9 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   <div className="mt-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-3 space-y-2 relative z-0">
                     <div className="flex items-center justify-between">
                       <div className="text-[10px] text-amber-400/80 font-bold uppercase">Piso de Mercado</div>
-                      <div className="text-[9px] text-white/40">(Geralmente itens VG/G)</div>
+                      <div className="text-[9px] text-white/40">
+                        {priceSuggestions.priceNote === 'floor_applied' ? '(Mínimo aplicado)' : '(Geralmente itens VG/G)'}
+                      </div>
                     </div>
                     <div className="text-xl font-bold text-emerald-400 text-center py-1">
                       {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates[priceSuggestions.priceCurrency] || exchangeRates.USD))}
@@ -316,12 +329,19 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                     {showPriceBreakdown && window.priceCalculation && (
                       <div className="mt-2 p-2 bg-black/40 rounded-lg border border-white/10 text-[9px]">
                         <div className="font-bold text-white/70 mb-1">Detalhamento do Cálculo:</div>
-                        <div className="text-white/50">USD {window.priceCalculation.baseUSD} × taxa {window.priceCalculation.rate} = <span className="text-emerald-400">R$ {window.priceCalculation.baseBRL}</span></div>
+                        <div className="text-white/50">
+                          {window.priceCalculation.currency} {window.priceCalculation.baseValue.toFixed(2)} × taxa {window.priceCalculation.rate.toFixed(2)} = <span className="text-emerald-400">R$ {window.priceCalculation.baseBRL}</span>
+                        </div>
                         <div className="text-white/50">{window.priceCalculation.condition} (+{window.priceCalculation.increasePct}%): <span className="text-amber-400">+R$ {window.priceCalculation.increaseBRL}</span></div>
-                        <div className="border-t border-white/10 mt-1 pt-1 font-bold text-white flex justify-between">
+                        <div className="border-t border-white/10 mt-1 pt-1 font-bold text-white flex justify-between items-center">
                           <span>Total Sugerido:</span>
                           <span className="text-emerald-400">R$ {window.priceCalculation.finalPrice}</span>
                         </div>
+                        {window.priceCalculation.priceWarning && (
+                          <div className="mt-1 text-[8px] text-orange-400 bg-orange-500/10 px-2 py-1 rounded">
+                            {window.priceCalculation.priceWarning}
+                          </div>
+                        )}
                       </div>
                     )}
                     
