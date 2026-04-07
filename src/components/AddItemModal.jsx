@@ -269,10 +269,21 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
               <div className="relative">
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.price')}</label>
                 <div className="relative">
-                  <input required type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                  <input 
+                    required 
+                    type="number" 
+                    step="0.01" 
+                    ref={(el) => {
+                      if (el && priceSuggestions && !priceSuggestions.hasPriceData) {
+                        el.focus();
+                        setTimeout(() => el.classList.add('ring-2', 'ring-amber-500/50'), 100);
+                      }
+                    }}
+                    className={`w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all ${priceSuggestions && !priceSuggestions.hasPriceData ? 'border-amber-500/50' : ''}`}
                     value={formData.price}
-                    onChange={e => setFormData({...formData, price: e.target.value})} />
-                  {priceSuggestions && priceSuggestions.lowestPriceUSD ? (
+                    onChange={e => setFormData({...formData, price: e.target.value})} 
+                  />
+                  {priceSuggestions && priceSuggestions.hasPriceData && priceSuggestions.lowestPriceUSD ? (
                     <button
                       type="button"
                       onClick={handleApplyMedianPrice}
@@ -284,77 +295,114 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                     </button>
                   ) : (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-white/30">
-                      Buscar no Discogs →
+                      {!priceSuggestions ? 'Buscar no Discogs →' : ''}
                     </div>
                   )}
                 </div>
-                {priceSuggestions && priceSuggestions.lowestPriceUSD && exchangeRates ? (
-                  <div className="mt-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-3 space-y-2 relative z-0">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-amber-400/80 font-bold uppercase">Piso de Mercado</div>
-                      <div className="text-[9px] text-white/40">
-                        {priceSuggestions.priceNote === 'floor_applied' ? '(Mínimo aplicado)' : '(Geralmente itens VG/G)'}
+                
+                {priceSuggestions ? (
+                  priceSuggestions.hasPriceData && priceSuggestions.lowestPriceUSD && exchangeRates ? (
+                    <div className="mt-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-3 space-y-2 relative z-0">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] text-amber-400/80 font-bold uppercase">Piso de Mercado</div>
+                        <div className="text-[9px] text-white/40">
+                          {priceSuggestions.priceNote === 'floor_applied' ? '(Mínimo aplicado)' : '(Geralmente itens VG/G)'}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-xl font-bold text-emerald-400 text-center py-1">
-                      {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates[priceSuggestions.priceCurrency] || exchangeRates.USD))}
-                      <span className="text-xs text-white/50 ml-2">{priceSuggestions.priceCurrency} {priceSuggestions.lowestPriceUSD.toFixed(2)}</span>
-                    </div>
-                    <div className="text-[9px] text-white/30 text-center">
-                      {priceSuggestions.numForSale ? `${priceSuggestions.numForSale} itens à venda no Discogs` : 'Preço mínimo disponível'}
-                    </div>
-                    
-                    <div className="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
-                      <select
-                        className="bg-white/5 border border-white/20 rounded px-2 py-1.5 text-[10px] text-white/80 focus:border-amber-500/50 outline-none cursor-pointer"
-                        value={formData.condition}
-                        onChange={e => setFormData({...formData, condition: e.target.value})}
-                      >
-                        <option value="MINT">Mint (+40%)</option>
-                        <option value="NM">Near Mint (+20%)</option>
-                        <option value="VG+">VG+ (+10%)</option>
-                        <option value="VG">VG (base)</option>
-                      </select>
-                      <a
-                        href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 px-2 py-1 bg-amber-500/10 rounded"
-                      >
-                        <TrendingUp className="w-3 h-3" />
-                        Ver Histórico
-                      </a>
-                    </div>
-                    
-                    {showPriceBreakdown && window.priceCalculation && (
-                      <div className="mt-2 p-2 bg-black/40 rounded-lg border border-white/10 text-[9px]">
-                        <div className="font-bold text-white/70 mb-1">Detalhamento do Cálculo:</div>
-                        <div className="text-white/50">
-                          {window.priceCalculation.currency} {window.priceCalculation.baseValue.toFixed(2)} × taxa {window.priceCalculation.rate.toFixed(2)} = <span className="text-emerald-400">R$ {window.priceCalculation.baseBRL}</span>
-                        </div>
-                        <div className="text-white/50">{window.priceCalculation.condition} (+{window.priceCalculation.increasePct}%): <span className="text-amber-400">+R$ {window.priceCalculation.increaseBRL}</span></div>
-                        <div className="border-t border-white/10 mt-1 pt-1 font-bold text-white flex justify-between items-center">
-                          <span>Total Sugerido:</span>
-                          <span className="text-emerald-400">R$ {window.priceCalculation.finalPrice}</span>
-                        </div>
-                        {window.priceCalculation.priceWarning && (
-                          <div className="mt-1 text-[8px] text-orange-400 bg-orange-500/10 px-2 py-1 rounded">
-                            {window.priceCalculation.priceWarning}
+                      <div className="text-xl font-bold text-emerald-400 text-center py-1">
+                        {formatBRL(priceSuggestions.lowestPriceUSD * (exchangeRates[priceSuggestions.priceCurrency] || exchangeRates.USD))}
+                        <span className="text-xs text-white/50 ml-2">{priceSuggestions.priceCurrency} {priceSuggestions.lowestPriceUSD.toFixed(2)}</span>
+                      </div>
+                      <div className="text-[9px] text-white/30 text-center">
+                        {priceSuggestions.numForSale ? `${priceSuggestions.numForSale} itens à venda no Discogs` : 'Preço mínimo disponível'}
+                      </div>
+                      
+                      <div className="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
+                        <select
+                          className="bg-white/5 border border-white/20 rounded px-2 py-1.5 text-[10px] text-white/80 focus:border-amber-500/50 outline-none cursor-pointer"
+                          value={formData.condition}
+                          onChange={e => setFormData({...formData, condition: e.target.value})}
+                        >
+                          <option value="MINT">Mint (+40%)</option>
+                          <option value="NM">Near Mint (+20%)</option>
+                          <option value="VG+">VG+ (+10%)</option>
+                          <option value="VG">VG (base)</option>
+                        </select>
+                        <a
+                          href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 px-2 py-1 bg-amber-500/10 rounded"
+                        >
+                          <TrendingUp className="w-3 h-3" />
+                          Ver Histórico
+                        </a>
+                      </div>
+                      
+                      {showPriceBreakdown && window.priceCalculation && (
+                        <div className="mt-2 p-2 bg-black/40 rounded-lg border border-white/10 text-[9px]">
+                          <div className="font-bold text-white/70 mb-1">Detalhamento do Cálculo:</div>
+                          <div className="text-white/50">
+                            {window.priceCalculation.currency} {window.priceCalculation.baseValue.toFixed(2)} × taxa {window.priceCalculation.rate.toFixed(2)} = <span className="text-emerald-400">R$ {window.priceCalculation.baseBRL}</span>
                           </div>
-                        )}
+                          <div className="text-white/50">{window.priceCalculation.condition} (+{window.priceCalculation.increasePct}%): <span className="text-amber-400">+R$ {window.priceCalculation.increaseBRL}</span></div>
+                          <div className="border-t border-white/10 mt-1 pt-1 font-bold text-white flex justify-between items-center">
+                            <span>Total Sugerido:</span>
+                            <span className="text-emerald-400">R$ {window.priceCalculation.finalPrice}</span>
+                          </div>
+                          {window.priceCalculation.priceWarning && (
+                            <div className="mt-1 text-[8px] text-orange-400 bg-orange-500/10 px-2 py-1 rounded">
+                              {window.priceCalculation.priceWarning}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="text-[8px] text-white/25 text-center pt-1">
+                        Dados baseados no menor valor global disponível na Discogs API
                       </div>
-                    )}
-                    
-                    <div className="text-[8px] text-white/25 text-center pt-1">
-                      Dados baseados no menor valor global disponível na Discogs API
                     </div>
-                  </div>
-                ) : (
-                  priceSuggestions === null && (
-                    <div className="mt-2 p-2 bg-white/5 rounded-lg text-center">
-                      <div className="text-[9px] text-white/40">Busque um lançamento no Discogs acima para suggestions de preço</div>
+                  ) : (
+                    <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 space-y-2 relative z-0">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] text-orange-400/80 font-bold uppercase">Item raro / sem histórico</div>
+                        <div className="text-[9px] text-white/40">Sem dados de preço no Discogs</div>
+                      </div>
+                      
+                      <div className="text-center py-1">
+                        <div className="text-sm font-bold text-white">Sugestão base: <span className="text-emerald-400">R$ {priceSuggestions.fallbackPrice},00</span></div>
+                        <div className="text-[9px] text-white/50">({priceSuggestions.fallbackType})</div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(`${priceSuggestions.artistName || ''} ${priceSuggestions.albumTitle || ''} preço`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
+                        >
+                          <TrendingUp className="w-3 h-3" />
+                          Pesquisar no Google
+                        </a>
+                        <a
+                          href={`https://www.mercadolivre.com.br/j/search?q=${encodeURIComponent(`${priceSuggestions.artistName || ''} ${priceSuggestions.albumTitle || ''}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"
+                        >
+                          ML
+                        </a>
+                      </div>
+                      
+                      <div className="text-[9px] text-white/40 text-center leading-tight pt-1">
+                        Digite o preço manualmente considerando a raridade física do item
+                      </div>
                     </div>
                   )
+                ) : (
+                  <div className="mt-2 p-2 bg-white/5 rounded-lg text-center">
+                    <div className="text-[9px] text-white/40">Busque um lançamento no Discogs acima para suggestions de preço</div>
+                  </div>
                 )}
               </div>
               <div>

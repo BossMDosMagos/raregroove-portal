@@ -169,12 +169,30 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         suggestions.source = stats?.lowest_price ? 'marketplace_stats' : 'release_details';
         suggestions.releaseId = release.id;
         suggestions.priceNote = priceNote;
+        suggestions.hasPriceData = true;
         
         console.log('[Discogs] Final lowest value:', lowestValue, 'Currency:', currency);
       } else {
         suggestions.source = 'none';
-        console.log('[Discogs] No valid price found');
+        suggestions.hasPriceData = false;
+        
+        const formats = fullDetails?.formats || [];
+        const formatDescriptions = formats.flatMap(f => f.descriptions || []);
+        const isBoxSet = formatDescriptions.some(d => 
+          ['Box Set', 'Boxset', 'Deluxe Edition', 'Limited Edition'].includes(d)
+        ) || (fullDetails?.formats?.length && fullDetails.formats.length > 1);
+        const isDouble = formatDescriptions.some(d => 
+          ['Double', '2xCD', '2xLP', 'Digipack'].includes(d)
+        );
+        
+        suggestions.fallbackPrice = isBoxSet ? 85 : isDouble ? 45 : 25;
+        suggestions.fallbackType = isBoxSet ? 'Box Set / Edição de Luxo' : isDouble ? 'CD Duplo / Digipack' : 'CD Simples';
+        
+        console.log('[Discogs] No valid price found - using fallback:', suggestions.fallbackPrice);
       }
+      
+      suggestions.albumTitle = fullDetails?.title || selected.title;
+      suggestions.artistName = fullDetails?.artists_sort || fullDetails?.artists?.[0]?.name || selected.title.split(' - ')[0] || '';
       
       setPriceSuggestions(suggestions);
 
@@ -182,7 +200,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         onPriceUpdate(suggestions);
       }
 
-      if (lowestValue === null) {
+      if (lowestValue === null && !fullDetails) {
         toast.info('Preço mínimo não disponível para este lançamento');
       }
     } catch (error) {
@@ -310,7 +328,8 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                 <DollarSign className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">Dados de Mercado</span>
               </div>
-              {priceSuggestions?.lowestPriceUSD && (
+              
+              {priceSuggestions?.hasPriceData && priceSuggestions?.lowestPriceUSD ? (
                 <>
                   <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
                     <div className="text-[10px] text-amber-400/80 uppercase">Piso de Mercado</div>
@@ -338,7 +357,33 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                     Ver Histórico Real de Vendas
                   </a>
                 </>
+              ) : (
+                <>
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-center">
+                    <div className="text-[10px] text-orange-400/80 uppercase">Item raro/sem histórico</div>
+                    <div className="text-[9px] text-white/40 mb-2">Não há dados de preço no Discogs</div>
+                    <div className="text-sm font-bold text-white">
+                      Sugestão base: <span className="text-emerald-400">R$ {priceSuggestions.fallbackPrice},00</span>
+                    </div>
+                    <div className="text-[9px] text-white/50">({priceSuggestions.fallbackType})</div>
+                  </div>
+                  
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(`${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"
+                  >
+                    <Search className="w-3 h-3" />
+                    Pesquisar no Google
+                  </a>
+                  
+                  <div className="text-[9px] text-white/40 text-center leading-tight">
+                    Defina o preço manualmente considerando a raridade física do item
+                  </div>
+                </>
               )}
+              
               {priceSuggestions?.blockedFromSale && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 text-center">
                   <span className="text-[10px] text-red-400">Item bloqueado para venda no Discogs</span>
