@@ -376,16 +376,14 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       
                       <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
                         {(() => {
-                          const queryGoogle = priceSuggestions.artistName && priceSuggestions.albumTitle 
-                            ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço`
-                            : (priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD preço');
-                          const queryML = priceSuggestions.artistName && priceSuggestions.albumTitle
+                          const baseSearch = priceSuggestions.artistName && priceSuggestions.albumTitle
                             ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
-                            : (priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD');
+                            : (priceSuggestions.albumTitle || formData.title || 'cd');
+                          const searchQuery = `${baseSearch} cd`;
                           return (
                             <>
                               <a
-                                href={`https://www.google.com/search?q=${encodeURIComponent(queryGoogle)}`}
+                                href={`https://www.google.com/search?q=${encodeURIComponent(searchQuery + ' preço')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
@@ -394,7 +392,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                                 Pesquisar no Google
                               </a>
                               <a
-                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(queryML)}`}
+                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"

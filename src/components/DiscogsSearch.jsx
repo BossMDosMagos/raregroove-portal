@@ -369,15 +369,32 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                     <div className="text-[9px] text-white/50">({priceSuggestions.fallbackType})</div>
                   </div>
                   
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(priceSuggestions.artistName && priceSuggestions.albumTitle ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} preço` : priceSuggestions.artistName || priceSuggestions.albumTitle || 'CD preço')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"
-                  >
-                    <Search className="w-3 h-3" />
-                    Pesquisar no Google
-                  </a>
+                  {(() => {
+                    const searchQuery = priceSuggestions.artistName && priceSuggestions.albumTitle
+                      ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle} cd`
+                      : (priceSuggestions.albumTitle || 'cd');
+                    return (
+                      <>
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(searchQuery + ' preço')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs text-blue-400 transition-colors"
+                        >
+                          <Search className="w-3 h-3" />
+                          Pesquisar no Google
+                        </a>
+                        <a
+                          href={`https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-xs text-yellow-400 transition-colors"
+                        >
+                          Pesquisar no Mercado Livre
+                        </a>
+                      </>
+                    );
+                  })()}
                   
                   <div className="text-[9px] text-white/40 text-center leading-tight">
                     Defina o preço manualmente considerando a raridade física do item
