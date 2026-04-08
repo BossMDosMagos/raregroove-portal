@@ -376,31 +376,31 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       
                       <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
                         {(() => {
-                          const rawTerm = (priceSuggestions.artistName && priceSuggestions.albumTitle)
-                            ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
-                            : (priceSuggestions.albumTitle || formData.title || '');
-                          const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
-                          const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
+                          const album = priceSuggestions.albumTitle || formData.title || "";
+                          const artist = priceSuggestions.artistName || "";
+                          let baseTerm = `${artist} ${album}`;
+                          let cleanTerm = baseTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
+                          const finalQuery = cleanTerm ? `${cleanTerm} cd` : "cd";
                           return (
-                            <>
+                            <div className="flex gap-2">
                               <a
                                 href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded"
+                                className="flex-1 text-[10px] text-blue-400 hover:text-blue-300 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-500/10 rounded"
                               >
                                 <TrendingUp className="w-3 h-3" />
-                                Pesquisar no Google
+                                Google
                               </a>
                               <a
                                 href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded"
+                                className="flex-1 text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center justify-center gap-1 px-2 py-1.5 bg-yellow-500/10 rounded"
                               >
                                 ML
                               </a>
-                            </>
+                            </div>
                           );
                         })()}
                       </div>
