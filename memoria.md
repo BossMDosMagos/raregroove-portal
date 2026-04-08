@@ -818,4 +818,76 @@ const connectMediaSource = useCallback((audioElement) => {
 
 ---
 
-*Última atualização: 2026-04-08 12:15 UTC-3*
+## Barcode Diamond System (2026-04-08)
+
+### Objetivo
+Rastreamento de autenticidade via código de barras com visual "diamante" premium. Integração com Discogs para verificação oficial.
+
+### Arquivos
+- `src/components/BarcodeTag.jsx` - Componente visual diamante
+- `src/components/DiscogsSearch.jsx` - Extração de barcode da API
+- `src/components/AddItemModal.jsx` - Salvamento e exibição
+- `supabase/migrations/20260408000000_add_barcode_to_items.sql` - Coluna no banco
+
+### Extração do Barcode (DiscogsSearch)
+```javascript
+// Extrair barcode dos identifiers ou campo direto
+let barcode = fullDetails?.barcode || null;
+if (!barcode && fullDetails?.identifiers) {
+  const barcodeEntry = fullDetails.identifiers.find(
+    (id) => id.type === 'Barcode' || id.type === 'UPC' || id.type === 'EAN'
+  );
+  barcode = barcodeEntry?.value || null;
+}
+```
+
+### Estrutura no Banco
+```sql
+-- Coluna na tabela items
+ALTER TABLE public.items ADD COLUMN barcode text;
+
+-- Índice para busca
+CREATE INDEX idx_items_barcode ON public.items(barcode);
+```
+
+### Visual Diamond
+- Ícone SVG de código de barras estilizado
+- Gradiente cyan → blue → purple
+- Hover: glow dourado + scale 1.1 + tooltips
+
+### Tooltip
+```
+💎 Autenticidade Garantida
+Ver histórico oficial no Discogs
+```
+
+### Link Dinâmico
+```
+https://www.discogs.com/search/?q={barcode}&type=release
+```
+
+### Fallback (Cadastro Manual)
+Sem barcode = etiqueta "Classic Edition" estática
+
+---
+
+## Execução da Migração
+
+### SQL para Supabase Dashboard (SQL Editor)
+```sql
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'items' AND column_name = 'barcode') THEN
+    ALTER TABLE public.items ADD COLUMN barcode text;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_items_barcode ON public.items(barcode);
+```
+
+### Link direto
+https://supabase.com/dashboard/project/hlfirfukbrisfpebaaur/sql
+
+---
+
+*Última atualização: 2026-04-08 12:40 UTC-3*
