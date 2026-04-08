@@ -148,6 +148,7 @@ export default function Grooveflix() {
     console.log('===========================================');
     
     setCurrentTrackIndex(trackIndex);
+    currentTrackIndexRef.current = trackIndex;
     
     const grooveflixData = album?.metadata?.grooveflix || {};
     let audioFiles = grooveflixData.audio_files || [];
