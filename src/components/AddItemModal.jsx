@@ -35,14 +35,12 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const [exchangeRates, setExchangeRates] = useState(null);
   const [applyingPrice, setApplyingPrice] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
-  const [isFetchingBarcode, setIsFetchingBarcode] = useState(false);
 
   useEffect(() => {
     getExchangeRates().then(setExchangeRates);
   }, []);
 
   useEffect(() => {
-    setIsFetchingBarcode(false);
     if (itemToEdit) {
       setFormData({
         title: itemToEdit.title || '',
@@ -67,7 +65,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   }, [itemToEdit, isOpen]);
 
   const handleDiscogsImport = (data) => {
-    setIsFetchingBarcode(false);
     setFormData(prev => ({
       ...prev,
       title: data.title || prev.title,
@@ -239,7 +236,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
             <DiscogsSearch 
               onImport={handleDiscogsImport} 
               onPriceUpdate={handlePriceUpdate}
-              onSearchStart={() => setIsFetchingBarcode(true)}
             />
           </div>
 
@@ -444,7 +440,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
               <div className="col-span-2">
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Código de Barras</label>
                 <div className="mt-1">
-                  <BarcodeTag barcode={formData.barcode} isLoading={isFetchingBarcode} />
+                  <BarcodeTag barcode={formData.barcode} />
                 </div>
               </div>
               <div className="col-span-2">

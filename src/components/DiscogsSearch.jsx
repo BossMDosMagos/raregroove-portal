@@ -58,7 +58,7 @@ async function getPriceSuggestions(releaseId) {
   return data.data;
 }
 
-export function DiscogsSearch({ onImport, onPriceUpdate, onSearchStart }) {
+export function DiscogsSearch({ onImport, onPriceUpdate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -104,8 +104,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate, onSearchStart }) {
       return;
     }
 
-    if (onSearchStart) onSearchStart();
-    
     setSelected(release);
     setFetchingDetails(true);
     setFullDetails(null);

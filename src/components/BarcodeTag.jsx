@@ -1,40 +1,13 @@
 import React, { useState } from 'react';
-import { Gem, ExternalLink, Loader2 } from 'lucide-react';
+import { Gem, ExternalLink } from 'lucide-react';
 
-export default function BarcodeTag({ barcode, size = 'md', isLoading = false }) {
+export default function BarcodeTag({ barcode, size = 'md' }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Estado de carregamento - aguardando dados do Discogs
-  if (isLoading) {
-    return (
-      <div className={`
-        inline-flex items-center gap-1.5 px-2 py-1 
-        bg-gradient-to-r from-white/5 to-white/10 
-        border border-white/20 rounded-lg animate-pulse
-        ${size === 'sm' ? 'text-[8px]' : 'text-[10px]'}
-        text-white/40 font-medium
-      `}>
-        <Loader2 className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} animate-spin`} />
-        <span>Buscando código...</span>
-      </div>
-    );
-  }
-
-  // Sem barcode - Classic Edition (após busca no Discogs)
+  // Sem barcode - não mostra nada
   if (!barcode) {
-    return (
-      <div className={`
-        inline-flex items-center gap-1.5 px-2 py-1 
-        bg-gradient-to-r from-amber-500/10 to-orange-500/10 
-        border border-amber-500/20 rounded-lg
-        ${size === 'sm' ? 'text-[8px]' : 'text-[10px]'}
-        text-amber-400/70 font-medium
-      `}>
-        <Gem className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'}`} />
-        <span>Classic Edition</span>
-      </div>
-    );
+    return null;
   }
 
   const handleCopy = async (e) => {
