@@ -821,7 +821,14 @@ const connectMediaSource = useCallback((audioElement) => {
 ## Barcode Diamond System (2026-04-08) ✅ IMPLEMENTADO
 
 ### Objetivo
-Rastreamento de autenticidade via código de barras com visual "diamante" premium. Integração com Discogs para verificação oficial.
+Rastreamento de autenticidade via código de barras com visual "diamante" premium. **100% AUTOMÁTICO** - o usuário NÃO digita nada.
+
+### Fluxo Automatizado
+1. **Busca Discogs** → Usuário seleciona disco
+2. **Extração Automática** → Barcode extraído de `identifiers` (type: Barcode/UPC/EAN)
+3. **Preenchimento Automático** → `formData.barcode` populado sem input manual
+4. **Salvamento Automático** → Ao clicar "Salvar", barcode vai para Supabase
+5. **Exibição Diamond** → No catálogo, selo visual clicável leva ao Discogs
 
 ### Status: PRODUÇÃO
 - ✅ Migração executada via Supabase Management API
@@ -830,11 +837,13 @@ Rastreamento de autenticidade via código de barras com visual "diamante" premiu
 - ✅ Componente visual implementado
 - ✅ Extração do Discogs funcionando
 - ✅ Salvamento automático no formulário
+- ✅ Exibição no catálogo (ItemCard)
 
 ### Arquivos
 - `src/components/BarcodeTag.jsx` - Componente visual diamante
-- `src/components/DiscogsSearch.jsx` - Extração de barcode da API
-- `src/components/AddItemModal.jsx` - Salvamento e exibição
+- `src/components/DiscogsSearch.jsx` - Extração automática de barcode
+- `src/components/AddItemModal.jsx` - Salvamento automático (sem input manual)
+- `src/components/ItemCard.jsx` - Exibição no catálogo
 - `supabase/migrations/20260408000000_add_barcode_to_items.sql` - Coluna no banco
 
 ### Extração do Barcode (DiscogsSearch)
@@ -847,6 +856,8 @@ if (!barcode && fullDetails?.identifiers) {
   );
   barcode = barcodeEntry?.value || null;
 }
+// Passa automaticamente no onImport()
+onImport({ ..., barcode });
 ```
 
 ### Estrutura no Banco
