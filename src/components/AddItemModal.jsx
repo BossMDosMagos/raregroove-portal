@@ -438,13 +438,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Código de Barras</label>
                 <div className="mt-1">
                   <BarcodeTag barcode={formData.barcode} />
-                  <input 
-                    type="text" 
-                    className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white/60 text-[10px] focus:border-[#D4AF37]/50 outline-none transition-all"
-                    value={formData.barcode}
-                    onChange={e => setFormData({...formData, barcode: e.target.value})}
-                    placeholder="Código de barras ou UPC (opcional)"
-                  />
                 </div>
               </div>
               <div className="col-span-2">

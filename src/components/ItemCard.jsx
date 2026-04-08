@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Disc, Music, Clock, Tag, ArrowLeftRight, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import BarcodeTag from './BarcodeTag.jsx';
 
 const DiscPlaceholder = () => (
   <div className="w-full h-full bg-gradient-to-br from-charcoal-mid via-charcoal-light to-charcoal-deep flex flex-col items-center justify-center p-6 text-center">
@@ -88,6 +89,13 @@ export const ItemCard = ({ item, onPlay }) => {
             <span className="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider bg-gold-premium/20 border border-gold-premium/30 text-gold-premium backdrop-blur-md">
               {item.genre}
             </span>
+          </div>
+        )}
+
+        {/* Barcode Diamond Badge */}
+        {(item.barcode || item.metadata?.grooveflix?.barcode) && (
+          <div className="absolute top-3 right-3 z-20">
+            <BarcodeTag barcode={item.barcode || item.metadata?.grooveflix?.barcode} size="sm" />
           </div>
         )}
 
