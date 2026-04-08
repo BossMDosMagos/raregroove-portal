@@ -1,10 +1,27 @@
 import React, { useState } from 'react';
-import { Gem, ExternalLink } from 'lucide-react';
+import { Gem, ExternalLink, Loader2 } from 'lucide-react';
 
-export default function BarcodeTag({ barcode, size = 'md' }) {
+export default function BarcodeTag({ barcode, size = 'md', isLoading = false }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Estado de carregamento - aguardando dados do Discogs
+  if (isLoading) {
+    return (
+      <div className={`
+        inline-flex items-center gap-1.5 px-2 py-1 
+        bg-gradient-to-r from-white/5 to-white/10 
+        border border-white/20 rounded-lg animate-pulse
+        ${size === 'sm' ? 'text-[8px]' : 'text-[10px]'}
+        text-white/40 font-medium
+      `}>
+        <Loader2 className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} animate-spin`} />
+        <span>Buscando código...</span>
+      </div>
+    );
+  }
+
+  // Sem barcode - Classic Edition (após busca no Discogs)
   if (!barcode) {
     return (
       <div className={`
