@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { DiscogsSearch } from './DiscogsSearch.jsx';
 import { getExchangeRates, formatBRL, psychologicalRound } from '../utils/currency';
+import BarcodeTag from './BarcodeTag.jsx';
 
 const emptyFormData = {
   title: '',
@@ -21,6 +22,7 @@ const emptyFormData = {
   discogsId: '',
   discogsMasterId: '',
   description: '',
+  barcode: '',
 };
 
 export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit }) {
@@ -55,6 +57,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         discogsId: itemToEdit.metadata?.grooveflix?.discogsId || '',
         discogsMasterId: itemToEdit.metadata?.grooveflix?.discogsMasterId || '',
         description: itemToEdit.metadata?.description || '',
+        barcode: itemToEdit.barcode || itemToEdit.metadata?.grooveflix?.barcode || '',
       });
     } else {
       setFormData(emptyFormData);
@@ -73,6 +76,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       discogsId: data.discogsId || prev.discogsId,
       discogsMasterId: data.discogsMasterId || prev.discogsMasterId,
       description: data.description || prev.description,
+      barcode: data.barcode || prev.barcode,
     }));
   };
 
@@ -170,12 +174,14 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         allow_sale: Boolean(formData.allow_sale),
         allow_swap: Boolean(formData.allow_swap),
         seller_id: user.id,
+        barcode: formData.barcode || null,
         metadata: {
           source: 'catalog',
           grooveflix: {
             isAlbum: false,
             discogsId: formData.discogsId || null,
             discogsMasterId: formData.discogsMasterId || null,
+            barcode: formData.barcode || null,
           },
           coverUrlThumbnail: formData.coverUrlThumbnail || null,
           description: formData.description || null,
@@ -427,6 +433,19 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   <option value="VG+">{t('addItem.condition.VG_PLUS')}</option>
                   <option value="VG">{t('addItem.condition.VG')}</option>
                 </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Código de Barras</label>
+                <div className="mt-1">
+                  <BarcodeTag barcode={formData.barcode} />
+                  <input 
+                    type="text" 
+                    className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white/60 text-[10px] focus:border-[#D4AF37]/50 outline-none transition-all"
+                    value={formData.barcode}
+                    onChange={e => setFormData({...formData, barcode: e.target.value})}
+                    placeholder="Código de barras ou UPC (opcional)"
+                  />
+                </div>
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.coverUrl')}</label>

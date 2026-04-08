@@ -721,4 +721,101 @@ console.log(data.url);
 
 ---
 
-*Última atualização: 2026-04-02 12:52 UTC-3*
+## Discogs Price Suggestions (2026-04-08)
+
+### Objetivo
+Buscar preços reais do Discogs para sugerir preços aos vendedores. Conversão USD/EUR → BRL com arredondamento psicológico.
+
+### Arquivos
+- `src/utils/currency.js` - Conversão de câmbio e arredondamento
+- `src/components/DiscogsSearch.jsx` - Busca lowest_price real da API
+- `src/components/AddItemModal.jsx` - Formulário com sugestões de preço
+
+### currency.js
+```javascript
+// AwesomeAPI para taxa de câmbio
+const response = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL');
+const rates = await response.json();
+const USD = parseFloat(rates.USDBRL?.bid);
+const EUR = parseFloat(rates.EURBRL?.bid);
+
+// Arredondamento psicológico
+const psychologicalRound = (value) => {
+  if (value < 20) return Math.ceil(value);
+  if (value < 50) return Math.ceil(value / 2) * 2;
+  if (value < 100) return Math.ceil(value / 5) * 5;
+  return Math.ceil(value / 10) * 10;
+};
+```
+
+### Discogs API - Release Stats
+Endpoint: `/marketplace/stats/{release_id}` retorna:
+```javascript
+{
+  lowest_price: { currency: "USD", value: 25.00 },
+  num_for_sale: 5
+}
+```
+
+### Fallback Protocol (ITEM RARO / SEM HISTÓRICO)
+Quando não há dados de preço no Discogs:
+- CD Simples: R$ 25,00
+- CD Duplo / Digipack: R$ 45,00
+- Box Set / Deluxe Edition: R$ 85,00
+
+### Links de Pesquisa
+Quando ITEM RARO:
+- **Google:** `https://www.google.com/search?q={artista} {album} cd preço`
+- **Mercado Livre:** `https://lista.mercadolivre.com.br/{artista} {album} cd`
+
+Lógica de query:
+```javascript
+const rawTerm = `${artist} ${album}`.trim();
+const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
+const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
+```
+
+### Condição do Item
+Multiplicadores sobre o preço base:
+- MINT: +40%
+- NM (Near Mint): +20%
+- VG+ (Very Good Plus): +10%
+- VG (Very Good): base
+
+### Preço Mínimo
+Floor de R$ 15,90 para itens com valor de mercado muito baixo.
+
+---
+
+## Grooveflix Player Fix (2026-04-08)
+
+### Problema
+Erro: `HTMLMediaElement already connected previously to a different MediaElementSourceNode`
+
+### Causa
+`connectMediaSource()` era chamado no evento `onPlay`, mas o elemento já estava conectado de uma chamada anterior.
+
+### Solução
+- `connectedAudioRef`: tracking de qual elemento foi conectado
+- `connectMediaSource()` desconecta source anterior antes de criar novo
+- Conexão feita uma única vez quando áudio é carregado
+
+```javascript
+const connectMediaSource = useCallback((audioElement) => {
+  if (!audioElement || connectedAudioRef.current === audioElement) return false;
+  
+  if (mediaSourceRef.current) {
+    mediaSourceRef.current.disconnect();
+  }
+  
+  mediaSourceRef.current = ctx.createMediaElementSource(audioElement);
+  connectedAudioRef.current = audioElement;
+  isConnectedRef.current = true;
+  connectAudioGraph();
+  return true;
+}, []);
+```
+
+---
+
+*Última atualização: 2026-04-08 12:15 UTC-3*

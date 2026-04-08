@@ -221,6 +221,16 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
     const genres = [...(fullDetails?.genres || []), ...(fullDetails?.styles || [])];
     const description = fullDetails?.notes || fullDetails?.formats?.[0]?.descriptions?.join(', ') || '';
 
+    // Extrair barcode dos identifiers ou campo direto
+    let barcode = fullDetails?.barcode || null;
+    if (!barcode && fullDetails?.identifiers) {
+      const barcodeEntry = fullDetails.identifiers.find(
+        (id) => id.type === 'Barcode' || id.type === 'UPC' || id.type === 'EAN'
+      );
+      barcode = barcodeEntry?.value || null;
+    }
+    console.log('[Discogs] Barcode extracted:', barcode);
+
     onImport({
       title: albumTitle,
       artist: artistName,
@@ -231,6 +241,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       discogsId: selected.id,
       discogsMasterId: fullDetails.master_id,
       description: description,
+      barcode: barcode,
       priceSuggestions: priceSuggestions,
     });
 
