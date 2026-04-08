@@ -876,6 +876,16 @@ CREATE INDEX idx_items_barcode ON public.items(barcode);
 - Animação de fade-in no tooltip
 - Ícone Gem (diamante)
 
+### Estados do BarcodeTag
+1. **Carregando** (`isLoading={true}`): "Buscando código..." com Loader2 animado
+2. **Com barcode**: Código clicável + link Discogs
+3. **Sem barcode** (após busca): "Classic Edition"
+
+### Fluxo de Estados
+1. Modal abre → Sem indicador (campo vazio inicialmente)
+2. Usuário busca Discogs → "Buscando código..." (Loader)
+3. Dados importados → Barcode preenchido OU "Classic Edition"
+
 ### Tooltip
 ```
 💎 Autenticidade Garantida
