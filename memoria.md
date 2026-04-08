@@ -818,10 +818,18 @@ const connectMediaSource = useCallback((audioElement) => {
 
 ---
 
-## Barcode Diamond System (2026-04-08)
+## Barcode Diamond System (2026-04-08) ✅ IMPLEMENTADO
 
 ### Objetivo
 Rastreamento de autenticidade via código de barras com visual "diamante" premium. Integração com Discogs para verificação oficial.
+
+### Status: PRODUÇÃO
+- ✅ Migração executada via Supabase Management API
+- ✅ Coluna `barcode` (text) criada na tabela `items`
+- ✅ Índice `idx_items_barcode` criado
+- ✅ Componente visual implementado
+- ✅ Extração do Discogs funcionando
+- ✅ Salvamento automático no formulário
 
 ### Arquivos
 - `src/components/BarcodeTag.jsx` - Componente visual diamante
@@ -854,6 +862,8 @@ CREATE INDEX idx_items_barcode ON public.items(barcode);
 - Ícone SVG de código de barras estilizado
 - Gradiente cyan → blue → purple
 - Hover: glow dourado + scale 1.1 + tooltips
+- Animação de fade-in no tooltip
+- Ícone Gem (diamante)
 
 ### Tooltip
 ```
@@ -868,26 +878,29 @@ https://www.discogs.com/search/?q={barcode}&type=release
 
 ### Fallback (Cadastro Manual)
 Sem barcode = etiqueta "Classic Edition" estática
+- Ícone Gem (diamante)
+- Cor âmbar/dourada
+- Sem link clicável
+
+### Funcionalidades
+- Copiar barcode para clipboard (ao clicar)
+- Feedback visual "Copiado!"
+- Tooltip elegante com sombra
+- Suporte a tamanhos sm/md
 
 ---
 
-## Execução da Migração
+## Credenciais Supabase (Armazenadas)
 
-### SQL para Supabase Dashboard (SQL Editor)
-```sql
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'items' AND column_name = 'barcode') THEN
-    ALTER TABLE public.items ADD COLUMN barcode text;
-  END IF;
-END $$;
+### Access Token
+- Formato: `sbp_xxx`
+- Usado para: Supabase CLI, Management API
+- Renovar em: https://supabase.com/dashboard/account/tokens
 
-CREATE INDEX IF NOT EXISTS idx_items_barcode ON public.items(barcode);
-```
-
-### Link direto
-https://supabase.com/dashboard/project/hlfirfukbrisfpebaaur/sql
+### Service Role Key
+- Usado para: Edge Functions (não exposto no frontend)
+- JWT com role: `service_role`
 
 ---
 
-*Última atualização: 2026-04-08 12:40 UTC-3*
+*Última atualização: 2026-04-08 13:10 UTC-3*
