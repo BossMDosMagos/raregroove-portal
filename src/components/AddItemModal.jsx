@@ -338,37 +338,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                           Ver Histórico
                         </a>
                       </div>
-
-                      <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
-                        {(() => {
-                          const album = priceSuggestions.albumTitle || formData.title || "";
-                          const artist = priceSuggestions.artistName || "";
-                          let baseTerm = `${artist} ${album}`;
-                          let cleanTerm = baseTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
-                          const finalQuery = cleanTerm ? `${cleanTerm} cd` : "cd";
-                          return (
-                            <div className="flex gap-2">
-                              <a
-                                href={`https://www.google.com/search?q=${encodeURIComponent(finalQuery + ' preço')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 text-[10px] text-blue-400 hover:text-blue-300 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-500/10 rounded"
-                              >
-                                <TrendingUp className="w-3 h-3" />
-                                Google
-                              </a>
-                              <a
-                                href={`https://lista.mercadolivre.com.br/${encodeURIComponent(finalQuery)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center justify-center gap-1 px-2 py-1.5 bg-yellow-500/10 rounded"
-                              >
-                                ML
-                              </a>
-                            </div>
-                          );
-                        })()}
-                      </div>
                       
                       {showPriceBreakdown && window.priceCalculation && (
                         <div className="mt-2 p-2 bg-black/40 rounded-lg border border-white/10 text-[9px]">
@@ -408,8 +377,9 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/10">
                         {(() => {
                           const album = priceSuggestions.albumTitle || formData.title || "";
-                          const artist = priceSuggestions.artistName || "";
-                          let baseTerm = `${artist} ${album}`;
+                          const artist = priceSuggestions.artistName || formData.artist || "";
+                          console.log('[AddItemModal] ITEM RARO - albumTitle:', priceSuggestions.albumTitle, 'artistName:', priceSuggestions.artistName, 'formData.title:', formData.title, 'formData.artist:', formData.artist);
+                          let baseTerm = `${artist} ${album}`.trim();
                           let cleanTerm = baseTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
                           const finalQuery = cleanTerm ? `${cleanTerm} cd` : "cd";
                           return (
