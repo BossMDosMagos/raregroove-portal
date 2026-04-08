@@ -371,9 +371,9 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                   </div>
                   
                   {(() => {
-                    const rawTerm = (priceSuggestions.artistName && priceSuggestions.albumTitle)
-                      ? `${priceSuggestions.artistName} ${priceSuggestions.albumTitle}`
-                      : (priceSuggestions.albumTitle || '');
+                    const artist = priceSuggestions.artistName || '';
+                    const album = priceSuggestions.albumTitle || selected?.title || '';
+                    const rawTerm = `${artist} ${album}`.trim();
                     const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
                     const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
                     return (
