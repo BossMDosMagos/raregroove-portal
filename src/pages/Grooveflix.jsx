@@ -315,7 +315,7 @@ export default function Grooveflix() {
 
   useEffect(() => {
     const trackId = globalCurrentTrack?.id;
-    if (trackId && trackId !== lastTrackIdRef.current && globalCurrentTrack.audioPath) {
+    if (trackId && trackId !== lastTrackIdRef.current && globalCurrentTrack.audioPath && loadAndPlayTrack) {
       lastTrackIdRef.current = trackId;
       loadAndPlayTrack(globalCurrentTrack);
     }
