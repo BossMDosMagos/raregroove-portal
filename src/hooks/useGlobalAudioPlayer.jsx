@@ -231,6 +231,7 @@ export function useGlobalAudioPlayer() {
   const isConnectedRef = useRef(false);
   const mediaSourceRef = useRef(null);
   const currentTrackIndexRef = useRef(-1);
+  const connectedAudioRef = useRef(null);
   
   useEffect(() => {
     const init = async () => {
@@ -287,16 +288,27 @@ export function useGlobalAudioPlayer() {
     return initAudioContext();
   }, []);
   
-  const connectMediaSource = useCallback(() => {
-    if (isConnectedRef.current || !audioRef.current) return;
+  const connectMediaSource = useCallback((audioElement) => {
+    if (!audioElement || connectedAudioRef.current === audioElement) return false;
     
     try {
       const ctx = audioContextInstance;
-      mediaSourceRef.current = ctx.createMediaElementSource(audioRef.current);
+      
+      if (mediaSourceRef.current) {
+        try {
+          mediaSourceRef.current.disconnect();
+        } catch {}
+      }
+      
+      mediaSourceRef.current = ctx.createMediaElementSource(audioElement);
+      connectedAudioRef.current = audioElement;
       isConnectedRef.current = true;
       connectAudioGraph();
+      console.log('[GlobalPlayer] MediaSource connected successfully');
+      return true;
     } catch (err) {
       console.error('[GlobalPlayer] connectMediaSource error:', err);
+      return false;
     }
   }, []);
   
@@ -305,7 +317,6 @@ export function useGlobalAudioPlayer() {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-    isConnectedRef.current = false;
     setCurrentTime(0);
     setIsPlaying(false);
   }, []);
@@ -348,10 +359,7 @@ export function useGlobalAudioPlayer() {
         if (nextTrack) loadAndPlayTrack(nextTrack);
       }
     };
-    const onPlay = () => {
-      setIsPlaying(true);
-      connectMediaSource();
-    };
+    const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -363,8 +371,10 @@ export function useGlobalAudioPlayer() {
     audioRef.current = audio;
     audio.src = url;
     
+    connectMediaSource(audio);
+    
     try { await audio.play(); } catch (err) { console.error('[GlobalPlayer] Play error:', err); }
-  }, [initAudioGraph, getPresignedUrl, createAudioElement, stopAudio, queue]);
+  }, [initAudioGraph, getPresignedUrl, createAudioElement, stopAudio, queue, connectMediaSource]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
     const audioFiles = album?.audio_files || album?.metadata?.grooveflix?.audio_files || [];
