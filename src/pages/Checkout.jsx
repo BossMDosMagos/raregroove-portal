@@ -22,8 +22,8 @@ export default function Checkout() {
   }, [locale]);
   
   const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState(null);
-  const [seller, setSeller] = useState(null);
+  const [items, setItems] = useState([]);
+  const [sellers, setSellers] = useState({});
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
   
@@ -37,10 +37,12 @@ export default function Checkout() {
   useEffect(() => {
     const init = async () => {
       try {
-        // Se há itens no carrinho, usar o primeiro
-        const effectiveItemId = itemId || (cartItems.length > 0 ? cartItems[0].itemId : null);
+        // Determinar quais itens processar
+        const itemsToProcess = itemId 
+          ? cartItems.filter(ci => ci.itemId === itemId) 
+          : cartItems;
         
-        if (!effectiveItemId) {
+        if (itemsToProcess.length === 0) {
           toast.error('Nenhum item no carrinho');
           navigate('/catalogo');
           return;
@@ -55,49 +57,55 @@ export default function Checkout() {
         }
         setUser(authUser);
 
-        // Buscar dados do item
-        const { data: itemData, error: itemError } = await supabase
+        // Buscar dados de todos os itens
+        const itemIds = itemsToProcess.map(ci => ci.itemId);
+        const { data: itemsData, error: itemsError } = await supabase
           .from('items')
           .select('*')
-          .eq('id', effectiveItemId)
-          .single();
+          .in('id', itemIds);
 
-        if (itemError || !itemData) {
-          toast.error('Item não encontrado');
+        if (itemsError || !itemsData || itemsData.length === 0) {
+          toast.error('Itens não encontrados');
           navigate('/catalogo');
           return;
         }
 
-        // Se item já foi vendido
-        if (itemData.is_sold) {
-          toast.error('Este item já foi vendido');
-          navigate('/catalogo');
-          return;
-        }
-
-        if (itemData.status === 'reservado') {
-          const reservedUntilMs = itemData.reserved_until ? new Date(itemData.reserved_until).getTime() : null;
-          const hasActiveReserve = Boolean(reservedUntilMs && reservedUntilMs > Date.now());
-          const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
-
-          if (hasActiveReserve && !isReservedByMe) {
-            toast.error('ITEM RESERVADO', {
-              description: 'Outro colecionador está com reserva ativa.',
-            });
+        // Validar cada item
+        for (const itemData of itemsData) {
+          if (itemData.is_sold) {
+            toast.error(`"${itemData.title}" já foi vendido`);
             navigate('/catalogo');
             return;
           }
+
+          if (itemData.status === 'reservado') {
+            const cartItem = itemsToProcess.find(ci => ci.itemId === itemData.id);
+            const reservedUntilMs = cartItem?.reservedUntilMs || null;
+            const hasActiveReserve = Boolean(reservedUntilMs && reservedUntilMs > Date.now());
+            const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
+
+            if (hasActiveReserve && !isReservedByMe) {
+              toast.error('ITEM RESERVADO', {
+                description: `"${itemData.title}" está reservado por outro colecionador.`,
+              });
+              navigate('/catalogo');
+              return;
+            }
+          }
         }
 
-        setItem(itemData);
+        setItems(itemsData);
 
-        // Buscar perfil do vendedor
-        const { data: sellerData } = await supabase
+        // Buscar perfis dos vendedores
+        const sellerIds = [...new Set(itemsData.map(i => i.seller_id))];
+        const { data: sellersData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', itemData.seller_id)
-          .single();
-        setSeller(sellerData);
+          .in('id', sellerIds);
+        
+        const sellersMap = {};
+        (sellersData || []).forEach(s => sellersMap[s.id] = s);
+        setSellers(sellersMap);
 
         // Buscar perfil do comprador para validações
         const { data: buyerProfile } = await supabase
@@ -203,38 +211,51 @@ export default function Checkout() {
       setPaying(true);
       setPaymentSuccess(true);
 
-      // Processar transação no banco
-      const { data, error } = await supabase.functions.invoke('process-transaction', {
-        body: {
-          transactionType: 'venda',
-          buyerId: user.id,
-          sellerId: item.seller_id,
-          itemId: item.id,
-          itemPrice: parseFloat(item.price),
-          shippingCost: 0,
-          insuranceCost: 0,
-          platformFee: platformFee,
-          processingFee: processingFee,
-          gatewayFee: 0,
-          totalAmount: totalBuyer,
-          netAmount: itemPrice - platformFee,
-          paymentId: paymentData.paymentId,
-          paymentProvider: paymentData.provider
-        }
-      });
+      // Processar transação para cada item
+      const transactionIds = [];
+      
+      for (const item of items) {
+        const itemPrice = parseFloat(item.price);
+        const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
+        const itemProcessingFee = settings?.processing_fee_fixed || 2.0;
+        const itemTotal = itemPrice + itemPlatformFee + itemProcessingFee;
+        
+        const { data, error } = await supabase.functions.invoke('process-transaction', {
+          body: {
+            transactionType: 'venda',
+            buyerId: user.id,
+            sellerId: item.seller_id,
+            itemId: item.id,
+            itemPrice: itemPrice,
+            shippingCost: 0,
+            insuranceCost: 0,
+            platformFee: itemPlatformFee,
+            processingFee: itemProcessingFee,
+            gatewayFee: 0,
+            totalAmount: itemTotal,
+            netAmount: itemPrice - itemPlatformFee,
+            paymentId: paymentData.paymentId,
+            paymentProvider: paymentData.provider
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        transactionIds.push(data.transactionId);
+      }
 
       toast.success('Compra realizada com sucesso!', {
-        description: 'O vendedor foi notificado.',
+        description: `${items.length} item(ns) comprado(s). O(s) vendedor(es) foi(ram) notificado(s).`,
         duration: 5000,
       });
 
-      clearLocalCart(item.id);
+      // Limpar carrinho
+      for (const item of items) {
+        await clearLocalCart(item.id);
+      }
 
       // Redirecionar para página de sucesso
       setTimeout(() => {
-        navigate(`/payment/success?transactionId=${data.transactionId}`);
+        navigate(`/payment/success?transactionId=${transactionIds.join(',')}`);
       }, 2000);
 
     } catch (error) {
@@ -254,10 +275,10 @@ export default function Checkout() {
     setShowPayment(false);
   };
 
-  // 🧮 CÁLCULO DE VALORES COM CONVERSÃO
-  const baseItemPrice = parseFloat(item?.price || 0);
+  // 🧮 CÁLCULO DE VALORES COM CONVERSÃO (múltiplos itens)
+  const baseItemPrice = items.reduce((sum, item) => sum + parseFloat(item?.price || 0), 0);
   const basePlatformFee = settings ? parseFloat((baseItemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
-  const baseProcessingFee = settings?.processing_fee_fixed || 2.0;
+  const baseProcessingFee = (settings?.processing_fee_fixed || 2.0) * items.length;
   const baseTotal = baseItemPrice + basePlatformFee + baseProcessingFee;
 
   const rate = currency === 'USD' ? exchangeRate : 1;
@@ -281,7 +302,7 @@ export default function Checkout() {
     );
   }
 
-  if (!item) return null;
+  if (items.length === 0) return null;
 
   return (
     <div className="min-h-screen bg-charcoal-deep text-white py-12 px-4 md:px-8 pt-28 selection:bg-gold-premium/30 selection:text-gold-light">
@@ -317,42 +338,55 @@ export default function Checkout() {
               <div className="absolute top-0 right-0 w-64 h-64 bg-gold-premium/5 rounded-full -mr-32 -mt-32 blur-3xl transition-all duration-1000 group-hover:bg-gold-premium/10" />
               
               <h2 className="text-xl font-black uppercase tracking-tighter text-luxury mb-8 flex items-center gap-3">
-                <Disc className="text-gold-premium" size={20} /> {t('checkout.itemSummary') || 'Resumo da Relíquia'}
-              </h2>
+                <Disc className="text-gold-premium" size={20} /> {t('checkout.itemSummary') || `Itens no Carrinho (${items.length})`}
+              </h2> 
 
-              <div className="flex flex-col md:flex-row gap-8 relative">
-                <div className="w-full md:w-48 aspect-square rounded-3xl overflow-hidden border border-gold-premium/10 shadow-2xl shrink-0 group">
-                  {item.image_url ? (
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  ) : (
-                    <div className="w-full h-full bg-charcoal-mid/50 flex items-center justify-center">
-                      <Disc size={48} className="text-gold-premium/20" />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex-1 space-y-6">
-                  <div className="space-y-2">
-                    <h3 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">{item.title}</h3>
-                    <p className="text-gold-premium/60 font-black uppercase tracking-[0.2em] text-xs">{item.artist}</p>
-                  </div>
+              <div className="space-y-6">
+                {items.map((item) => {
+                  const seller = sellers[item.seller_id];
+                  return (
+                    <div key={item.id} className="flex flex-col md:flex-row gap-6 relative pb-6 border-b border-gold-premium/10 last:border-0 last:pb-0">
+                      <div className="w-full md:w-32 aspect-square rounded-2xl overflow-hidden border border-gold-premium/10 shadow-xl shrink-0 group">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full bg-charcoal-mid/50 flex items-center justify-center">
+                            <Disc size={32} className="text-gold-premium/20" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 space-y-4">
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-black uppercase tracking-tighter text-white leading-tight">{item.title}</h3>
+                          <p className="text-gold-premium/60 font-black uppercase tracking-[0.15em] text-xs">{item.artist}</p>
+                        </div>
 
-                  <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gold-premium/5">
-                    <div>
-                      <p className="text-silver-premium/30 text-[9px] uppercase font-black tracking-widest mb-1">{t('checkout.labels.condition')}</p>
-                      <span className="px-3 py-1 bg-gold-premium/10 border border-gold-premium/20 text-gold-premium text-[10px] rounded-lg font-black uppercase tracking-widest">
-                        {item.condition || 'Mint'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-silver-premium/30 text-[9px] uppercase font-black tracking-widest mb-1">{t('checkout.labels.seller')}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold text-sm tracking-tight">{seller?.full_name || 'Colecionador'}</span>
-                        {seller?.is_elite && <CheckCircle className="text-info" size={12} />}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-silver-premium/30 text-[9px] uppercase font-black tracking-widest mb-1">{t('checkout.labels.condition')}</p>
+                            <span className="px-2 py-0.5 bg-gold-premium/10 border border-gold-premium/20 text-gold-premium text-[10px] rounded-lg font-black uppercase tracking-widest">
+                              {item.condition || 'Mint'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-silver-premium/30 text-[9px] uppercase font-black tracking-widest mb-1">{t('checkout.labels.seller')}</p>
+                            <div className="flex items-center gap-1">
+                              <span className="text-white font-bold text-xs tracking-tight">{seller?.full_name || 'Colecionador'}</span>
+                              {seller?.is_elite && <CheckCircle className="text-info" size={10} />}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-silver-premium/30 text-[9px] uppercase font-black tracking-widest mb-1">Preço</p>
+                            <p className="text-emerald-400 font-black text-lg">
+                              {formatCurrency(parseFloat(item.price), 'BRL')}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -476,21 +510,23 @@ export default function Checkout() {
                     <PaymentGateway
                       amount={totalBuyer}
                       selectedGateway={selectedGateway}
-                      currency={currency} // Passando a moeda selecionada
+                      currency={currency}
                       metadata={{
                         transactionType: 'venda',
-                        itemId: item.id,
-                        itemTitle: item.title,
+                        itemIds: items.map(i => i.id),
+                        itemTitles: items.map(i => i.title),
+                        itemCount: items.length,
                         buyerId: user.id,
                         buyerName: user.email,
                         buyerEmail: user.email,
-                        sellerId: item.seller_id,
-                        itemPrice,
+                        sellerIds: [...new Set(items.map(i => i.seller_id))],
+                        itemPrices: items.map(i => parseFloat(i.price)),
+                        totalItemsPrice: baseItemPrice,
                         platformFee,
                         processingFee,
                         totalAmount: totalBuyer,
-                        transactionId: `TRX-${user.id}-${item.id}-${Math.random().toString(36).substr(2, 9)}`,
-                        currency // Adicionando currency aos metadados
+                        transactionId: `TRX-${user.id}-${Date.now()}`,
+                        currency
                       }}
                       onSuccess={handlePaymentSuccess}
                       onError={handlePaymentError}
