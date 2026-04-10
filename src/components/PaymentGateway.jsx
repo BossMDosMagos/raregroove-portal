@@ -416,8 +416,8 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           },
           customization: {
             paymentMethods: {
-              creditCard: { cardholders: { identificationType: 'CPF', identification: { type: 'individual' } } },
-              debitCard: { cardholders: { identificationType: 'CPF', identification: { type: 'individual' } } },
+              creditCard: ['master', 'visa', 'elo', 'amex'],
+              debitCard: ['master', 'visa', 'elo'],
             },
           },
           callbacks: {
