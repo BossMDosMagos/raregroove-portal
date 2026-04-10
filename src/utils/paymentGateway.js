@@ -24,7 +24,7 @@ import { loadStripe } from '@stripe/stripe-js';
 export const getGatewayConfig = async (selectedGateway) => {
   const { data: settingsById } = await supabase
     .from('platform_settings')
-    .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage')
+    .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage, mp_public_key, stripe_publishable_key, paypal_client_id')
     .eq('id', 1)
     .maybeSingle();
 
@@ -33,7 +33,7 @@ export const getGatewayConfig = async (selectedGateway) => {
   if (!data) {
     const { data: firstSettings } = await supabase
       .from('platform_settings')
-      .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage')
+      .select('id, gateway_mode, gateway_provider, sale_fee_pct, processing_fee_fixed, swap_guarantee_fee_fixed, insurance_percentage, mp_public_key, stripe_publishable_key, paypal_client_id')
       .order('id', { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -63,11 +63,11 @@ export const getGatewayConfig = async (selectedGateway) => {
   };
 
   if (provider === 'stripe') {
-    config.publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    config.publishableKey = safeData.stripe_publishable_key || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
   } else if (provider === 'mercado_pago') {
-    config.publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+    config.publicKey = safeData.mp_public_key || import.meta.env.VITE_MP_PUBLIC_KEY;
   } else if (provider === 'paypal') {
-    config.clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+    config.clientId = safeData.paypal_client_id || import.meta.env.VITE_PAYPAL_CLIENT_ID;
   }
 
   return config;
