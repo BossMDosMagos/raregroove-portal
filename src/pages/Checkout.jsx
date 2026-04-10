@@ -331,18 +331,17 @@ export default function Checkout() {
     setShowPayment(false);
   };
 
-  // 🧮 CÁLCULO DE VALORES COM CONVERSÃO (múltiplos itens)
+  // 🧮 CÁLCULO DE VALORES (múltiplos itens) - Conversão feita pelo formatCurrency do I18nContext
   const baseItemPrice = items.reduce((sum, item) => sum + parseFloat(item?.price || 0), 0);
   const basePlatformFee = settings ? parseFloat((baseItemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
   const baseProcessingFee = (settings?.processing_fee_fixed || 2.0) * items.length;
   const baseTotal = baseItemPrice + basePlatformFee + baseProcessingFee;
 
-  const rate = currency === 'USD' ? exchangeRate : 1;
-  
-  const itemPrice = currency === 'USD' ? baseItemPrice / rate : baseItemPrice;
-  const platformFee = currency === 'USD' ? basePlatformFee / rate : basePlatformFee;
-  const processingFee = currency === 'USD' ? baseProcessingFee / rate : baseProcessingFee;
-  const totalBuyer = currency === 'USD' ? baseTotal / rate : baseTotal;
+  // Usar valores base - a conversão BRL->USD é feita pelo formatCurrency quando locale é en-US
+  const itemPrice = baseItemPrice;
+  const platformFee = basePlatformFee;
+  const processingFee = baseProcessingFee;
+  const totalBuyer = baseTotal;
 
   // Todos os gateways disponíveis para o catálogo
   const displayedGateways = availableGateways;
