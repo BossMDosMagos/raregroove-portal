@@ -491,7 +491,7 @@ export default function ItemDetails() {
                       toast.error('Você não pode adicionar seu próprio item');
                       return;
                     }
-                    addToCart(item);
+                    addToCart(item.id);
                     toast.success('Item adicionado ao carrinho!', {
                       description: item.title,
                       action: {
