@@ -444,7 +444,7 @@ export default function ItemDetails() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-white/5 relative z-10">
                 {item?.allow_sale && (
                   <button 
-                    onClick={async () => {
+                    onClick={() => {
                       if (!currentUser) {
                         toast.error(t('auth.required') || 'Faça login para continuar');
                         navigate('/');
@@ -461,8 +461,7 @@ export default function ItemDetails() {
                         });
                         return;
                       }
-                      const reserved = await addToCart(item.id);
-                      if (reserved) navigate(`/checkout/${item.id}`);
+                      navigate(`/checkout/${item.id}`);
                     }}
                     disabled={blockedByReserve}
                     className={`group relative overflow-hidden py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all duration-500 ${

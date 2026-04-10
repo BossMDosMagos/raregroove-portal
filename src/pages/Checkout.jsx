@@ -37,18 +37,7 @@ export default function Checkout() {
   useEffect(() => {
     const init = async () => {
       try {
-        // Determinar quais itens processar
-        const itemsToProcess = itemId 
-          ? cartItems.filter(ci => ci.itemId === itemId) 
-          : cartItems;
-        
-        if (itemsToProcess.length === 0) {
-          toast.error('Nenhum item no carrinho');
-          navigate('/catalogo');
-          return;
-        }
-
-        // Buscar usuário autenticado
+        // Buscar usuário autenticado primeiro
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) {
           toast.error('Faça login para continuar');
@@ -57,15 +46,82 @@ export default function Checkout() {
         }
         setUser(authUser);
 
-        // Buscar dados de todos os itens
-        const itemIds = itemsToProcess.map(ci => ci.itemId);
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('items')
-          .select('*')
-          .in('id', itemIds);
+        let itemsData = [];
+        let itemsToProcess = [];
 
-        if (itemsError || !itemsData || itemsData.length === 0) {
-          toast.error('Itens não encontrados');
+        // Se temos itemId, verificar se está no carrinho ou buscar direto
+        if (itemId) {
+          const cartItem = cartItems.find(ci => ci.itemId === itemId);
+          
+          if (cartItem) {
+            // Item está no carrinho
+            const { data, error } = await supabase
+              .from('items')
+              .select('*')
+              .eq('id', itemId)
+              .single();
+            
+            if (error || !data) {
+              toast.error('Item não encontrado');
+              navigate('/catalogo');
+              return;
+            }
+            itemsData = [data];
+            itemsToProcess = [cartItem];
+          } else {
+            // Item não está no carrinho - buscar direto e reservar
+            const { data: itemData, error: itemError } = await supabase
+              .from('items')
+              .select('*')
+              .eq('id', itemId)
+              .single();
+            
+            if (itemError || !itemData) {
+              toast.error('Item não encontrado');
+              navigate('/catalogo');
+              return;
+            }
+
+            // Fazer reserva
+            const { error: reserveError } = await supabase.rpc('reserve_item', {
+              item_uuid: itemId,
+              duration_minutes: 30,
+            });
+
+            if (reserveError) {
+              // Fallback: update direto
+              await supabase
+                .from('items')
+                .update({ status: 'reservado', reserved_by: authUser.id })
+                .eq('id', itemId)
+                .eq('is_sold', false)
+                .not('status', 'in', '("vendido","reservado")');
+            }
+
+            itemsData = [itemData];
+            itemsToProcess = [{ itemId, reservedUntilMs: Date.now() + 30 * 60 * 1000 }];
+          }
+        } else {
+          // Carrinho multi-item
+          itemsToProcess = cartItems;
+          
+          if (itemsToProcess.length === 0) {
+            toast.error('Nenhum item no carrinho');
+            navigate('/catalogo');
+            return;
+          }
+
+          const itemIds = itemsToProcess.map(ci => ci.itemId);
+          const { data, error } = await supabase
+            .from('items')
+            .select('*')
+            .in('id', itemIds);
+          
+          itemsData = data || [];
+        }
+
+        if (itemsData.length === 0) {
+          toast.error('Nenhum item encontrado');
           navigate('/catalogo');
           return;
         }
