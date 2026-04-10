@@ -329,10 +329,10 @@ export default function App() {
             element={session ? <SwapSimulator /> : <Navigate to="/" />} 
           />
 
-          {/* Rota do Checkout (Protegida) */}
+          {/* Rota do Checkout de CDs (Protegida) */}
           <Route
             path="/checkout"
-            element={session ? <CheckoutDynamic key={location.pathname} /> : <Navigate to="/" />}
+            element={session ? <Checkout key={location.pathname} /> : <Navigate to="/" />}
           />
           <Route 
             path="/checkout/:itemId" 

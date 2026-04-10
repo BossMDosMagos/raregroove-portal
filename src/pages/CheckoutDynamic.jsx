@@ -72,6 +72,18 @@ export default function CheckoutDynamic() {
     };
   }, [currency, dbPlans, exchangeRate, planId]);
 
+  useEffect(() => {
+    if (loading || !dbPlans) return;
+    const planIdLower = planId.toLowerCase();
+    const planExists = dbPlans.some((p) => p.plan_id === planIdLower);
+    if (!planExists && planId) {
+      toast.error('Plano não encontrado', {
+        description: `O plano "${planId}" não existe ou foi removido.`,
+      });
+      navigate('/grooveflix');
+    }
+  }, [loading, dbPlans, planId, navigate]);
+
   const isSubscription = mode === 'subscription';
 
   useEffect(() => {
@@ -232,6 +244,7 @@ export default function CheckoutDynamic() {
         </div>
       </div>
 
+      {plan ? (
       <div className="relative max-w-5xl mx-auto px-4 md:px-6 md:pl-[170px] md:pr-[190px] space-y-10">
         <header className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-500/30 bg-white/5 text-[10px] font-black uppercase tracking-[0.22em]">
@@ -402,6 +415,21 @@ export default function CheckoutDynamic() {
           </div>
         </div>
       </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center">
+            <Shield className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-black text-white">Plano não encontrado</h2>
+          <p className="text-white/60">Selecione um plano válido para continuar.</p>
+          <button
+            onClick={() => navigate('/grooveflix')}
+            className="px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-black rounded-xl"
+          >
+            Voltar ao Grooveflix
+          </button>
+        </div>
+      )}
     </div>
   );
 }

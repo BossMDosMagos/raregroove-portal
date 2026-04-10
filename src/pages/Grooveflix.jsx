@@ -138,15 +138,6 @@ export default function Grooveflix() {
   };
 
   const handlePlayTrack = useCallback(async (album, trackIndex) => {
-    console.log('===========================================');
-    console.log('[Grooveflix] handlePlayTrack called');
-    console.log('[Grooveflix] album.title:', album?.title);
-    console.log('[Grooveflix] album.id:', album?.id);
-    console.log('[Grooveflix] trackIndex:', trackIndex);
-    console.log('[Grooveflix] album.audio_files:', album?.audio_files);
-    console.log('[Grooveflix] album.metadata?.grooveflix?.audio_files:', album?.metadata?.grooveflix?.audio_files);
-    console.log('===========================================');
-    
     setCurrentTrackIndex(trackIndex);
     currentTrackIndexRef.current = trackIndex;
     
@@ -155,69 +146,34 @@ export default function Grooveflix() {
     
     if (audioFiles.length === 0 && album?.audio_files) {
       audioFiles = album.audio_files;
-      console.log('[Grooveflix] Using album.audio_files instead');
     }
     
     const tracklist = grooveflixData.tracklist || album?.tracklist || [];
     
-    console.log('[Grooveflix] audioFiles.length:', audioFiles.length);
-    console.log('[Grooveflix] tracklist.length:', tracklist.length);
-    console.log('[Grooveflix] audioFiles[trackIndex]:', audioFiles[trackIndex]);
-    console.log('[Grooveflix] audioFiles[trackIndex]?.path:', audioFiles[trackIndex]?.path);
-    
     if (audioFiles.length === 0) {
-      console.error('[Grooveflix] ERROR: Album has no audio files!');
-      console.error('[Grooveflix] Full album object:', JSON.stringify(album, null, 2).substring(0, 500));
+      console.error('[Grooveflix] Album has no audio files');
       return;
     }
     
     if (trackIndex < 0 || trackIndex >= audioFiles.length) {
-      console.error('[Grooveflix] ERROR: Invalid trackIndex!');
+      console.error('[Grooveflix] Invalid trackIndex');
       return;
     }
-    
-    const audioFile = audioFiles[trackIndex];
-    const trackInfo = tracklist[trackIndex] || {};
-    
-    console.log('[Grooveflix] audioFile:', audioFile);
-    console.log('[Grooveflix] audioFile.path:', audioFile?.path);
-    console.log('[Grooveflix] trackInfo.title:', trackInfo.title);
-    
-    const track = {
-      id: `${album.id}-${trackIndex}`,
-      title: trackInfo.title || `Track ${trackIndex + 1}`,
-      artist: album.artist || 'Unknown',
-      audioPath: audioFile?.path || audioFile,
-      albumId: album.id,
-      albumTitle: album.title,
-      trackIndex: trackIndex,
-    };
-    
-    console.log('[Grooveflix] Calling playAlbum with track:', track.title);
-    console.log('[Grooveflix] track.audioPath:', track.audioPath);
-    console.log('===========================================');
     
     await playAlbum(album, trackIndex);
   }, [playAlbum]);
 
   const handlePlay = useCallback(async () => {
-    console.log('[Grooveflix] handlePlay called');
-    console.log('[Grooveflix] isPlaying:', isAudioContextPlaying);
-    console.log('[Grooveflix] focusedAlbum:', focusedAlbumRef.current?.title || 'NULL');
-    
     if (isAudioContextPlaying) {
-      console.log('[Grooveflix] Already playing, pausing...');
       pause();
       return;
     }
     
     const album = focusedAlbumRef.current;
     if (!album) {
-      console.warn('[Grooveflix] No album focused!');
       return;
     }
     
-    console.log('[Grooveflix] Calling handlePlayTrack...');
     const trackIdx = currentTrackIndexRef.current >= 0 ? currentTrackIndexRef.current : 0;
     await handlePlayTrack(album, trackIdx);
   }, [isAudioContextPlaying, pause, handlePlayTrack]);
@@ -231,17 +187,11 @@ export default function Grooveflix() {
   }, [currentTrackIndex]);
 
   useEffect(() => {
-    console.log('[Grooveflix] Setting up audio unlock listeners');
-    
     const unlockAudio = async () => {
-      console.log('[Grooveflix] User gesture detected - unlocking audio context');
-      
       try {
         const ctx = Howler.ctx;
         if (ctx && ctx.state === 'suspended') {
-          console.log('[Grooveflix] Resuming Howler AudioContext...');
           await ctx.resume();
-          console.log('[Grooveflix] Howler AudioContext resumed!');
         }
       } catch (err) {
         console.error('[Grooveflix] Error unlocking Howler context:', err);
@@ -265,50 +215,31 @@ export default function Grooveflix() {
 
   const handlePreviousTrack = useCallback(() => {
     const currentIdx = currentTrackIndexRef.current;
-    console.log('[Grooveflix] handlePreviousTrack called, currentIdx:', currentIdx);
     
     if (currentIdx > 0) {
       const album = focusedAlbumRef.current;
-      console.log('[Grooveflix] Previous - album:', album?.title);
-      
       if (album) {
-        console.log('[Grooveflix] Playing track index:', currentIdx - 1);
         handlePlayTrack(album, currentIdx - 1);
       }
-    } else {
-      console.log('[Grooveflix] Already at first track');
     }
   }, [handlePlayTrack]);
 
   const handleNextTrack = useCallback(() => {
     const currentIdx = currentTrackIndexRef.current;
-    console.log('[Grooveflix] handleNextTrack called, currentIdx:', currentIdx);
-    console.log('[Grooveflix] focusedAlbum:', focusedAlbumRef.current?.title);
-    console.log('[Grooveflix] focusedAlbum audio_files:', focusedAlbumRef.current?.audio_files?.length);
-    console.log('[Grooveflix] focusedAlbum metadata.grooveflix.audio_files:', focusedAlbumRef.current?.metadata?.grooveflix?.audio_files?.length);
     
     const album = focusedAlbumRef.current;
     if (!album) {
-      console.log('[Grooveflix] No album focused!');
       return;
     }
-    
-    console.log('[Grooveflix] Next - album:', album.title);
     
     let audioFiles = album?.audio_files || [];
     if (audioFiles.length === 0) {
       audioFiles = album?.metadata?.grooveflix?.audio_files || [];
     }
     
-    console.log('[Grooveflix] Next - audioFiles.length:', audioFiles.length);
-    console.log('[Grooveflix] Next - currentIdx < audioFiles.length - 1:', currentIdx, '<', audioFiles.length - 1, '=', currentIdx < audioFiles.length - 1);
-    
     if (currentIdx >= 0 && currentIdx < audioFiles.length - 1) {
       const nextIndex = currentIdx + 1;
-      console.log('[Grooveflix] Playing track index:', nextIndex);
       handlePlayTrack(album, nextIndex);
-    } else {
-      console.log('[Grooveflix] Already at last track or invalid state');
     }
   }, [handlePlayTrack]);
 
@@ -395,7 +326,6 @@ export default function Grooveflix() {
 
   useEffect(() => {
     if (items.length > 0 && !focusedAlbum) {
-      console.log('[Grooveflix] Setting first album as focused:', items[0].title);
       setFocusedAlbum(items[0]);
     }
   }, [items, focusedAlbum]);

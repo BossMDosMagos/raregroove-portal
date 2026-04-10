@@ -58,6 +58,7 @@ export default function CartDrawer() {
                   <div className="space-y-3">
                     {cartItems.map((cartItem) => {
                       const itemDetails = itemsDetails[cartItem.itemId];
+                      if (!itemDetails) return null;
                       const price = Number(itemDetails?.price || 0);
                       
                       return (
@@ -135,7 +136,6 @@ export default function CartDrawer() {
                 disabled={cartItems.length === 0}
                 onClick={() => {
                   if (cartItems.length === 0) return;
-                  close();
                   navigate(`/checkout`);
                 }}
                 className="group relative overflow-hidden w-full py-4 rounded-2xl font-black uppercase tracking-[0.25em] text-[11px] transition-all duration-500 disabled:opacity-40 disabled:cursor-not-allowed bg-[#D4AF37] text-black shadow-[0_0_30px_rgba(212,175,55,0.25)] hover:shadow-[0_0_50px_rgba(212,175,55,0.45)]"

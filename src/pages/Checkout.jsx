@@ -12,7 +12,7 @@ export default function Checkout() {
   const { t, formatCurrency, exchangeRate, locale } = useI18n();
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const { clearLocalCart } = useCart();
+  const { clearLocalCart, cartItems, itemsDetails } = useCart();
 
   // 💰 SELETOR DE MOEDA
   const [currency, setCurrency] = useState(locale === 'en-US' ? 'USD' : 'BRL');
@@ -37,8 +37,11 @@ export default function Checkout() {
   useEffect(() => {
     const init = async () => {
       try {
-        if (!itemId) {
-          toast.error('Item não especificado');
+        // Se há itens no carrinho, usar o primeiro
+        const effectiveItemId = itemId || (cartItems.length > 0 ? cartItems[0].itemId : null);
+        
+        if (!effectiveItemId) {
+          toast.error('Nenhum item no carrinho');
           navigate('/catalogo');
           return;
         }
@@ -56,7 +59,7 @@ export default function Checkout() {
         const { data: itemData, error: itemError } = await supabase
           .from('items')
           .select('*')
-          .eq('id', itemId)
+          .eq('id', effectiveItemId)
           .single();
 
         if (itemError || !itemData) {

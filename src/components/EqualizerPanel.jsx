@@ -51,6 +51,11 @@ const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequen
     document.addEventListener('mouseup', handleMouseUp);
     
     updateValue(e.clientY);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [onChange, trackHeight]);
   
   const handleTrackClick = useCallback((e) => {

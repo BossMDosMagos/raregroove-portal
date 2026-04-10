@@ -314,8 +314,20 @@ export function useGlobalAudioPlayer() {
   
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
+      // Cleanup event listeners
+      if (audioRef.current._cleanupListeners) {
+        audioRef.current._cleanupListeners();
+        audioRef.current._cleanupListeners = null;
+      }
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      // Disconnect media source
+      if (mediaSourceRef.current) {
+        try { mediaSourceRef.current.disconnect(); } catch {}
+        mediaSourceRef.current = null;
+      }
+      isConnectedRef.current = false;
+      connectedAudioRef.current = null;
     }
     setCurrentTime(0);
     setIsPlaying(false);
@@ -368,7 +380,17 @@ export function useGlobalAudioPlayer() {
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     
+    // Cleanup function to remove listeners when audio changes
+    const cleanupListeners = () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+    };
+    
     audioRef.current = audio;
+    audioRef.current._cleanupListeners = cleanupListeners;
     audio.src = url;
     
     connectMediaSource(audio);

@@ -387,7 +387,6 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                         {(() => {
                           const album = priceSuggestions.albumTitle || formData.title || "";
                           const artist = priceSuggestions.artistName || formData.artist || "";
-                          console.log('[AddItemModal] ITEM RARO - albumTitle:', priceSuggestions.albumTitle, 'artistName:', priceSuggestions.artistName, 'formData.title:', formData.title, 'formData.artist:', formData.artist);
                           let baseTerm = `${artist} ${album}`.trim();
                           let cleanTerm = baseTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
                           const finalQuery = cleanTerm ? `${cleanTerm} cd` : "cd";

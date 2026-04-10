@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { getExchangeRates, formatBRL, convertToBRL } from '../utils/currency';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://hlfirfukbrisfpebaaur.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZmlyZnVrYnJpc2ZwZWJhYXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzIwNTUsImV4cCI6MjA4Njg0ODA1NX0.vXadY-YLsKGuWXEb2UmHAqoDEx0vD_FpFkrTs55CiuU';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 async function searchDiscogs(query, limit = 20) {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
@@ -137,7 +137,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       ]);
       
       const stats = statsResponse?.data || null;
-      console.log('[Discogs] Stats response:', JSON.stringify(stats, null, 2));
 
       setFullDetails(details);
       
@@ -147,8 +146,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       const currency = rawCurrency.toUpperCase();
       const rawLowest = stats?.lowest_price?.value ?? stats?.lowest_price ?? details?.lowest_price ?? null;
       
-      console.log('[Discogs] Raw lowest:', rawLowest, 'Currency:', currency);
-      
       let lowestValue = null;
       let priceNote = '';
       
@@ -156,7 +153,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         lowestValue = rawLowest;
         priceNote = 'lowest_price';
       } else if (rawLowest !== null && rawLowest > 0 && rawLowest < 2) {
-        console.log('[Discogs] Value below $2, applying minimum floor of 3.00 in original currency');
         lowestValue = 3.00;
         priceNote = 'floor_applied';
       }
@@ -171,8 +167,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         suggestions.releaseId = release.id;
         suggestions.priceNote = priceNote;
         suggestions.hasPriceData = true;
-        
-        console.log('[Discogs] Final lowest value:', lowestValue, 'Currency:', currency);
       } else {
         suggestions.source = 'none';
         suggestions.hasPriceData = false;
@@ -188,8 +182,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         
         suggestions.fallbackPrice = isBoxSet ? 85 : isDouble ? 45 : 25;
         suggestions.fallbackType = isBoxSet ? 'Box Set / Edição de Luxo' : isDouble ? 'CD Duplo / Digipack' : 'CD Simples';
-        
-        console.log('[Discogs] No valid price found - using fallback:', suggestions.fallbackPrice);
       }
       
       suggestions.albumTitle = fullDetails?.title || selected?.title || '';
@@ -230,7 +222,6 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
       );
       barcode = barcodeEntry?.value || null;
     }
-    console.log('[Discogs] Barcode extracted:', barcode);
 
     onImport({
       title: albumTitle,
