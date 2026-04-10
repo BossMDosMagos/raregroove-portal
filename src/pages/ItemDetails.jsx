@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import Avatar from '../components/Avatar';
 import SwapProposalModal from '../components/SwapProposalModal';
 import { RatingDisplay, EliteBadge } from '../components/RatingComponents';
-import { Disc, MessageSquare, ShieldCheck, ArrowLeft, Heart, Share2, Tag, Calendar, Music, Loader2 } from 'lucide-react';
+import { Disc, MessageSquare, ShieldCheck, ArrowLeft, Heart, Share2, Tag, Calendar, Music, Loader2, ShoppingCart, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { sanitizeMessage, isMessageEmptyAfterSanitize, isMessageTooShort, hasSuspiciousPattern } from '../utils/sanitizeMessage';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -479,6 +479,34 @@ export default function ItemDetails() {
                     )}
                   </button>
                 )}
+
+                <button
+                  onClick={() => {
+                    if (!currentUser) {
+                      toast.error(t('auth.required') || 'Faça login para continuar');
+                      navigate('/');
+                      return;
+                    }
+                    if (currentUser.id === item.seller_id) {
+                      toast.error('Você não pode adicionar seu próprio item');
+                      return;
+                    }
+                    addToCart(item);
+                    toast.success('Item adicionado ao carrinho!', {
+                      description: item.title,
+                      action: {
+                        label: 'Ver carrinho',
+                        onClick: () => navigate('/checkout'),
+                      },
+                    });
+                  }}
+                  className="group relative overflow-hidden py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all duration-500 border bg-charcoal-mid border-gold-premium/30 text-white hover:border-gold-premium hover:text-gold-premium hover:bg-charcoal-deep"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    <ShoppingCart size={16} /> ADICIONAR AO CARRINHO
+                  </span>
+                  <div className="absolute inset-0 bg-gold-premium/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                </button>
                 
                 <button 
                   onClick={() => {
