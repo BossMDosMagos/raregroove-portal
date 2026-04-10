@@ -216,6 +216,146 @@ function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
 }
 
 /**
+ * COMPONENTE DE PAGAMENTO REAL - PAYPAL
+ */
+function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
+  const [processing, setProcessing] = useState(false);
+  const [config, setConfig] = useState(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [orderCreated, setOrderCreated] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+
+  useEffect(() => {
+    if (selectedGateway === 'paypal') {
+      init();
+    }
+  }, [selectedGateway]);
+
+  const init = async () => {
+    try {
+      const cfg = await getGatewayConfig(selectedGateway);
+      setConfig(cfg);
+
+      if (!cfg.clientId) {
+        setError('PayPal não está configurado. Adicione o Client ID nas configurações.');
+        return;
+      }
+
+      if (!window.paypal) {
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${cfg.clientId}&currency=${currency}`;
+        script.async = true;
+        script.onload = () => {
+          console.log('[PayPal] SDK carregado');
+          setPaypalLoaded(true);
+        };
+        script.onerror = () => {
+          setError('Erro ao carregar SDK do PayPal');
+        };
+        document.body.appendChild(script);
+      } else {
+        setPaypalLoaded(true);
+      }
+    } catch (err) {
+      console.error('[PayPal] Erro ao inicializar:', err);
+      setError(err.message);
+    }
+  };
+
+  const createOrder = async () => {
+    if (!window.paypal) return;
+    
+    try {
+      const order = await window.paypal.Buttons().createOrder({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          amount: {
+            currency_code: currency,
+            value: amount.toFixed(2)
+          },
+          description: metadata?.itemTitle || 'Compra RareGroove',
+        }],
+        application_context: {
+          brand_name: 'RareGroove',
+          shipping_preference: 'NO_SHIPPING'
+        }
+      });
+      setOrderId(order);
+      setOrderCreated(true);
+      return order;
+    } catch (err) {
+      console.error('[PayPal] Erro ao criar ordem:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleApprove = async (data, actions) => {
+    setProcessing(true);
+    try {
+      const details = await actions.order.capture();
+      console.log('[PayPal] Pagamento aprovado:', details);
+      onSuccess?.({
+        paymentId: details.id,
+        status: 'COMPLETED',
+        gateway: 'paypal',
+        details
+      });
+    } catch (err) {
+      console.error('[PayPal] Erro ao capturar:', err);
+      setError(err.message);
+      onError?.(err);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300">
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {!paypalLoaded ? (
+        <div className="flex items-center justify-center py-8">
+          <Disc className="animate-spin mr-2" size={20} />
+          <span className="text-white/60">Carregando PayPal...</span>
+        </div>
+      ) : (
+        <div id="paypal-button-container" className="min-h-[150px]">
+          {window.paypal && window.paypal.Buttons && (
+            <div dangerouslySetInnerHTML={{
+              __html: window.paypal.Buttons({
+                style: {
+                  layout: 'vertical',
+                  color: 'gold',
+                  shape: 'rect',
+                  label: 'pay'
+                },
+                createOrder: createOrder,
+                onApprove: handleApprove,
+                onError: (err) => {
+                  console.error('[PayPal] Erro:', err);
+                  setError('Erro no pagamento PayPal');
+                  onError?.(err);
+                }
+              }).render('#paypal-button-container').outerHTML || ''
+            }} />
+          )}
+        </div>
+      )}
+      <p className="text-xs text-white/40 text-center">
+        🔒 Pagamento processado de forma segura pelo PayPal
+      </p>
+    </div>
+  );
+}
+
+/**
  * COMPONENTE DE PAGAMENTO REAL - MERCADO PAGO (Payment Brick)
  * Com tratamento de erros robusto e mecanismo de recovery
  */
