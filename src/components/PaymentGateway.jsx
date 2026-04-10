@@ -257,6 +257,14 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       console.log('[MP] Config carregada:', cfg.publicKey ? '✅ Com chave' : '❌ Sem chave');
       setDebugInfo(`Config: ${cfg.publicKey ? 'OK' : 'Falta chave'}`);
 
+      if (!cfg.publicKey) {
+        const errorMsg = 'Chave pública do Mercado Pago não configurada. Adicione VITE_MP_PUBLIC_KEY no ambiente.';
+        console.error('[MP]', errorMsg);
+        setError(errorMsg);
+        setInitializing(false);
+        return;
+      }
+
       if (!window.MercadoPago) {
         console.log('[MP] Carregando SDK...');
         setDebugInfo('Carregando SDK do Mercado Pago...');
