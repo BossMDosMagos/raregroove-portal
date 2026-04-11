@@ -118,14 +118,14 @@ function applyAllSettings(settings) {
 }
 
 function connectAudioGraph() {
-  if (!audioContextInstance || !mediaSourceInstance) return;
+  if (!audioContextInstance || !mediaSourceRef.current) return;
   
-  mediaSourceInstance.disconnect();
+  mediaSourceRef.current.disconnect();
   
   const gain = getSharedGain();
   const vuGain = getVuGain();
   
-  let lastNode = mediaSourceInstance;
+  let lastNode = mediaSourceRef.current;
   
   if (toneFilters) {
     lastNode.connect(toneFilters.bass);
