@@ -225,12 +225,73 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
   const [error, setError] = useState(null);
   const [orderCreated, setOrderCreated] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const containerRef = React.useRef(null);
 
   useEffect(() => {
     if (selectedGateway === 'paypal') {
       init();
     }
   }, [selectedGateway]);
+
+  useEffect(() => {
+    if (paypalLoaded && containerRef.current && window.paypal && window.paypal.Buttons) {
+      const buttons = window.paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'gold',
+          shape: 'rect',
+          label: 'pay'
+        },
+        createOrder: () => {
+          if (!window.paypal) return;
+          
+          return window.paypal.Buttons().createOrder({
+            intent: 'CAPTURE',
+            purchase_units: [{
+              amount: {
+                currency_code: currency,
+                value: amount.toFixed(2)
+              },
+              description: metadata?.itemTitle || 'Compra RareGroove',
+            }],
+            application_context: {
+              brand_name: 'RareGroove',
+              shipping_preference: 'NO_SHIPPING'
+            }
+          });
+        },
+        onApprove: async (data, actions) => {
+          setProcessing(true);
+          try {
+            const details = await actions.order.capture();
+            console.log('[PayPal] Pagamento aprovado:', details);
+            onSuccess?.({
+              paymentId: details.id,
+              status: 'COMPLETED',
+              gateway: 'paypal',
+              details
+            });
+          } catch (err) {
+            console.error('[PayPal] Erro ao capturar:', err);
+            setError(err.message);
+            onError?.(err);
+          } finally {
+            setProcessing(false);
+          }
+        },
+        onError: (err) => {
+          console.error('[PayPal] Erro:', err);
+          setError('Erro no pagamento PayPal');
+          onError?.(err);
+        }
+      });
+
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+        buttons.render(containerRef.current);
+      }
+    }
+  }, [paypalLoaded]);
 
   const init = async () => {
     try {
@@ -263,53 +324,6 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
     }
   };
 
-  const createOrder = async () => {
-    if (!window.paypal) return;
-    
-    try {
-      const order = await window.paypal.Buttons().createOrder({
-        intent: 'CAPTURE',
-        purchase_units: [{
-          amount: {
-            currency_code: currency,
-            value: amount.toFixed(2)
-          },
-          description: metadata?.itemTitle || 'Compra RareGroove',
-        }],
-        application_context: {
-          brand_name: 'RareGroove',
-          shipping_preference: 'NO_SHIPPING'
-        }
-      });
-      setOrderId(order);
-      setOrderCreated(true);
-      return order;
-    } catch (err) {
-      console.error('[PayPal] Erro ao criar ordem:', err);
-      setError(err.message);
-    }
-  };
-
-  const handleApprove = async (data, actions) => {
-    setProcessing(true);
-    try {
-      const details = await actions.order.capture();
-      console.log('[PayPal] Pagamento aprovado:', details);
-      onSuccess?.({
-        paymentId: details.id,
-        status: 'COMPLETED',
-        gateway: 'paypal',
-        details
-      });
-    } catch (err) {
-      console.error('[PayPal] Erro ao capturar:', err);
-      setError(err.message);
-      onError?.(err);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300">
@@ -326,27 +340,7 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
           <span className="text-white/60">Carregando PayPal...</span>
         </div>
       ) : (
-        <div id="paypal-button-container" className="min-h-[150px]">
-          {window.paypal && window.paypal.Buttons && (
-            <div dangerouslySetInnerHTML={{
-              __html: window.paypal.Buttons({
-                style: {
-                  layout: 'vertical',
-                  color: 'gold',
-                  shape: 'rect',
-                  label: 'pay'
-                },
-                createOrder: createOrder,
-                onApprove: handleApprove,
-                onError: (err) => {
-                  console.error('[PayPal] Erro:', err);
-                  setError('Erro no pagamento PayPal');
-                  onError?.(err);
-                }
-              }).render('#paypal-button-container').outerHTML || ''
-            }} />
-          )}
-        </div>
+        <div ref={containerRef} className="min-h-[150px]" />
       )}
       <p className="text-xs text-white/40 text-center">
         🔒 Pagamento processado de forma segura pelo PayPal
