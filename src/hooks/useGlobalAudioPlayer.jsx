@@ -477,6 +477,14 @@ export function useGlobalAudioPlayer() {
       loadAndPlayTrack(queue[currentTrackIndexRef.current]);
     }
   }, [queue, loadAndPlayTrack]);
+
+  const playTrackFromQueue = useCallback(async (track) => {
+    if (!track) return;
+    console.log('[GlobalPlayer] playTrackFromQueue:', track.title);
+    currentTrackIdRef.current = track.id;
+    currentTrackIndexRef.current = queue.findIndex(t => t.id === track.id);
+    await loadAndPlayTrack(track);
+  }, [loadAndPlayTrack, queue]);
   
   return {
     currentTrack,
@@ -495,6 +503,7 @@ export function useGlobalAudioPlayer() {
     updateCurrentTrack,
     playNext,
     playPrevious,
+    playTrackFromQueue,
     clearQueue,
     getAnalysers,
   };
