@@ -117,15 +117,15 @@ function applyAllSettings(settings) {
   }
 }
 
-function connectAudioGraph() {
-  if (!audioContextInstance || !mediaSourceRef.current) return;
+function connectAudioGraph(mediaSource) {
+  if (!audioContextInstance || !mediaSource) return;
   
-  mediaSourceRef.current.disconnect();
+  mediaSource.disconnect();
   
   const gain = getSharedGain();
   const vuGain = getVuGain();
   
-  let lastNode = mediaSourceRef.current;
+  let lastNode = mediaSource;
   
   if (toneFilters) {
     lastNode.connect(toneFilters.bass);
@@ -303,7 +303,7 @@ export function useGlobalAudioPlayer() {
       mediaSourceRef.current = ctx.createMediaElementSource(audioElement);
       connectedAudioRef.current = audioElement;
       isConnectedRef.current = true;
-      connectAudioGraph();
+      connectAudioGraph(mediaSourceRef.current);
       console.log('[GlobalPlayer] MediaSource connected successfully');
       return true;
     } catch (err) {
