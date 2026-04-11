@@ -242,10 +242,8 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
           shape: 'rect',
           label: 'pay'
         },
-        createOrder: () => {
-          if (!window.paypal) return;
-          
-          return window.paypal.Buttons().createOrder({
+        createOrder: (data, actions) => {
+          return actions.order.create({
             intent: 'CAPTURE',
             purchase_units: [{
               amount: {
