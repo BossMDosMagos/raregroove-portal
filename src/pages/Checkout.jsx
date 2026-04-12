@@ -375,6 +375,15 @@ const handlePaymentSuccess = async (paymentData) => {
         toast.info('Comprovante enviado! Aguarde aprovação do vendedor.', {
           duration: 5000,
         });
+        
+        // Create notification for seller
+        await supabase.from('notifications').insert({
+          user_id: item.seller_id,
+          type: 'comprovante_received',
+          title: 'Novo comprovante PIX',
+          message: `Novo comprovante para "${item.title}". Clique para verificar.`,
+          link_url: '/profile?tab=sales'
+        });
       } else {
         toast.success('Compra realizada com sucesso!', {
           description: `${items.length} item(ns) comprado(s). O(s) vendedor(es) foi(ram) notificado(s).`,

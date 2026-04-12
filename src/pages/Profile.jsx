@@ -1012,6 +1012,15 @@ export default function Profile() {
                                 status: 'vendido'
                               }).eq('id', sale.item_id);
                               
+                              // Notify buyer
+                              await supabase.from('notifications').insert({
+                                user_id: sale.buyer?.id,
+                                type: 'payment_approved',
+                                title: 'Pagamento aprovado!',
+                                message: `Sua compra de "${sale.items?.title}" foi aprovada. Gere a etiqueta de envio.`,
+                                link_url: '/profile?tab=purchases'
+                              });
+                              
                               toast.success('Venda aprovada! O comprador foi notificado.');
                               
                               // Recarregar sales
@@ -1022,12 +1031,21 @@ export default function Profile() {
                                 .order('created_at', { ascending: false });
                               setSales(salesData || []);
                             } catch (err) {
-                              toast.error('Erro ao aprovar venda');
+                              console.error('Erro ao aprovar:', err);
+                              toast.error('Erro ao aprobar venda');
                             }
                           }}
                           className="ml-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold"
                         >
                           Aprovar
+                        </button>
+                      )}
+                      {sale.status === 'pago_em_custodia' && (
+                        <button
+                          onClick={() => navigate(`/shipping/${sale.id}`)}
+                          className="ml-2 bg-[#D4AF37] hover:bg-[#B8962F] text-black px-3 py-2 rounded-lg text-xs font-bold"
+                        >
+                          Gerar Etiqueta
                         </button>
                       )}
                     </div>
