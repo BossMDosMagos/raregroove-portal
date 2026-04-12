@@ -37,9 +37,10 @@ export default function PaymentSuccess() {
   const returnTotalAmount = parseFloat(searchParams.get('total_amount') || '0');
 
   const currentPath = window.location.pathname;
-  const isFailure = currentPath.includes('/failure');
-  const isPending = currentPath.includes('/pending');
-  const isSuccess = currentPath.includes('/success') || paymentStatus === 'approved';
+  const isFailure = currentPath.includes('/failure') || paymentStatus === 'rejected' || paymentStatus === 'cancelled' || !paymentStatus;
+  const isPending = currentPath.includes('/pending') || paymentStatus === 'pending' || paymentStatus === 'in_process';
+  const isApproved = paymentStatus === 'approved';
+  const isSuccess = isApproved && transaction !== null;
   const isSubscriptionFlow = mode === 'subscription' || String(externalReference || '').startsWith('SUBS-');
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function PaymentSuccess() {
     if (!isSubscriptionFlow) return;
 
     const run = async () => {
-      if (!isSuccess || isFailure) {
+      if (!isApproved || isFailure) {
         setSubscriptionStatus('failed');
         setLoading(false);
         return;
@@ -323,6 +324,48 @@ export default function PaymentSuccess() {
   }
 
   const isSwap = !!swapId;
+
+  if (!isApproved && !isSubscriptionFlow && !transaction) {
+    return (
+      <div className="min-h-screen bg-black text-white py-8 px-4 md:px-6 pt-20">
+        <div className="max-w-2xl mx-auto text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-2 bg-red-500/10 border-red-500">
+            <svg className="w-14 h-14 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          
+          <div className="space-y-2">
+            <Pill>
+              Pagamento Não Concluído
+            </Pill>
+          </div>
+          
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Ops! O pagamento não foi concluído
+          </h1>
+          
+          <p className="text-white/60">
+            Parece que você abandonou o pagamento ou optou por não finalizar a compra.
+          </p>
+          
+          <button
+            onClick={() => navigate('/checkout')}
+            className="w-full max-w-md bg-[#D4AF37] hover:bg-[#B8962F] text-black py-3 px-6 rounded-xl font-bold transition"
+          >
+            Tentar Novamente
+          </button>
+          
+          <button
+            onClick={() => navigate('/')}
+            className="w-full max-w-md bg-white/10 hover:bg-white/20 text-white py-3 px-6 rounded-xl font-bold transition"
+          >
+            Voltar para Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white py-8 px-4 md:px-6 pt-20">
