@@ -375,11 +375,9 @@ export function useGlobalAudioPlayer() {
     const onEnded = () => {
       setIsPlaying(false);
       const q = queueRef.current;
-      console.log('[GlobalPlayer] onEnded, queue length:', q.length, 'currentIndex:', currentTrackIndexRef.current);
       const nextIndex = currentTrackIndexRef.current + 1;
       if (q.length > 0 && nextIndex < q.length) {
         const nextTrack = q[nextIndex];
-        console.log('[GlobalPlayer] Playing next track:', nextTrack?.title);
         currentTrackIndexRef.current = nextIndex;
         if (nextTrack && loadAndPlayTrackRef.current) {
           loadAndPlayTrackRef.current(nextTrack);
@@ -429,6 +427,7 @@ export function useGlobalAudioPlayer() {
       artist: album.artist || 'Unknown',
       audioPath: file?.path || file,
       albumId: album.id,
+      album: album.title,
       albumTitle: album.title,
     }));
     
