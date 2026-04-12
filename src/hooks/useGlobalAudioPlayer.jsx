@@ -375,8 +375,10 @@ export function useGlobalAudioPlayer() {
     const onEnded = () => {
       setIsPlaying(false);
       const q = queueRef.current;
-      if (q.length > 0 && currentTrackIndexRef.current < q.length - 1) {
-        const nextTrack = q[currentTrackIndexRef.current + 1];
+      const nextIndex = currentTrackIndexRef.current + 1;
+      if (q.length > 0 && nextIndex < q.length) {
+        const nextTrack = q[nextIndex];
+        currentTrackIndexRef.current = nextIndex;
         if (nextTrack && loadAndPlayTrackRef.current) {
           loadAndPlayTrackRef.current(nextTrack);
         }
