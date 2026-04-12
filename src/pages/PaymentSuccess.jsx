@@ -37,10 +37,10 @@ export default function PaymentSuccess() {
   const returnTotalAmount = parseFloat(searchParams.get('total_amount') || '0');
 
   const currentPath = window.location.pathname;
-  const isFailure = currentPath.includes('/failure') || paymentStatus === 'rejected' || paymentStatus === 'cancelled' || !paymentStatus;
-  const isPending = currentPath.includes('/pending') || paymentStatus === 'pending' || paymentStatus === 'in_process';
+  const isPending = currentPath.includes('/pending') || paymentStatus === 'pending' || paymentStatus === 'in_process' || paymentStatus === 'waiting_approval';
+  const isFailure = currentPath.includes('/failure') || paymentStatus === 'rejected' || paymentStatus === 'cancelled' || (!paymentStatus && !isPending);
   const isApproved = paymentStatus === 'approved';
-  const isSuccess = isApproved && transaction !== null;
+  const isSuccess = (isApproved || isPending) && transaction !== null;
   const isSubscriptionFlow = mode === 'subscription' || String(externalReference || '').startsWith('SUBS-');
 
   useEffect(() => {
@@ -366,6 +366,39 @@ export default function PaymentSuccess() {
     );
   }
 
+  if (isPending && !transaction) {
+    return (
+      <div className="min-h-screen bg-black text-white py-8 px-4 md:px-6 pt-20">
+        <div className="max-w-2xl mx-auto text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-2 bg-yellow-500/10 border-yellow-500">
+            <Clock size={56} className="text-yellow-500" />
+          </div>
+          
+          <div className="space-y-2">
+            <Pill>
+              Aguardando Aprovação
+            </Pill>
+          </div>
+          
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Comprovante enviado!
+          </h1>
+          
+          <p className="text-white/60">
+            O vendedor está verificando seu pagamento. Você receberá uma notificação assim que for aprovado.
+          </p>
+          
+          <button
+            onClick={() => navigate('/')}
+            className="w-full max-w-md bg-[#D4AF37] hover:bg-[#B8962F] text-black py-3 px-6 rounded-xl font-bold transition"
+          >
+            Voltar para Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isSwap = !!swapId;
 
   const handleChatWithSeller = async () => {
@@ -411,7 +444,7 @@ export default function PaymentSuccess() {
     }
   };
 
-  if (!isApproved && !isSubscriptionFlow && !transaction) {
+  if (!isApproved && !isPending && !isSubscriptionFlow && !transaction) {
     return (
       <div className="min-h-screen bg-black text-white py-8 px-4 md:px-6 pt-20">
         <div className="max-w-2xl mx-auto text-center space-y-6">

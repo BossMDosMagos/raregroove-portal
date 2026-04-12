@@ -772,12 +772,14 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
         paymentId: `PIX-${Date.now()}`,
         provider: 'pix_portal',
         status: 'waiting_approval',
+        isPending: true,
         pixBrcode: brcode,
         amount: amount,
         comprovanteUrl: comprovanteUrl
       });
       
       setEnviado(true);
+      toast.info('Comprovante enviado! O vendedor ira verificar e aprovar.');
     } catch (error) {
       onError(error);
     } finally {

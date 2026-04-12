@@ -315,19 +315,28 @@ export default function Checkout() {
         }
       }
 
-      toast.success('Compra realizada com sucesso!', {
-        description: `${items.length} item(ns) comprado(s). O(s) vendedor(es) foi(ram) notificado(s).`,
-        duration: 5000,
-      });
+      const isWaitingApproval = paymentData?.isPending || paymentData?.status === 'waiting_approval';
+      
+      if (isWaitingApproval) {
+        toast.info('Comprovante enviado! Aguarde aprovação do vendedor.', {
+          duration: 5000,
+        });
+      } else {
+        toast.success('Compra realizada com sucesso!', {
+          description: `${items.length} item(ns) comprado(s). O(s) vendedor(es) foi(ram) notificado(s).`,
+          duration: 5000,
+        });
+      }
 
       // Limpar carrinho
       for (const item of items) {
         await clearLocalCart(item.id);
       }
 
-      // Redirecionar para página de sucesso
+      // Redirecionar para página de sucesso (com status na URL)
       setTimeout(() => {
-        navigate(`/payment/success?transactionId=${transactionIds.join(',')}`);
+        const statusParam = isWaitingApproval ? '&status=pending' : '';
+        navigate(`/payment/success?transactionId=${transactionIds.join(',')}${statusParam}`);
       }, 2000);
 
     } catch (error) {
