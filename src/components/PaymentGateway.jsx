@@ -412,12 +412,22 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
     }
   }, [selectedGateway, amount, metadata, preferenceId, onError]);
 
+  useEffect(() => {
+    if (status === 'ready' && preferenceId) {
+      console.log('[MP] status ready, render mode:', paymentMode);
+      setTimeout(() => paymentMode === 'wallet' ? renderWallet() : renderCard(), 100);
+    }
+  }, [status, preferenceId, paymentMode]);
+
   const renderWallet = () => {
+    console.log('[MP] renderWallet preferenceId:', preferenceId, 'MP:', !!window.MercadoPago);
     if (!preferenceId || !window.MercadoPago) return;
     const container = document.getElementById(walletContainerId);
+    console.log('[MP] Wallet container:', !!container);
     if (!container) return;
     
     container.innerHTML = '';
+    console.log('[MP] Criando Payment Brick para Wallet...');
     window.MercadoPago.bricks().create('payment', walletContainerId, {
       initialization: { preferenceId },
       callbacks: {
@@ -427,6 +437,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           setError(err.message);
         },
         onSubmit: (formData) => {
+          console.log('[MP] Wallet submmit:', formData);
           onSuccess?.({ paymentId: formData?.paymentId || preferenceId, provider: 'mercadopago', status: 'processing' });
         }
       }
@@ -434,11 +445,14 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   };
 
   const renderCard = () => {
+    console.log('[MP] renderCard preferenceId:', preferenceId, 'MP:', !!window.MercadoPago);
     if (!preferenceId || !window.MercadoPago) return;
     const container = document.getElementById(cardContainerId);
+    console.log('[MP] Card container:', !!container);
     if (!container) return;
     
     container.innerHTML = '';
+    console.log('[MP] Criando Payment Brick para Cartão...');
     window.MercadoPago.bricks().create('payment', cardContainerId, {
       initialization: { amount: parseFloat(amount), preferenceId, payer: { email: metadata?.buyerEmail } },
       customization: { paymentMethods: { creditCard: ['master', 'visa', 'elo', 'amex'], debitCard: ['master', 'visa', 'elo'] } },
@@ -449,6 +463,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           setError(err.message);
         },
         onSubmit: (formData) => {
+          console.log('[MP] Card submit:', formData);
           if (formData?.token) {
             onSuccess?.({ paymentId: formData.token, provider: 'mercadopago', status: 'processing' });
           }
@@ -458,14 +473,17 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   };
 
   const handleTabChange = (mode) => {
+    console.log('[MP] handleTabChange:', mode, 'preferenceId:', preferenceId);
     setPaymentMode(mode);
     setError(null);
     if (!preferenceId) {
       initPayment().then(() => {
-        setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 100);
+        console.log('[MP] initPayment done, render:', mode);
+        setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 200);
       });
     } else {
-      setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 100);
+      console.log('[MP] preferenceId exists, render directly:', mode);
+      setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 200);
     }
   };
 
