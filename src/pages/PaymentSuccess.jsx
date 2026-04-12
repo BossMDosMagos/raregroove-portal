@@ -142,16 +142,23 @@ export default function PaymentSuccess() {
 
         setTransaction(swapData);
       } else if (paymentStatus === 'approved' && paymentId) {
-        console.log('[PaymentSuccess] Payment approved, searching by payment_id:', paymentId);
+        console.log('[PaymentSuccess] ★ Returned from MP with status=approved');
+        console.log('[PaymentSuccess] payment_id:', paymentId);
+        console.log('[PaymentSuccess] collection_id:', searchParams.get('collection_id'));
+        console.log('[PaymentSuccess] external_reference:', externalReference);
+        console.log('[PaymentSuccess] Searching transaction in DB...');
         
         // Buscar transação existente pelo payment_id
-        const { data: existingTx } = await supabase
+        const { data: existingTx, error: searchError } = await supabase
           .from('transactions')
           .select('*')
           .eq('payment_id', paymentId)
           .maybeSingle();
         
-        console.log('[PaymentSuccess] Found transaction:', existingTx);
+        if (searchError) {
+          console.error('[PaymentSuccess] Search error:', searchError);
+        }
+        console.log('[PaymentSuccess] Found by payment_id:', existingTx);
 
         if (existingTx) {
           console.log('[PaymentSuccess] Loading existing transaction:', existingTx.id);
