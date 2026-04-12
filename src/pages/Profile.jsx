@@ -135,6 +135,7 @@ export default function Profile() {
   const [items, setItems] = useState([]);
   const [messages, setMessages] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([]);
+  const [purchases, setPurchases] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [ratingStats, setRatingStats] = useState(null);
   const [isElite, setIsElite] = useState(false);
@@ -215,6 +216,19 @@ export default function Profile() {
         .order('created_at', { ascending: false });
       
       setWishlistItems(wishlistData || []);
+
+      // Fetch user's purchases (as buyer)
+      const { data: purchasesData } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          items:items!transactions_item_id_fkey(*),
+          seller:profiles!transactions_seller_id_fkey(id, full_name, avatar_url)
+        `)
+        .eq('buyer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      setPurchases(purchasesData || []);
 
       // Fetch user's messages
       const { data: messagesData } = await supabase
@@ -880,16 +894,47 @@ export default function Profile() {
               <h2 className="text-xl font-black uppercase tracking-tighter text-luxury flex items-center gap-3">
                 <ShoppingBag className="text-gold-premium" size={20} /> {t('profile.purchases.title')}
               </h2>
-              <div className="py-16 text-center space-y-4">
-                <ShoppingBag className="mx-auto text-silver-premium/10" size={48} />
-                <p className="text-silver-premium/40 text-xs font-bold uppercase tracking-widest">{t('profile.purchases.empty')}</p>
-                <button
-                  onClick={() => navigate('/catalogo')}
-                  className="px-8 py-4 glass-card border-gold-premium/20 text-gold-premium/60 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-gold-premium hover:border-gold-premium transition-all duration-500"
-                >
-                  {t('profile.exploreCatalog')}
-                </button>
-              </div>
+              {purchases.length === 0 ? (
+                <div className="py-16 text-center space-y-4">
+                  <ShoppingBag className="mx-auto text-silver-premium/10" size={48} />
+                  <p className="text-silver-premium/40 text-xs font-bold uppercase tracking-widest">{t('profile.purchases.empty')}</p>
+                  <button
+                    onClick={() => navigate('/catalogo')}
+                    className="px-8 py-4 glass-card border-gold-premium/20 text-gold-premium/60 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-gold-premium hover:border-gold-premium transition-all duration-500"
+                  >
+                    {t('profile.exploreCatalog')}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {purchases.map((purchase) => (
+                    <div key={purchase.id} className="flex items-center gap-4 p-4 bg-black/20 rounded-xl">
+                      <div className="w-16 h-16 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
+                        {purchase.items?.cover_url && (
+                          <img 
+                            src={purchase.items.cover_url} 
+                            alt={purchase.items.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold truncate">{purchase.items?.title || 'Item'}</h3>
+                        <p className="text-xs text-white/50">Vendedor: {purchase.seller?.full_name || 'N/A'}</p>
+                        <p className="text-xs text-white/50">
+                          {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(purchase.price || 0).toFixed(2)}</p>
+                        <p className={`text-xs ${purchase.status === 'pago_em_custodia' ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {purchase.status === 'pago_em_custodia' ? 'Pago' : purchase.status}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
