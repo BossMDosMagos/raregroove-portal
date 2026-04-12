@@ -267,6 +267,7 @@ const handlePaymentSuccess = async (paymentData) => {
       setPaying(true);
       setPaymentSuccess(true);
 
+      const isWaitingApproval = paymentData?.isPending || paymentData?.status === 'waiting_approval';
       const transactionIds = [];
       
       for (const item of items) {
