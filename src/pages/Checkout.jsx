@@ -271,7 +271,7 @@ const handlePaymentSuccess = async (paymentData) => {
       
       for (const item of items) {
         const itemPrice = parseFloat(item.price);
-        const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2) : 0;
+        const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
         const itemProcessingFee = settings?.processing_fee_fixed || 2.0;
         const itemTotal = itemPrice + itemPlatformFee + itemProcessingFee;
         

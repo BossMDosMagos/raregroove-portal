@@ -10,7 +10,7 @@ import { FinancialDashboard } from '../components/FinancialComponents';
 import { InfoBox, Pill } from '../components/UIComponents';
 import {
   User, Star, RefreshCw, ShoppingBag, Settings, LogOut, Loader2, Gift,
-  MapPin, Phone, Edit3, Save, X, Disc, Heart, MessageSquare, CreditCard, Users, Camera, Plus, Trash2, CheckCircle2, AlertCircle
+  MapPin, Phone, Edit3, Save, X, Disc, Heart, MessageSquare, CreditCard, Users, Camera, Plus, Trash2, CheckCircle2, AlertCircle, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -136,6 +136,7 @@ export default function Profile() {
   const [messages, setMessages] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [sales, setSales] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [ratingStats, setRatingStats] = useState(null);
   const [isElite, setIsElite] = useState(false);
@@ -229,6 +230,19 @@ export default function Profile() {
         .order('created_at', { ascending: false });
 
       setPurchases(purchasesData || []);
+
+      // Fetch user's sales (as seller)
+      const { data: salesData } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          items:items!transactions_item_id_fkey(id, title, cover_url, price),
+          buyer:profiles!transactions_buyer_id_fkey(id, full_name, avatar_url)
+        `)
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false });
+
+      setSales(salesData || []);
 
       // Fetch user's messages
       const { data: messagesData } = await supabase
@@ -635,7 +649,8 @@ export default function Profile() {
     { id: 'addresses', label: t('profile.tabs.addresses'), icon: MapPin },
     { id: 'financial', label: t('profile.tabs.financial'), icon: CreditCard },
     { id: 'swaps', label: t('profile.tabs.swaps'), icon: RefreshCw },
-    { id: 'purchases', label: t('profile.tabs.purchases'), icon: ShoppingBag },
+    { id: 'purchases', label: 'Compras', icon: ShoppingBag },
+    { id: 'sales', label: 'Vendas', icon: DollarSign },
     { id: 'wishlist', label: t('profile.tabs.wishlist'), icon: Heart },
     { id: 'settings', label: t('profile.tabs.settings'), icon: Settings }
   ];
@@ -931,6 +946,87 @@ export default function Profile() {
                           {purchase.status === 'pago_em_custodia' ? 'Pago' : purchase.status}
                         </p>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VENDAS */}
+          {activeTab === 'sales' && (
+            <div className="glass-card rounded-[2.5rem] p-10 space-y-8">
+              <h2 className="text-xl font-black uppercase tracking-tighter text-luxury flex items-center gap-3">
+                <DollarSign className="text-gold-premium" size={20} /> Minhas Vendas
+              </h2>
+              {sales.length === 0 ? (
+                <div className="py-16 text-center space-y-4">
+                  <DollarSign className="mx-auto text-silver-premium/10" size={48} />
+                  <p className="text-silver-premium/40 text-xs font-bold uppercase tracking-widest">Nenhuma venda ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sales.map((sale) => (
+                    <div key={sale.id} className="flex items-center gap-4 p-4 bg-black/20 rounded-xl">
+                      <div className="w-16 h-16 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
+                        {sale.items?.cover_url && (
+                          <img 
+                            src={sale.items.cover_url} 
+                            alt={sale.items.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold truncate">{sale.items?.title || 'Item'}</h3>
+                        <p className="text-xs text-white/50">Comprador: {sale.buyer?.full_name || 'N/A'}</p>
+                        <p className="text-xs text-white/50">
+                          {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(sale.price || 0).toFixed(2)}</p>
+                        <p className={`text-xs ${
+                          sale.status === 'pago_em_custodia' ? 'text-green-400' : 
+                          sale.status === 'waiting_approval' ? 'text-yellow-400' : 'text-white/50'
+                        }`}>
+                          {sale.status === 'pago_em_custodia' ? 'Pago - Libere etiqueta' : 
+                           sale.status === 'waiting_approval' ? 'Aguardando aprovação' : sale.status}
+                        </p>
+                      </div>
+                      {sale.status === 'waiting_approval' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              // Aprovar venda
+                              await supabase.from('transactions').update({
+                                status: 'pago_em_custodia'
+                              }).eq('id', sale.id);
+                              
+                              // Marcar item como vendido
+                              await supabase.from('items').update({
+                                is_sold: true,
+                                status: 'vendido'
+                              }).eq('id', sale.item_id);
+                              
+                              toast.success('Venda aprovada! O comprador foi notificado.');
+                              
+                              // Recarregar sales
+                              const { data: salesData } = await supabase
+                                .from('transactions')
+                                .select('*, items:items!transactions_item_id_fkey(id, title, cover_url, price), buyer:profiles!transactions_buyer_id_fkey(id, full_name, avatar_url)')
+                                .eq('seller_id', currentUser.id)
+                                .order('created_at', { ascending: false });
+                              setSales(salesData || []);
+                            } catch (err) {
+                              toast.error('Erro ao aprovar venda');
+                            }
+                          }}
+                          className="ml-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold"
+                        >
+                          Aprovar
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
