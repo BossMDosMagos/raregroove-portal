@@ -720,7 +720,7 @@ const messages = {
     'checkout.payment.mercadoPagoDesc': 'Pix, Boleto e Cartão',
     'checkout.payment.paypal': 'PayPal',
     'checkout.payment.paypalDesc': 'PayPal Wallet',
-    'checkout.success.title': 'Pagamento Aprovado',
+    'checkout.success.title': 'Comprovante Enviado',
     'checkout.success.desc': 'Redirecionando para o cofre...',
     'checkout.error.config': 'Erro na Configuração',
     'checkout.error.noGateway': 'Nenhum método de pagamento disponível no momento. Contate o suporte da RareGroove.'

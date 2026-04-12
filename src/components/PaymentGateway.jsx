@@ -868,13 +868,14 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-        <p className="text-xs text-white/60">Anexar comprovante (opcional)</p>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleComprovanteChange}
-          className="text-sm text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:text-black file:font-bold file:cursor-pointer"
-        />
+        <div className="flex justify-center">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleComprovanteChange}
+            className="text-sm text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:text-black file:font-bold file:cursor-pointer"
+          />
+        </div>
         {comprovantePreview && (
           <div className="flex justify-center">
             <img src={comprovantePreview} alt="Comprovante" className="h-24 rounded-lg object-contain" />
@@ -884,7 +885,7 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
 
       <button
         onClick={handleConfirmPayment}
-        disabled={processing || enviado}
+        disabled={processing || enviado || !comprovante}
         className="w-full bg-[#D4AF37] text-black py-4 rounded-2xl font-black uppercase text-sm disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {processing ? (
