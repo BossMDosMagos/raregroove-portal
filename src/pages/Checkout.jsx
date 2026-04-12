@@ -262,23 +262,23 @@ export default function Checkout() {
     init();
   }, [itemId, navigate]);
 
-  const handlePaymentSuccess = async (paymentData) => {
+const handlePaymentSuccess = async (paymentData) => {
     try {
       setPaying(true);
       setPaymentSuccess(true);
 
-      // Processar transação para cada item
       const transactionIds = [];
       
       for (const item of items) {
         const itemPrice = parseFloat(item.price);
-        const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
+        const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2) : 0;
         const itemProcessingFee = settings?.processing_fee_fixed || 2.0;
         const itemTotal = itemPrice + itemPlatformFee + itemProcessingFee;
         
         let transactionId = null;
         
         try {
+          // Try edge function first
           const { data, error: fnError } = await supabase.functions.invoke('process-transaction', {
             body: {
               transactionType: 'venda',
@@ -300,8 +300,35 @@ export default function Checkout() {
           });
 
           if (fnError) {
-            console.warn('process-transaction error (ignoring):', fnError);
-            transactionId = `tx-${Date.now()}`;
+            console.warn('Edge function failed, creating transaction directly:', fnError);
+            
+            // Fallback: create transaction directly
+            const { data: tx, error: txError } = await supabase.from('transactions').insert([{
+              buyer_id: user.id,
+              seller_id: item.seller_id,
+              item_id: item.id,
+              price: itemPrice,
+              platform_fee: itemPlatformFee,
+              gateway_fee: 0,
+              total_amount: itemTotal,
+              net_amount: itemPrice - itemPlatformFee,
+              status: isWaitingApproval ? 'waiting_approval' : 'pago_em_custodia',
+              payment_id: paymentData.paymentId,
+              payment_method: paymentData.provider
+            }]).select().single();
+            
+            if (txError) {
+              console.error('Transaction insert failed:', txError);
+            } else {
+              transactionId = tx.id;
+              console.log('Transaction created:', tx.id);
+              
+              // Mark item as sold
+              await supabase.from('items').update({
+                is_sold: true,
+                status: 'vendido'
+              }).eq('id', item.id);
+            }
           } else {
             transactionId = data?.transactionId;
           }
@@ -315,8 +342,6 @@ export default function Checkout() {
         }
       }
 
-      const isWaitingApproval = paymentData?.isPending || paymentData?.status === 'waiting_approval';
-      
       if (isWaitingApproval) {
         toast.info('Comprovante enviado! Aguarde aprovação do vendedor.', {
           duration: 5000,
