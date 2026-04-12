@@ -351,7 +351,22 @@ export function useGlobalAudioPlayer() {
     }
     
     currentTrackIdRef.current = trackId;
-    stopAudio();
+    
+    // Full reset - disconnect everything before loading new track
+    if (mediaSourceInstance) {
+      try { mediaSourceInstance.disconnect(); } catch {}
+    }
+    mediaSourceInstance = null;
+    if (mediaSourceRef.current) {
+      try { mediaSourceRef.current.disconnect(); } catch {}
+      mediaSourceRef.current = null;
+    }
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch {}
+      audioRef.current.src = '';
+    }
+    connectedAudioRef.current = null;
+    isConnectedRef.current = false;
     setCurrentTime(0);
     setDuration(0);
     setCurrentTrack(track);
