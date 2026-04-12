@@ -540,66 +540,81 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
 
       const isWalletMode = paymentMode === 'wallet';
       
-      const mpConfig = {
-        initialization: {
-          amount: parseFloat(amount),
-          preferenceId: preferenceId,
-          payer: {
-            email: metadata?.buyerEmail || 'comprador@email.com',
+      if (isWalletMode) {
+        console.log('[MP] Configurando Wallet Brick para conta MP');
+        
+        window.MercadoPago.bricks().create('wallet_async', containerId, {
+          initialization: {
+            preferenceId: preferenceId,
           },
-        },
-        customization: {
-          header: isWalletMode ? {
-            title: 'Pagamento Rápido',
-            subtitle: 'Use sua conta Mercado Pago',
-          } : undefined,
-          paymentMethods: {
-            creditCard: ['master', 'visa', 'elo', 'amex'],
-            debitCard: ['master', 'visa', 'elo'],
-          },
-        },
-        callbacks: {
-          onReady: () => {
-            console.log('✅ Payment Brick pronto!');
-            setBrickReady(true);
-            setRetryCount(0);
-          },
-          onError: (error) => {
-            console.error('❌ Erro completo no Payment Brick:', JSON.stringify(error, null, 2));
-            const errorMsg = error?.message || JSON.stringify(error);
-            setError(`Erro: ${errorMsg}`);
-            onError?.(error);
-          },
-          onSubmit: async (formData) => {
-            console.log('📤 [MP] Pagamento submetido:', formData);
-            if (formData?.token) {
+          callbacks: {
+            onReady: () => {
+              console.log('✅ Wallet Brick pronto!');
+              setBrickReady(true);
+              setRetryCount(0);
+            },
+            onError: (error) => {
+              console.error('❌ Erro no Wallet Brick:', JSON.stringify(error, null, 2));
+              const errorMsg = error?.message || JSON.stringify(error);
+              setError(`Erro: ${errorMsg}`);
+              onError?.(error);
+            },
+            onSubmit: (formData) => {
+              console.log('📤 [MP] Pagamento via Wallet:', formData);
               onSuccess?.({
-                paymentId: formData.token || preferenceId,
-                provider: 'mercadopago',
-                paymentMode,
+                paymentId: formData?.paymentId || preferenceId,
+                provider: 'mercadopago_wallet',
                 status: 'processing'
               });
             }
           }
-        }
-      };
+        });
+      } else {
+        console.log('[MP] Configurando Card Brick para cartão');
 
-      if (isWalletMode) {
-        mpConfig.initialization = {
-          ...mpConfig.initialization,
-          paymentMethods: {
-            wallet: true,
-            creditCard: true,
-            debitCard: true,
+        window.MercadoPago.bricks().create('card_payment', containerId, {
+          initialization: {
+            amount: parseFloat(amount),
+            preferenceId: preferenceId,
+            payer: {
+              email: metadata?.buyerEmail || 'comprador@email.com',
+            },
+          },
+          customization: {
+            visual: {
+              style: {
+                theme: 'default',
+              }
+            },
+            paymentMethods: {
+              creditCard: ['master', 'visa', 'elo', 'amex'],
+              debitCard: ['master', 'visa', 'elo'],
+            },
+          },
+          callbacks: {
+            onReady: () => {
+              console.log('✅ Card Brick pronto!');
+              setBrickReady(true);
+              setRetryCount(0);
+            },
+            onError: (error) => {
+              console.error('❌ Erro no Card Brick:', JSON.stringify(error, null, 2));
+              const errorMsg = error?.message || JSON.stringify(error);
+              setError(`Erro: ${errorMsg}`);
+              onError?.(error);
+            },
+            onSubmit: (formData) => {
+              console.log('📤 [MP] Pagamento via Cartão:', formData);
+              if (formData?.token) {
+                onSuccess?.({
+                  paymentId: formData.token || preferenceId,
+                  provider: 'mercadopago_card',
+                  status: 'processing'
+                });
+              }
+            }
           }
-        };
-      }
-
-      try {
-        window.MercadoPago.bricks().create('payment', containerId, mpConfig);
-      } catch (err) {
-        console.error('[MP] Erro ao criar brick:', err);
-        setError(err.message);
+        });
       }
     };
 
