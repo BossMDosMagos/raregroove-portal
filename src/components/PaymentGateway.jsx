@@ -541,20 +541,23 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       const isWalletMode = paymentMode === 'wallet';
       
       if (isWalletMode) {
-        console.log('[MP] Configurando Wallet Brick para conta MP');
+        console.log('[MP] Configurando Payment Brick com modo Wallet');
         
-        window.MercadoPago.bricks().create('wallet_async', containerId, {
+        window.MercadoPago.bricks().create('payment', containerId, {
           initialization: {
             preferenceId: preferenceId,
+            paymentMethods: {
+              wallet: ['account_money'],
+            }
           },
           callbacks: {
             onReady: () => {
-              console.log('✅ Wallet Brick pronto!');
+              console.log('✅ Payment Brick (Wallet) pronto!');
               setBrickReady(true);
               setRetryCount(0);
             },
             onError: (error) => {
-              console.error('❌ Erro no Wallet Brick:', JSON.stringify(error, null, 2));
+              console.error('❌ Erro no Payment Brick:', JSON.stringify(error, null, 2));
               const errorMsg = error?.message || JSON.stringify(error);
               setError(`Erro: ${errorMsg}`);
               onError?.(error);
@@ -563,16 +566,16 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
               console.log('📤 [MP] Pagamento via Wallet:', formData);
               onSuccess?.({
                 paymentId: formData?.paymentId || preferenceId,
-                provider: 'mercadopago_wallet',
+                provider: 'mercadopago',
                 status: 'processing'
               });
             }
           }
         });
       } else {
-        console.log('[MP] Configurando Card Brick para cartão');
+        console.log('[MP] Configurando Payment Brick para cartão');
 
-        window.MercadoPago.bricks().create('card_payment', containerId, {
+        window.MercadoPago.bricks().create('payment', containerId, {
           initialization: {
             amount: parseFloat(amount),
             preferenceId: preferenceId,
@@ -581,11 +584,6 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
             },
           },
           customization: {
-            visual: {
-              style: {
-                theme: 'default',
-              }
-            },
             paymentMethods: {
               creditCard: ['master', 'visa', 'elo', 'amex'],
               debitCard: ['master', 'visa', 'elo'],
@@ -593,12 +591,12 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
           },
           callbacks: {
             onReady: () => {
-              console.log('✅ Card Brick pronto!');
+              console.log('✅ Payment Brick (Card) pronto!');
               setBrickReady(true);
               setRetryCount(0);
             },
             onError: (error) => {
-              console.error('❌ Erro no Card Brick:', JSON.stringify(error, null, 2));
+              console.error('❌ Erro no Payment Brick:', JSON.stringify(error, null, 2));
               const errorMsg = error?.message || JSON.stringify(error);
               setError(`Erro: ${errorMsg}`);
               onError?.(error);
@@ -608,7 +606,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
               if (formData?.token) {
                 onSuccess?.({
                   paymentId: formData.token || preferenceId,
-                  provider: 'mercadopago_card',
+                  provider: 'mercadopago',
                   status: 'processing'
                 });
               }
