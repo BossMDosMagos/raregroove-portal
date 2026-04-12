@@ -752,28 +752,9 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
     try {
       let comprovanteUrl = null;
       
-      if (comprovante) {
-        try {
-          // Check if bucket exists, if not create it
-          const { data: buckets } = await supabase.storage.listBuckets();
-          if (!buckets?.find(b => b.name === 'uploads')) {
-            await supabase.storage.createBucket('uploads', { public: true });
-          }
-          
-          const fileName = `comprovantes/${Date.now()}_${comprovante.name}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('uploads')
-            .upload(fileName, comprovante);
-          
-          if (!uploadError && uploadData) {
-            const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
-            comprovanteUrl = publicUrl;
-            console.log('Comprovante uploaded:', publicUrl);
-          }
-        } catch (uploadErr) {
-          console.warn('Upload comprovante falhou (ignorando):', uploadErr);
-        }
-      }
+      // Upload de comprovante desabilitado temporariamente
+      // O vendedor approving manually based on external confirmation
+      comprovanteUrl = null;
       
       onSuccess({
         paymentId: `PIX-${Date.now()}`,

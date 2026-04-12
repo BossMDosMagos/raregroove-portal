@@ -980,9 +980,7 @@ export default function Profile() {
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold truncate">{sale.items?.title || 'Item'}</h3>
                         <p className="text-xs text-white/50">Comprador: {sale.buyer?.full_name || 'N/A'}</p>
-                        {sale.external_reference && (
-                          <a href={sale.external_reference} target="_blank" rel="noopener" className="text-xs text-blue-400 underline">Ver comprovante</a>
-                        )}
+                        
                         <p className="text-xs text-white/50">
                           {new Date(sale.created_at).toLocaleDateString('pt-BR')}
                         </p>
