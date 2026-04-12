@@ -29,6 +29,7 @@ export default function Catalogo() {
       .select('*')
       .eq('is_sold', false)
       .neq('status', 'vendido')
+        .neq('status', 'pendente')
       .order('created_at', { ascending: false });
     
     if (!error) {

@@ -323,11 +323,38 @@ const handlePaymentSuccess = async (paymentData) => {
               transactionId = tx.id;
               console.log('Transaction created:', tx.id);
               
-              // Mark item as sold
-              await supabase.from('items').update({
-                is_sold: true,
-                status: 'vendido'
-              }).eq('id', item.id);
+              if (isWaitingApproval) {
+                // Mark item as PENDENTE (invisible in catalog, waiting approval)
+                await supabase.from('items').update({
+                  status: 'pendente'
+                }).eq('id', item.id);
+              } else {
+                // Mark item as SOLD immediately
+                await supabase.from('items').update({
+                  is_sold: true,
+                  status: 'vendido'
+                }).eq('id', item.id);
+                
+                // Add profit to seller's balance
+                const { data: sellerBalance } = await supabase
+                  .from('user_balances')
+                  .select('*')
+                  .eq('user_id', item.seller_id)
+                  .single();
+                
+                if (sellerBalance) {
+                  await supabase.from('user_balances').update({
+                    available_balance: (sellerBalance.available_balance || 0) + (itemPrice - itemPlatformFee),
+                    pending_balance: (sellerBalance.pending_balance || 0)
+                  }).eq('user_id', item.seller_id);
+                } else {
+                  await supabase.from('user_balances').insert([{
+                    user_id: item.seller_id,
+                    available_balance: itemPrice - itemPlatformFee,
+                    pending_balance: 0
+                  }]);
+                }
+              }
             }
           } else {
             transactionId = data?.transactionId;

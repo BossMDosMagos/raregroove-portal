@@ -182,7 +182,7 @@ export function CartProvider({ children }) {
         .update({ status: 'reservado' })
         .eq('id', itemId)
         .eq('is_sold', false)
-        .not('status', 'in', '("vendido","reservado")');
+        .not('status', 'in', '("vendido","reservado","pendente")');
 
       if (updateError) {
         toast.error('RESERVA FALHOU', {
