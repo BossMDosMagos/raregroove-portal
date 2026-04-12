@@ -754,6 +754,12 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
       
       if (comprovante) {
         try {
+          // Check if bucket exists, if not create it
+          const { data: buckets } = await supabase.storage.listBuckets();
+          if (!buckets?.find(b => b.name === 'uploads')) {
+            await supabase.storage.createBucket('uploads', { public: true });
+          }
+          
           const fileName = `comprovantes/${Date.now()}_${comprovante.name}`;
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('uploads')
@@ -762,6 +768,7 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
           if (!uploadError && uploadData) {
             const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
             comprovanteUrl = publicUrl;
+            console.log('Comprovante uploaded:', publicUrl);
           }
         } catch (uploadErr) {
           console.warn('Upload comprovante falhou (ignorando):', uploadErr);
