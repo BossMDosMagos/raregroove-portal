@@ -303,6 +303,10 @@ export function useGlobalAudioPlayer() {
       mediaSourceRef.current = ctx.createMediaElementSource(audioElement);
       connectedAudioRef.current = audioElement;
       isConnectedRef.current = true;
+      
+      // Assign to module-level variable for connectAudioGraph
+      mediaSourceInstance = mediaSourceRef.current;
+      
       connectAudioGraph();
       console.log('[GlobalPlayer] MediaSource connected successfully');
       return true;
@@ -326,6 +330,7 @@ export function useGlobalAudioPlayer() {
         try { mediaSourceRef.current.disconnect(); } catch {}
         mediaSourceRef.current = null;
       }
+      mediaSourceInstance = null;
       isConnectedRef.current = false;
       connectedAudioRef.current = null;
     }
