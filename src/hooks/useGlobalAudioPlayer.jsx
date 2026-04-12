@@ -26,14 +26,14 @@ function loadSettings() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return { ...DEFAULTS, ...JSON.parse(saved) };
-  } catch {}
+  } catch { /* ignore errors */ }
   return DEFAULTS;
 }
 
 function saveSettings(settings) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {}
+  } catch { /* ignore errors */ }
 }
 
 function initToneFilters(ctx) {
@@ -232,6 +232,8 @@ export function useGlobalAudioPlayer() {
   const mediaSourceRef = useRef(null);
   const currentTrackIndexRef = useRef(-1);
   const connectedAudioRef = useRef(null);
+  const queueRef = useRef([]);
+  const loadAndPlayTrackRef = useRef(null);
   
   useEffect(() => {
     const init = async () => {
@@ -343,7 +345,7 @@ export function useGlobalAudioPlayer() {
     
     if (isSameTrack) {
       audioRef.current.currentTime = 0;
-      try { await audioRef.current.play(); } catch {}
+      try { await audioRef.current.play(); } catch { /* ignore errors */ }
       return;
     }
     
@@ -372,9 +374,12 @@ export function useGlobalAudioPlayer() {
     const onLoadedMetadata = () => setDuration(audio.duration);
     const onEnded = () => {
       setIsPlaying(false);
-      if (queue.length > 0 && currentTrackIndexRef.current < queue.length - 1) {
-        const nextTrack = queue[currentTrackIndexRef.current + 1];
-        if (nextTrack) loadAndPlayTrack(nextTrack);
+      const q = queueRef.current;
+      if (q.length > 0 && currentTrackIndexRef.current < q.length - 1) {
+        const nextTrack = q[currentTrackIndexRef.current + 1];
+        if (nextTrack && loadAndPlayTrackRef.current) {
+          loadAndPlayTrackRef.current(nextTrack);
+        }
       }
     };
     const onPlay = () => setIsPlaying(true);
@@ -406,7 +411,7 @@ export function useGlobalAudioPlayer() {
         console.warn('[GlobalPlayer] Play warning:', err.message);
       }
     }
-  }, [initAudioGraph, getPresignedUrl, createAudioElement, queue, loadAndPlayTrack]);
+  }, [initAudioGraph, getPresignedUrl, createAudioElement]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
     const audioFiles = album?.audio_files || album?.metadata?.grooveflix?.audio_files || [];
@@ -423,6 +428,7 @@ export function useGlobalAudioPlayer() {
       albumTitle: album.title,
     }));
     
+    queueRef.current = tracks;
     setQueue(tracks);
     currentTrackIndexRef.current = startIndex;
     
@@ -434,7 +440,7 @@ export function useGlobalAudioPlayer() {
   const play = useCallback(async () => {
     await ensureContextRunning();
     if (audioRef.current) {
-      try { await audioRef.current.play(); } catch {}
+      try { await audioRef.current.play(); } catch { /* ignore errors */ }
     }
   }, [ensureContextRunning]);
   
@@ -442,12 +448,18 @@ export function useGlobalAudioPlayer() {
     if (audioRef.current) audioRef.current.pause();
   }, []);
   
+  const updateCurrentTrack = useCallback((track) => {
+    currentTrackIdRef.current = track?.id;
+    setCurrentTrack(track);
+  }, []);
+  
   const stop = useCallback(() => {
     stopAudio();
     updateCurrentTrack(null);
+    queueRef.current = [];
     setQueue([]);
     currentTrackIndexRef.current = -1;
-  }, [stopAudio]);
+  }, [stopAudio, updateCurrentTrack]);
   
   const seek = useCallback((time) => {
     if (audioRef.current && audioRef.current.duration) {
@@ -464,12 +476,8 @@ export function useGlobalAudioPlayer() {
     saveSettings({ ...settings, volume: vol });
   }, []);
   
-  const updateCurrentTrack = useCallback((track) => {
-    currentTrackIdRef.current = track?.id;
-    setCurrentTrack(track);
-  }, []);
-  
   const clearQueue = useCallback(() => {
+    queueRef.current = [];
     setQueue([]);
     currentTrackIndexRef.current = -1;
   }, []);
@@ -496,6 +504,14 @@ export function useGlobalAudioPlayer() {
     await loadAndPlayTrack(track);
   }, [loadAndPlayTrack, queue]);
   
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+  
+  useEffect(() => {
+    loadAndPlayTrackRef.current = loadAndPlayTrack;
+  }, [loadAndPlayTrack]);
+  
   return {
     currentTrack,
     isPlaying,
@@ -517,15 +533,6 @@ export function useGlobalAudioPlayer() {
     clearQueue,
     getAnalysers,
   };
-}
-
-export function getAudioPlayerState() {
-  return {
-    isPlaying: audioElementInstance && !audioElementInstance.paused,
-    currentTime: audioElementInstance?.currentTime || 0,
-    duration: audioElementInstance?.duration || 0,
-  };
-  return context;
 }
 
 const GlobalPlayerContext = createContext(null);
