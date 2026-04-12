@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 let audioContextInstance = null;
 let audioElementInstance = null;
-let mediaSourceInstance = null;
+let mediaSourceInstance = null; // Single MediaElementSourceNode - created ONCE
 let vuGainNode = null;
 let eqFilters = [];
 let toneFilters = null;
@@ -288,27 +288,33 @@ export function useGlobalAudioPlayer() {
     return initAudioContext();
   }, []);
   
+  // Create audio source ONCE - this is the key!
   const connectMediaSource = useCallback((audioElement) => {
-    if (!audioElement || connectedAudioRef.current === audioElement) return false;
+    if (!audioElement) return false;
+    
+    // Already connected to this element? Skip!
+    if (mediaSourceInstance && connectedAudioRef.current === audioElement) {
+      return true;
+    }
+    
+    // If source exists but connected to different element, can't reuse - must be same element
+    if (mediaSourceInstance && connectedAudioRef.current && connectedAudioRef.current !== audioElement) {
+      console.warn('[GlobalPlayer] Cannot reuse sourceNode with different audio element');
+    }
     
     try {
       const ctx = audioContextInstance;
+      if (!ctx) return false;
       
-      if (mediaSourceRef.current) {
-        try {
-          mediaSourceRef.current.disconnect();
-        } catch {}
+      // Only create if doesn't exist
+      if (!mediaSourceInstance) {
+        mediaSourceInstance = ctx.createMediaElementSource(audioElement);
+        connectAudioGraph();
+        console.log('[GlobalPlayer] MediaElementSource created once');
       }
       
-      mediaSourceRef.current = ctx.createMediaElementSource(audioElement);
       connectedAudioRef.current = audioElement;
       isConnectedRef.current = true;
-      
-      // Assign to module-level variable for connectAudioGraph
-      mediaSourceInstance = mediaSourceRef.current;
-      
-      connectAudioGraph();
-      console.log('[GlobalPlayer] MediaSource connected successfully');
       return true;
     } catch (err) {
       console.error('[GlobalPlayer] connectMediaSource error:', err);
@@ -318,21 +324,12 @@ export function useGlobalAudioPlayer() {
   
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
-      // Cleanup event listeners
       if (audioRef.current._cleanupListeners) {
         audioRef.current._cleanupListeners();
         audioRef.current._cleanupListeners = null;
       }
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      // Disconnect media source
-      if (mediaSourceRef.current) {
-        try { mediaSourceRef.current.disconnect(); } catch {}
-        mediaSourceRef.current = null;
-      }
-      mediaSourceInstance = null;
-      isConnectedRef.current = false;
-      connectedAudioRef.current = null;
     }
     setCurrentTime(0);
     setIsPlaying(false);
@@ -351,26 +348,11 @@ export function useGlobalAudioPlayer() {
     }
     
     currentTrackIdRef.current = trackId;
-    
-    // Full reset - disconnect everything before loading new track
-    if (mediaSourceInstance) {
-      try { mediaSourceInstance.disconnect(); } catch {}
-    }
-    mediaSourceInstance = null;
-    if (mediaSourceRef.current) {
-      try { mediaSourceRef.current.disconnect(); } catch {}
-      mediaSourceRef.current = null;
-    }
-    if (audioRef.current) {
-      try { audioRef.current.pause(); } catch {}
-      audioRef.current.src = '';
-    }
-    connectedAudioRef.current = null;
-    isConnectedRef.current = false;
     setCurrentTime(0);
     setDuration(0);
     setCurrentTrack(track);
     
+    // Ensure audioContext is running
     const ctx = initAudioGraph();
     if (ctx.state === 'suspended') {
       await ctx.resume();
@@ -379,8 +361,12 @@ export function useGlobalAudioPlayer() {
     const url = await getPresignedUrl(track.audioPath);
     if (!url) return;
     
-    const audio = createAudioElement();
-    audio.pause();
+    // Reuse existing audio element - just change src
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = createAudioElement();
+      audioRef.current = audio;
+    }
     
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration);
@@ -394,29 +380,33 @@ export function useGlobalAudioPlayer() {
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     
+    // Remove old listeners
+    audio.removeEventListener('timeupdate', onTimeUpdate);
+    audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+    audio.removeEventListener('ended', onEnded);
+    audio.removeEventListener('play', onPlay);
+    audio.removeEventListener('pause', onPause);
+    
+    // Add listeners
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     
-    // Cleanup function to remove listeners when audio changes
-    const cleanupListeners = () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-    };
-    
-    audioRef.current = audio;
-    audioRef.current._cleanupListeners = cleanupListeners;
+    // KEY CHANGE: Just change src, DON'T reconnect MediaElementSource!
     audio.src = url;
     
-    connectMediaSource(audio);
-    
-    try { await audio.play(); } catch (err) { console.error('[GlobalPlayer] Play error:', err); }
-  }, [initAudioGraph, getPresignedUrl, createAudioElement, stopAudio, queue, connectMediaSource]);
+    // Resume if suspended, then play with try/catch
+    try {
+      if (ctx.state === 'suspended') await ctx.resume();
+      await audio.play();
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('[GlobalPlayer] Play warning:', err.message);
+      }
+    }
+  }, [initAudioGraph, getPresignedUrl, createAudioElement, queue, loadAndPlayTrack]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
     const audioFiles = album?.audio_files || album?.metadata?.grooveflix?.audio_files || [];
