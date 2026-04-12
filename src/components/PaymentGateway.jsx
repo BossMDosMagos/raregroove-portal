@@ -352,217 +352,90 @@ function PayPalPaymentForm({ amount, selectedGateway, metadata, onSuccess, onErr
  * Com tratamento de erros robusto e mecanismo de recovery
  */
 function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
-  const [config, setConfig] = useState(null);
-  const [preferenceId, setPreferenceId] = useState(null);
-  const [paymentMode, setPaymentMode] = useState('wallet');
-  const [status, setStatus] = useState('init'); // init | loading | ready | error
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  const walletContainerId = 'walletBrick_container';
-  const cardContainerId = 'cardPaymentBrick_container';
 
-  const initPayment = useCallback(async () => {
-    if (preferenceId) return;
-    
-    setStatus('loading');
+  useEffect(() => {
+    if (!window.MercadoPagoCheckout) {
+      const script = document.createElement('script');
+      script.src = 'https://www.mercadopago.com.br/v3/static/js/checkout-pro';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  const openCheckoutPro = async () => {
+    setLoading(true);
     setError(null);
     
     try {
-      const cfg = await getGatewayConfig(selectedGateway);
-      setConfig(cfg);
-      
-      if (!cfg.publicKey) {
-        throw new Error('Chave pública do Mercado Pago não configurada.');
-      }
-
-      if (!window.MercadoPago) {
-        const script = document.createElement('script');
-        script.src = 'https://sdk.mercadopago.com/js/v2';
-        script.async = true;
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = () => reject(new Error('Erro ao carregar SDK'));
-          document.body.appendChild(script);
-        });
-        window.MercadoPago = new window.MercadoPago(cfg.publicKey, { locale: 'pt-BR' });
-      }
-
       const transactionId = `RG${Date.now()}`;
+      
       const { data, error: fnError } = await supabase.functions.invoke('mp-create-preference', {
         body: {
           items: [{ title: metadata.itemTitle || 'Compra RareGroove', quantity: 1, unit_price: amount, currency_id: 'BRL' }],
           payer: { email: metadata.buyerEmail, name: metadata.buyerName || 'Comprador' },
           external_reference: transactionId,
+          auto_return: 'approved',
           metadata: { ...metadata, transactionId }
         }
       });
 
       if (fnError) throw new Error(fnError.message);
       
-      const prefId = data?.preference_id || data?.id;
-      if (!prefId) throw new Error('Não foi possível criar preferência');
+      const initPoint = data?.init_point || data?.sandbox_init_point;
+      if (!initPoint) throw new Error('Não foi possível criar preferência de pagamento');
       
-      setPreferenceId(prefId);
-      setStatus('ready');
+      console.log('[MP] Abrindo Checkout Pro:', initPoint);
+      
+      window.MercadoPagoCheckout.open(initPoint);
+      
+      setLoading(false);
     } catch (err) {
-      console.error('[MP] Erro init:', err);
+      console.error('[MP] Erro:', err);
       setError(err.message);
-      setStatus('error');
+      setLoading(false);
       onError?.(err);
     }
-  }, [selectedGateway, amount, metadata, preferenceId, onError]);
-
-  useEffect(() => {
-    if (status === 'ready' && preferenceId) {
-      console.log('[MP] status ready, render mode:', paymentMode);
-      setTimeout(() => paymentMode === 'wallet' ? renderWallet() : renderCard(), 100);
-    }
-  }, [status, preferenceId, paymentMode]);
-
-  const renderWallet = () => {
-    console.log('[MP] renderWallet preferenceId:', preferenceId, 'MP:', !!window.MercadoPago);
-    if (!preferenceId || !window.MercadoPago) return;
-    const container = document.getElementById(walletContainerId);
-    console.log('[MP] Wallet container:', !!container);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    console.log('[MP] Criando Payment Brick para Wallet...');
-    window.MercadoPago.bricks().create('payment', walletContainerId, {
-      initialization: { preferenceId },
-      callbacks: {
-        onReady: () => console.log('✅ Wallet Brick pronto'),
-        onError: (err) => {
-          console.error('❌ Erro wallet:', err);
-          setError(err.message);
-        },
-        onSubmit: (formData) => {
-          console.log('[MP] Wallet submmit:', formData);
-          onSuccess?.({ paymentId: formData?.paymentId || preferenceId, provider: 'mercadopago', status: 'processing' });
-        }
-      }
-    });
   };
 
-  const renderCard = () => {
-    console.log('[MP] renderCard preferenceId:', preferenceId, 'MP:', !!window.MercadoPago);
-    if (!preferenceId || !window.MercadoPago) return;
-    const container = document.getElementById(cardContainerId);
-    console.log('[MP] Card container:', !!container);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    console.log('[MP] Criando Payment Brick para Cartão...');
-    window.MercadoPago.bricks().create('payment', cardContainerId, {
-      initialization: { amount: parseFloat(amount), preferenceId, payer: { email: metadata?.buyerEmail } },
-      customization: { paymentMethods: { creditCard: ['master', 'visa', 'elo', 'amex'], debitCard: ['master', 'visa', 'elo'] } },
-      callbacks: {
-        onReady: () => console.log('✅ Card Brick pronto'),
-        onError: (err) => {
-          console.error('❌ Erro card:', err);
-          setError(err.message);
-        },
-        onSubmit: (formData) => {
-          console.log('[MP] Card submit:', formData);
-          if (formData?.token) {
-            onSuccess?.({ paymentId: formData.token, provider: 'mercadopago', status: 'processing' });
-          }
-        }
-      }
-    });
-  };
-
-  const handleTabChange = (mode) => {
-    console.log('[MP] handleTabChange:', mode, 'preferenceId:', preferenceId);
-    setPaymentMode(mode);
-    setError(null);
-    if (!preferenceId) {
-      initPayment().then(() => {
-        console.log('[MP] initPayment done, render:', mode);
-        setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 200);
-      });
-    } else {
-      console.log('[MP] preferenceId exists, render directly:', mode);
-      setTimeout(() => mode === 'wallet' ? renderWallet() : renderCard(), 200);
-    }
-  };
-
-  if (status === 'init' || status === 'loading') {
+  if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <div className="flex gap-2 mb-4">
-            <button
-              type="button"
-              disabled
-              className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm bg-white/10 text-white/40"
-            >
-              💳 Conta Mercado Pago
-            </button>
-            <button
-              type="button"
-              disabled
-              className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm bg-white/10 text-white/40"
-            >
-              💳 Cartão de Crédito/Débito
-            </button>
-          </div>
-          <div className="h-[400px] flex items-center justify-center">
-            <div className="text-center">
-              <Disc className="animate-spin mx-auto mb-4 text-[#D4AF37]" size={32} />
-              <p className="text-white/60">Carregando Mercado Pago...</p>
-              {!preferenceId && <p className="text-white/40 text-xs mt-2">Criando preferência de pagamento</p>}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === 'error' && !preferenceId) {
-    return (
-      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-        <p className="text-red-300">{error}</p>
-        <button onClick={initPayment} className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm mt-4">
-          Tentar novamente
-        </button>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+        <Disc className="animate-spin mx-auto mb-4 text-[#D4AF37]" size={32} />
+        <p className="text-white/60">Abrindo Mercado Pago...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div className="flex gap-2 mb-4 pb-4 border-b border-white/10">
-          <button
-            type="button"
-            onClick={() => handleTabChange('wallet')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
-              paymentMode === 'wallet' ? 'bg-[#00BFFF] text-black' : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            💳 Conta Mercado Pago
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange('card')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
-              paymentMode === 'card' ? 'bg-[#00BFFF] text-black' : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            💳 Cartão de Crédito/Débito
-          </button>
-        </div>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center space-y-4">
+        <p className="text-white/80 text-sm">
+          Você será redirecionado para o Mercado Pago para concluir o pagamento.
+        </p>
         
-        <div className="min-h-[400px]">
-          {paymentMode === 'wallet' && (
-            <div id={walletContainerId} className="min-h-[400px]"></div>
-          )}
-          {paymentMode === 'card' && (
-            <div id={cardContainerId} className="min-h-[400px]"></div>
-          )}
-        </div>
+        <button
+          onClick={openCheckoutPro}
+          className="w-full bg-[#00BFFF] hover:bg-[#00AADD] text-black py-4 px-6 rounded-xl font-bold text-lg transition flex items-center justify-center gap-3"
+        >
+          <CreditCard size={24} />
+          Pagar com Mercado Pago
+        </button>
+        
+        <p className="text-white/40 text-xs">
+          Pix • Cartão • Saldo • Conta Mercado Pago
+        </p>
       </div>
+      
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+          <p className="text-red-300 text-sm">{error}</p>
+          <button onClick={openCheckoutPro} className="text-[#00BFFF] text-sm underline mt-2">
+            Tentar novamente
+          </button>
+        </div>
+      )}
       
       <p className="text-xs text-white/40 text-center">
         🔒 Pagamento processado de forma segura pelo Mercado Pago
