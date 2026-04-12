@@ -315,7 +315,8 @@ const handlePaymentSuccess = async (paymentData) => {
               net_amount: itemPrice - itemPlatformFee,
               status: isWaitingApproval ? 'waiting_approval' : 'pago_em_custodia',
               payment_id: paymentData.paymentId,
-              payment_method: paymentData.provider
+              payment_method: paymentData.provider,
+              external_reference: paymentData.comprovanteUrl || null
             }]).select().single();
             
             if (txError) {
