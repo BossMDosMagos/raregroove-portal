@@ -753,16 +753,18 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
       let comprovanteUrl = null;
       
       if (comprovante) {
-        const fileName = `comprovantes/${Date.now()}_${comprovante.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('uploads')
-          .upload(fileName, comprovante);
-        
-        if (uploadError) {
-          console.error('Erro ao fazer upload do comprovante:', uploadError);
-        } else {
-          const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
-          comprovanteUrl = publicUrl;
+        try {
+          const fileName = `comprovantes/${Date.now()}_${comprovante.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('uploads')
+            .upload(fileName, comprovante);
+          
+          if (!uploadError && uploadData) {
+            const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
+            comprovanteUrl = publicUrl;
+          }
+        } catch (uploadErr) {
+          console.warn('Upload comprovante falhou (ignorando):', uploadErr);
         }
       }
       
