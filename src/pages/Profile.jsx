@@ -222,7 +222,7 @@ export default function Profile() {
         .from('transactions')
         .select(`
           *,
-          items:items!transactions_item_id_fkey(*),
+          items:items!transactions_item_id_fkey(id, title, cover_url, price),
           seller:profiles!transactions_seller_id_fkey(id, full_name, avatar_url)
         `)
         .eq('buyer_id', user.id)
