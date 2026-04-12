@@ -141,17 +141,53 @@ export default function PaymentSuccess() {
         if (swapError) throw swapError;
 
         setTransaction(swapData);
-      } else if (paymentStatus === 'approved' && paymentId && returnItemId && returnBuyerId) {
+      } else if (paymentStatus === 'approved' && paymentId) {
+        console.log('[PaymentSuccess] Payment approved, searching by payment_id:', paymentId);
+        
         // Buscar transação existente pelo payment_id
         const { data: existingTx } = await supabase
           .from('transactions')
-          .select('id')
+          .select('*')
           .eq('payment_id', paymentId)
           .maybeSingle();
+        
+        console.log('[PaymentSuccess] Found transaction:', existingTx);
 
         if (existingTx) {
+          console.log('[PaymentSuccess] Loading existing transaction:', existingTx.id);
           await loadTransactionById(existingTx.id);
         } else {
+          // Tentar buscar por external_reference
+          console.log('[PaymentSuccess] Not found by payment_id, trying external_reference:', externalReference);
+          const { data: byExtRef } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('external_reference', externalReference)
+            .maybeSingle();
+          
+          if (byExtRef) {
+            console.log('[PaymentSuccess] Found by external_reference:', byExtRef.id);
+            await loadTransactionById(byExtRef.id);
+          } else {
+            // Buscar transação mais recente do usuáriologado (fallback)
+            console.log('[PaymentSuccess] Trying to find by current user...');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.id) {
+              const { data: recentTx } = await supabase
+                .from('transactions')
+                .select('id, buyer_id, item_id')
+                .eq('buyer_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              
+              if (recentTx) {
+                console.log('[PaymentSuccess] Using recent transaction:', recentTx.id);
+                await loadTransactionById(recentTx.id);
+              }
+            }
+          }
+          
           // Buscar dados de endereço do comprador
           const { data: buyerProfile } = await supabase
             .from('profiles')
