@@ -441,25 +441,11 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
         🔒 Pagamento processado de forma segura pelo Mercado Pago
       </p>
     </div>
-  );
+);
 }
-      init();
-    }
-  }, [selectedGateway, currency]);
 
-  const init = async () => {
-    setInitializing(true);
-    setDebugInfo('Iniciando...');
-    setError(null);
-    
-    try {
-      console.log('[MP] Carregando config...');
-      setDebugInfo('Carregando configuração...');
-      
-      const cfg = await getGatewayConfig(selectedGateway);
-      setConfig(cfg);
-      console.log('[MP] Config carregada:', cfg.publicKey ? '✅ Com chave' : '❌ Sem chave');
-      setDebugInfo(`Config: ${cfg.publicKey ? 'OK' : 'Falta chave'}`);
+/**
+ * COMPONENTE DE PAGAMENTO - PIX PORTAL
 
       if (!cfg.publicKey) {
         const errorMsg = 'Chave pública do Mercado Pago não configurada. Adicione VITE_MP_PUBLIC_KEY no ambiente.';
@@ -701,78 +687,6 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center space-y-4">
-          <p className="text-red-300">{error}</p>
-          <p className="text-white/30 text-xs font-mono">{debugInfo}</p>
-          {retryCount < maxRetries && (
-            <button 
-              onClick={resetAndRetry}
-              className="bg-[#D4AF37] text-black px-6 py-2 rounded-lg font-bold text-sm"
-            >
-              Tentar novamente ({retryCount + 1}/{maxRetries})
-            </button>
-          )}
-          {retryCount >= maxRetries && (
-            <p className="text-white/40 text-xs">
-              Tente novamente mais tarde ou utilize outro método de pagamento.
-            </p>
-          )}
-        </div>
-        <div 
-          id={containerId} 
-          className="min-h-[400px] bg-white/5 border border-white/10 rounded-xl"
-        ></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div className="flex gap-2 mb-4 pb-4 border-b border-white/10">
-          <button
-            type="button"
-            onClick={() => {
-              setPaymentMode('wallet');
-              setBrickReady(false);
-              setTimeout(() => renderPaymentBrick(), 100);
-            }}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
-              paymentMode === 'wallet'
-                ? 'bg-[#00BFFF] text-black'
-                : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            💳 Conta Mercado Pago
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPaymentMode('card');
-              setBrickReady(false);
-              setTimeout(() => renderPaymentBrick(), 100);
-            }}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
-              paymentMode === 'card'
-                ? 'bg-[#00BFFF] text-black'
-                : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            💳 Cartão de Crédito/Débito
-          </button>
-        </div>
-        <div id={containerId} className="min-h-[400px]"></div>
-      </div>
-      
-      <p className="text-xs text-white/40 text-center">
-        🔒 Pagamento processado de forma segura pelo Mercado Pago
-      </p>
-    </div>
-  );
 }
 
 /**
