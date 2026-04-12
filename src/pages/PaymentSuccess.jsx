@@ -325,6 +325,49 @@ export default function PaymentSuccess() {
 
   const isSwap = !!swapId;
 
+  const handleChatWithSeller = async () => {
+    const itemId = returnItemId;
+    const sellerId = returnSellerId;
+    const buyerId = returnBuyerId;
+    
+    if (!itemId || !sellerId || !buyerId) {
+      navigate('/mensagens');
+      return;
+    }
+    
+    try {
+      const { data: existingMessages } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('item_id', itemId)
+        .eq('receiver_id', sellerId)
+        .eq('sender_id', buyerId)
+        .maybeSingle();
+      
+      if (existingMessages) {
+        navigate(`/chat/${itemId}`);
+      } else {
+        const itemTitle = item?.title || transaction?.item_1?.title || 'Item';
+        
+        const { error: msgError } = await supabase.from('messages').insert([{
+          sender_id: buyerId,
+          receiver_id: sellerId,
+          item_id: itemId,
+          content: `Olá! Acabei de comprar seu item "${itemTitle}". Como podemos combinar o envio?`
+        }]);
+        
+        if (!msgError) {
+          navigate(`/chat/${itemId}`);
+        } else {
+          navigate(`/chat/${itemId}`);
+        }
+      }
+    } catch (e) {
+      console.error('[Chat] Erro:', e);
+      navigate('/mensagens');
+    }
+  };
+
   if (!isApproved && !isSubscriptionFlow && !transaction) {
     return (
       <div className="min-h-screen bg-black text-white py-8 px-4 md:px-6 pt-20">
@@ -642,7 +685,7 @@ export default function PaymentSuccess() {
           )}
 
           <button
-            onClick={() => navigate('/mensagens')}
+            onClick={handleChatWithSeller}
             className="flex items-center justify-center gap-3 bg-[#D4AF37] hover:bg-[#B8941F] text-black rounded-2xl py-4 px-6 transition-all group font-bold"
           >
             <MessageCircle size={20} />
