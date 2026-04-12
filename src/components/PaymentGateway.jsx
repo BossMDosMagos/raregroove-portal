@@ -869,12 +869,15 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
 
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
         <div className="flex justify-center">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleComprovanteChange}
-            className="text-sm text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:text-black file:font-bold file:cursor-pointer"
-          />
+          <label className="cursor-pointer bg-[#D4AF37] hover:bg-[#B8962F] text-black px-4 py-2 rounded-lg font-bold text-sm">
+            Escolher Ficheiro
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleComprovanteChange}
+              className="hidden"
+            />
+          </label>
         </div>
         {comprovantePreview && (
           <div className="flex justify-center">
