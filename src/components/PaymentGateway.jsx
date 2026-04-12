@@ -355,15 +355,6 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!window.MercadoPagoCheckout) {
-      const script = document.createElement('script');
-      script.src = 'https://www.mercadopago.com.br/v3/static/js/checkout-pro';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
   const openCheckoutPro = async () => {
     setLoading(true);
     setError(null);
@@ -386,9 +377,9 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       const initPoint = data?.init_point || data?.sandbox_init_point;
       if (!initPoint) throw new Error('Não foi possível criar preferência de pagamento');
       
-      console.log('[MP] Abrindo Checkout Pro:', initPoint);
+      console.log('[MP] Redirecionando para:', initPoint);
       
-      window.MercadoPagoCheckout.open(initPoint);
+      window.location.href = initPoint;
       
       setLoading(false);
     } catch (err) {
