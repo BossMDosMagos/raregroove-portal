@@ -361,6 +361,7 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   const [initializing, setInitializing] = useState(true);
   const [debugInfo, setDebugInfo] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+  const [paymentMode, setPaymentMode] = useState('wallet'); // 'wallet' = conta MP, 'card' = cartão
   const containerId = 'paymentBrick_container';
   const maxRetries = 3;
 
@@ -535,40 +536,67 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
       }
 
       container.innerHTML = '';
-      console.log('[MP] Criando brick no container:', containerId);
+      console.log('[MP] Criando brick no container:', containerId, 'mode:', paymentMode);
 
-      try {
-        window.MercadoPago.bricks().create('payment', containerId, {
-          initialization: {
-            amount: parseFloat(amount),
-            preferenceId: preferenceId,
-            payer: {
-              email: metadata?.buyerEmail || 'comprador@email.com',
-            },
+      const isWalletMode = paymentMode === 'wallet';
+      
+      const mpConfig = {
+        initialization: {
+          amount: parseFloat(amount),
+          preferenceId: preferenceId,
+          payer: {
+            email: metadata?.buyerEmail || 'comprador@email.com',
           },
-          customization: {
-            paymentMethods: {
-              creditCard: ['master', 'visa', 'elo', 'amex'],
-              debitCard: ['master', 'visa', 'elo'],
-            },
+        },
+        customization: {
+          header: isWalletMode ? {
+            title: 'Pagamento Rápido',
+            subtitle: 'Use sua conta Mercado Pago',
+          } : undefined,
+          paymentMethods: {
+            creditCard: ['master', 'visa', 'elo', 'amex'],
+            debitCard: ['master', 'visa', 'elo'],
           },
-          callbacks: {
-            onReady: () => {
-              console.log('✅ Payment Brick pronto!');
-              setBrickReady(true);
-              setRetryCount(0);
-            },
-            onError: (error) => {
-              console.error('❌ Erro completo no Payment Brick:', JSON.stringify(error, null, 2));
-              const errorMsg = error?.message || JSON.stringify(error);
-              setError(`Erro: ${errorMsg}`);
-              onError?.(error);
-            },
-            onSubmit: async (formData) => {
-              console.log('📤 [MP] Pagamento submetido:', formData);
+        },
+        callbacks: {
+          onReady: () => {
+            console.log('✅ Payment Brick pronto!');
+            setBrickReady(true);
+            setRetryCount(0);
+          },
+          onError: (error) => {
+            console.error('❌ Erro completo no Payment Brick:', JSON.stringify(error, null, 2));
+            const errorMsg = error?.message || JSON.stringify(error);
+            setError(`Erro: ${errorMsg}`);
+            onError?.(error);
+          },
+          onSubmit: async (formData) => {
+            console.log('📤 [MP] Pagamento submetido:', formData);
+            if (formData?.token) {
+              onSuccess?.({
+                paymentId: formData.token || preferenceId,
+                provider: 'mercadopago',
+                paymentMode,
+                status: 'processing'
+              });
             }
           }
-        });
+        }
+      };
+
+      if (isWalletMode) {
+        mpConfig.initialization = {
+          ...mpConfig.initialization,
+          paymentMethods: {
+            wallet: true,
+            creditCard: true,
+            debitCard: true,
+          }
+        };
+      }
+
+      try {
+        window.MercadoPago.bricks().create('payment', containerId, mpConfig);
       } catch (err) {
         console.error('[MP] Erro ao criar brick:', err);
         setError(err.message);
@@ -621,7 +649,39 @@ function MercadoPagoPaymentForm({ amount, selectedGateway, metadata, onSuccess, 
   return (
     <div className="space-y-4">
       <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div id={containerId} className="min-h-[450px]"></div>
+        <div className="flex gap-2 mb-4 pb-4 border-b border-white/10">
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentMode('wallet');
+              setBrickReady(false);
+              setTimeout(() => renderPaymentBrick(), 100);
+            }}
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
+              paymentMode === 'wallet'
+                ? 'bg-[#00BFFF] text-black'
+                : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
+          >
+            💳 Conta Mercado Pago
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentMode('card');
+              setBrickReady(false);
+              setTimeout(() => renderPaymentBrick(), 100);
+            }}
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition ${
+              paymentMode === 'card'
+                ? 'bg-[#00BFFF] text-black'
+                : 'bg-white/10 text-white/60 hover:bg-white/20'
+            }`}
+          >
+            💳 Cartão de Crédito/Débito
+          </button>
+        </div>
+        <div id={containerId} className="min-h-[400px]"></div>
       </div>
       
       <p className="text-xs text-white/40 text-center">
