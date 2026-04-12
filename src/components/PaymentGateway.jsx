@@ -690,6 +690,9 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
   const [loading, setLoading] = useState(true);
   const [brcode, setBrcode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [comprovante, setComprovante] = useState(null);
+  const [comprovantePreview, setComprovantePreview] = useState(null);
+  const [enviado, setEnviado] = useState(false);
 
   useEffect(() => {
     loadPixConfig();
@@ -734,18 +737,45 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleComprovanteChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setComprovante(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => setComprovantePreview(ev.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleConfirmPayment = async () => {
     setProcessing(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      let comprovanteUrl = null;
+      
+      if (comprovante) {
+        const fileName = `comprovantes/${Date.now()}_${comprovante.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('uploads')
+          .upload(fileName, comprovante);
+        
+        if (uploadError) {
+          console.error('Erro ao fazer upload do comprovante:', uploadError);
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
+          comprovanteUrl = publicUrl;
+        }
+      }
       
       onSuccess({
         paymentId: `PIX-${Date.now()}`,
         provider: 'pix_portal',
-        status: 'pending',
+        status: 'waiting_approval',
         pixBrcode: brcode,
-        amount: amount
+        amount: amount,
+        comprovanteUrl: comprovanteUrl
       });
+      
+      setEnviado(true);
     } catch (error) {
       onError(error);
     } finally {
@@ -829,24 +859,44 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
         </div>
 
         <p className="text-xs text-white/40 text-center">
-          O pagamento será confirmado automaticamente após a transferência
+          Após pagar, envie o comprovante para análise manual
         </p>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <p className="text-xs text-white/60">Anexar comprovante (opcional)</p>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleComprovanteChange}
+          className="text-sm text-white/60 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:text-black file:font-bold file:cursor-pointer"
+        />
+        {comprovantePreview && (
+          <div className="flex justify-center">
+            <img src={comprovantePreview} alt="Comprovante" className="h-24 rounded-lg object-contain" />
+          </div>
+        )}
       </div>
 
       <button
         onClick={handleConfirmPayment}
-        disabled={processing}
+        disabled={processing || enviado}
         className="w-full bg-[#D4AF37] text-black py-4 rounded-2xl font-black uppercase text-sm disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {processing ? (
           <>
             <Disc className="animate-spin" size={18} />
-            Confirmando...
+            Enviando...
+          </>
+        ) : enviado ? (
+          <>
+            <CheckCircle size={18} />
+            Comprovante enviado! Aguarde aprovação.
           </>
         ) : (
           <>
             <CheckCircle size={18} />
-            Já fiz o pagamento
+            Já paguei e enviei o comprovante
           </>
         )}
       </button>
