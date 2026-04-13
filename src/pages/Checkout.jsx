@@ -370,19 +370,25 @@ const handlePaymentSuccess = async (paymentData) => {
         }
       }
 
+      // Create notification for each seller
       if (isWaitingApproval) {
         toast.info('Comprovante enviado! Aguarde aprovação do vendedor.', {
           duration: 5000,
         });
         
-        // Create notification for seller
-        await supabase.from('notifications').insert({
-          user_id: item.seller_id,
-          type: 'comprovante_received',
-          title: 'Novo comprovante PIX',
-          message: `Novo comprovante para "${item.title}". Clique para verificar.`,
-          link_url: '/profile?tab=sales'
-        });
+        // Notify each unique seller
+        const sellerIds = [...new Set(items.map(i => i.seller_id))];
+        for (const sellerId of sellerIds) {
+          const sellerItems = items.filter(i => i.seller_id === sellerId);
+          const titles = sellerItems.map(i => i.title).join(', ');
+          await supabase.from('notifications').insert({
+            user_id: sellerId,
+            type: 'comprovante_received',
+            title: 'Novo comprovante PIX',
+            message: `Novo comprovante para: ${titles}. Clique para verificar.`,
+            link_url: '/profile?tab=sales'
+          });
+        }
       } else {
         toast.success('Compra realizada com sucesso!', {
           description: `${items.length} item(ns) comprado(s). O(s) vendedor(es) foi(ram) notificado(s).`,
