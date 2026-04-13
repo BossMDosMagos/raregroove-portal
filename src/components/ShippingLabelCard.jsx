@@ -88,15 +88,34 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
     try {
       setLoading(true);
 
-      // Buscar dados de shipping com todos os campos
-      const { data: shippingData, error: shippingError } = await supabase
-        .from('shipping')
+      // Buscar transação primeiro
+      const { data: txData, error: txError } = await supabase
+        .from('transactions')
         .select('*')
-        .eq('shipping_id', shippingId)
+        .eq('id', transactionId)
         .single();
 
-      if (shippingError) throw shippingError;
-      setShipping(shippingData);
+      if (txError) throw txError;
+      
+      // Buscar ou criar shipping linked à transação
+      let { data: shippingData, error: shippingError } = await supabase
+        .from('shipping')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .single();
+
+      // Se não existe, criar
+      if (!shippingData) {
+        const { data: newShipping } = await supabase.from('shipping').insert({
+          transaction_id: transactionId,
+          buyer_id: txData.buyer_id,
+          seller_id: txData.seller_id
+        }).select().single();
+        shippingData = newShipping;
+      }
+      
+      if (shippingError && shippingError.code !== 'PGRST116') throw shippingError;
+      setShipping(shippingData || { transaction_id: transactionId, buyer_id: txData.buyer_id, seller_id: txData.seller_id });
 
       // Buscar URL do portal para QR Code
       const { data: settingsData } = await supabase
@@ -115,10 +134,11 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
       }
 
       // Buscar ENDEREÇO DE ENTREGA PADRÃO do COMPRADOR (destinatário)
-      // SEMPRE usa o endereço padrão cadastrado em "Meus Endereços de Entrega"
-      const defaultBuyerAddress = await fetchDefaultAddress(shippingData.buyer_id);
+      const buyerId = txData.buyer_id;
+      const sellerId = txData.seller_id;
       
-      // Se não tem endereço padrão, usar dados do profile como fallback
+      const defaultBuyerAddress = await fetchDefaultAddress(buyerId);
+      
       let buyerData = null;
       if (defaultBuyerAddress) {
         buyerData = {
@@ -132,18 +152,16 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
           cep: defaultBuyerAddress.cep
         };
       } else {
-        // Fallback: buscar do profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name, phone, email, address, number, complement, city, state, cep')
-          .eq('id', shippingData.buyer_id)
+          .eq('id', buyerId)
           .single();
         if (!profileError) {
           buyerData = profileData;
         }
       }
       
-      // Formatar dados do comprador
       if (buyerData) {
         buyerData.cep = formatCEP(buyerData.cep || '');
         buyerData.phone = formatPhone(buyerData.phone || '');
@@ -151,10 +169,8 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
       setBuyerInfo(buyerData);
 
       // Buscar ENDEREÇO DE ENTREGA PADRÃO do VENDEDOR (remetente)
-      // SEMPRE usa o endereço padrão cadastrado em "Meus Endereços de Entrega"
-      const defaultSellerAddress = await fetchDefaultAddress(shippingData.seller_id);
+      const defaultSellerAddress = await fetchDefaultAddress(sellerId);
       
-      // Se não tem endereço padrão, usar dados do profile como fallback
       let sellerData = null;
       if (defaultSellerAddress) {
         sellerData = {
@@ -168,11 +184,10 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
           cep: defaultSellerAddress.cep
         };
       } else {
-        // Fallback: buscar novo do profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name, phone, email, city, state, address, number, complement, cep')
-          .eq('id', shippingData.seller_id)
+          .eq('id', sellerId)
           .single();
         if (!profileError) {
           sellerData = profileData;
