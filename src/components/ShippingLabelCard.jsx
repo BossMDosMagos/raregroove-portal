@@ -87,15 +87,20 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
   const loadShippingData = async () => {
     try {
       setLoading(true);
+      console.log('[ShippingLabel] Buscando transactionId:', transactionId);
 
-      // Buscar transação primeiro (pela ID da URL se for string)
+      // Buscar transação primeiro
       const { data: txData, error: txError } = await supabase
         .from('transactions')
         .select('id, buyer_id, seller_id, item_id, price')
         .eq('id', transactionId)
         .single();
 
-      if (txError) throw txError;
+      console.log('[ShippingLabel] Transação:', txData, 'Erro:', txError);
+      if (txError || !txData) {
+        console.error('[ShippingLabel] Erro ao buscar transação:', txError);
+        throw new Error('Transação não encontrada');
+      }
       
       // Buscar ou criar shipping linked à transação
       let { data: shippingData, error: shippingError } = await supabase
@@ -103,6 +108,8 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
         .select('*')
         .eq('transaction_id', transactionId)
         .single();
+
+      console.log('[ShippingLabel] Shipping:', shippingData, 'Erro:', shippingError);
 
       // Se não existe, criar
       if (!shippingData) {
@@ -112,9 +119,10 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
           seller_id: txData.seller_id
         }).select().single();
         shippingData = newShipping;
+        console.log('[ShippingLabel] Shipping criado:', shippingData);
       }
       
-      if (shippingError && shippingError.code !== 'PGRST116') throw shippingError;
+      if (shippingError && shippingError.code !== 'PGRST116') console.error('[ShippingLabel] Erro shipping:', shippingError);
       setShipping(shippingData || { transaction_id: transactionId, buyer_id: txData.buyer_id, seller_id: txData.seller_id });
 
       // Buscar URL do portal para QR Code
