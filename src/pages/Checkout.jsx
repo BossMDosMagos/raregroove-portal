@@ -320,6 +320,7 @@ const handlePaymentSuccess = async (paymentData) => {
             
             if (txError) {
               console.error('Transaction insert failed:', txError);
+              alert('Erro ao criar transação: ' + txError.message);
             } else {
               transactionId = tx.id;
               console.log('Transaction created:', tx.id);
