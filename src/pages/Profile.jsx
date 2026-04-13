@@ -983,7 +983,7 @@ export default function Profile() {
                           sale.status === 'pago_em_custodia' ? 'text-green-400' : 
                           sale.status === 'waiting_approval' ? 'text-yellow-400' : 'text-white/50'
                         }`}>
-                          {sale.status === 'pago_em_custodia' ? 'Pago - Libere etiqueta' : 
+                          {sale.status === 'vendido' ? 'Vendido - Libere etiqueta' : 
                            sale.status === 'waiting_approval' ? 'Aguardando aprovação' : sale.status}
                         </p>
                       </div>
@@ -993,7 +993,7 @@ export default function Profile() {
                             try {
                               // Aprovar venda
                               await supabase.from('transactions').update({
-                                status: 'pago_em_custodia'
+                                status: 'vendido'
                               }).eq('id', sale.id);
                               
                               // Marcar item como vendido
@@ -1030,7 +1030,7 @@ export default function Profile() {
                           Aprovar
                         </button>
                       )}
-                      {sale.status === 'pago_em_custodia' && (
+                      {sale.status === 'vendido' && (
                         <button
                           onClick={() => navigate(`/shipping/${sale.id}`)}
                           className="ml-2 bg-[#D4AF37] hover:bg-[#B8962F] text-black px-3 py-2 rounded-lg text-xs font-bold"

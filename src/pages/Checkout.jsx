@@ -313,7 +313,7 @@ const handlePaymentSuccess = async (paymentData) => {
               gateway_fee: 0,
               total_amount: itemTotal,
               net_amount: itemPrice - itemPlatformFee,
-              status: isWaitingApproval ? 'waiting_approval' : 'pago_em_custodia',
+              status: isWaitingApproval ? 'waiting_approval' : 'vendido',
               payment_id: paymentData.paymentId,
               payment_method: paymentData.provider
             }]).select().single();
