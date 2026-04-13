@@ -53,6 +53,7 @@ const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 const AdminUpload = lazy(() => import('./pages/AdminUpload'));
 const AdminTrash = lazy(() => import('./pages/AdminTrash'));
 const ShippingLabelCard = lazy(() => import('./components/ShippingLabelCard'));
+const ShippingLabelPage = lazy(() => import('./pages/ShippingLabel'));
 
 // Páginas de Usuário (Lazy Loading)
 const MyItems = lazy(() => import('./pages/MyItems'));
@@ -533,7 +534,7 @@ export default function App() {
             path="/shipping/:transactionId"
             element={
               session
-                ? <ShippingLabelCard />
+                ? <ShippingLabelPage />
                 : <Navigate to="/login" />
             }
           />
