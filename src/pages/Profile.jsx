@@ -230,16 +230,21 @@ export default function Profile() {
         if (purchasesData?.length) {
           const itemIds = [...new Set(purchasesData.map(t => t.item_id).filter(Boolean))];
           const sellerIds = [...new Set(purchasesData.map(t => t.seller_id).filter(Boolean))];
+          const txIds = purchasesData.map(t => t.id);
+          
           const { data: itemsData } = await supabase.from('items').select('id, title, cover_url, price').in('id', itemIds);
           const { data: profilesData } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', sellerIds);
+          const { data: shippingData } = await supabase.from('shipping').select('transaction_id, tracking_code, status').in('transaction_id', txIds);
           
           const itemsMap = new Map(itemsData?.map(i => [i.id, i]) || []);
           const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+          const shippingMap = new Map(shippingData?.map(s => [s.transaction_id, s]) || []);
           
           const enriched = purchasesData.map(t => ({
             ...t,
             items: itemsMap.get(t.item_id),
-            seller: profilesMap.get(t.seller_id)
+            seller: profilesMap.get(t.seller_id),
+            shipping: shippingMap.get(t.id)
           }));
           setPurchases(enriched);
         } else {
@@ -981,11 +986,18 @@ export default function Profile() {
                       <div className="text-right">
                         <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(purchase.price || 0).toFixed(2)}</p>
                         <p className={`text-xs ${
-                          purchase.status === 'vendido' ? 'text-green-400' : 'text-yellow-400'
+                          purchase.status === 'enviado' ? 'text-green-400' : 
+                          purchase.status === 'vendido' ? 'text-blue-400' : 'text-yellow-400'
                         }`}>
-                          {purchase.status === 'vendido' ? 'Aprovado' : 
+                          {purchase.status === 'enviado' ? 'Enviado' : 
+                           purchase.status === 'vendido' ? 'Aprovado - Aguarde' : 
                            purchase.status === 'waiting_approval' ? 'Aguardando' : purchase.status}
                         </p>
+                        {purchase.shipping?.tracking_code && (
+                          <p className="text-xs text-cyan-400 mt-1">
+                            Rastreio: {purchase.shipping.tracking_code}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
