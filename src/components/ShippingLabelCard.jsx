@@ -36,22 +36,22 @@ const formatPhone = (value) => {
  * 3. Vendedor digita código de rastreio recebido nos Correios
  * 4. Salva e status muda para "Enviado"
  */
-export default function ShippingLabelCard({ transactionId: propTransactionId, shippingId, onTrackingCodeSaved }) {
+export default function ShippingLabelCard({ transactionId: propTransactionId, onTrackingCodeSaved }) {
   const params = useParams();
   const transactionId = propTransactionId || params.transactionId;
   const [loading, setLoading] = useState(true);
   const [shipping, setShipping] = useState(null);
   const [sellerInfo, setSellerInfo] = useState(null);
   const [buyerInfo, setBuyerInfo] = useState(null);
-  const [trackingCode, setTrackingCode] = useState(''); // Começa vazio, só preenche quando vendedor digita
+  const [trackingCode, setTrackingCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [barcodeImage, setBarcodeImage] = useState(null);
-  const [portalUrl, setPortalUrl] = useState(''); // URL base do portal para QR Code
+  const [portalUrl, setPortalUrl] = useState('');
   const qrCodeRef = useRef(null);
 
   useEffect(() => {
     loadShippingData();
-  }, [shippingId]);
+  }, [transactionId]);
 
   // Gerar código de barras quando o CEP do destinatário estiver pronto
   useEffect(() => {
@@ -280,13 +280,14 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
       setSaving(true);
 
       // 1. Salvar código de rastreio na tabela shipping
+      // Usa transaction_id para identificar - não usa shipping_id
       const { error: shippingError } = await supabase
         .from('shipping')
         .update({
           tracking_code: trackingCode.trim(),
           status: 'in_transit'
         })
-        .eq('shipping_id', shippingId);
+        .eq('transaction_id', transactionId);
 
       if (shippingError) throw shippingError;
 
