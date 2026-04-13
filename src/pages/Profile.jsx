@@ -220,12 +220,26 @@ export default function Profile() {
 
       // Fetch user's purchases (as buyer)
       try {
-        const { data: purchasesData } = await supabase
+        const { data: purchasesData, error: pErr } = await supabase
           .from('transactions')
-          .select('*, items!inner(id, title, cover_url, price), seller:profiles!inner(id, full_name, avatar_url)')
+          .select('*')
           .eq('buyer_id', user.id)
           .order('created_at', { ascending: false });
-        setPurchases(purchasesData || []);
+        if (pErr) console.error('purchases err:', pErr);
+        
+        if (purchasesData?.length) {
+          const itemIds = [...new Set(purchasesData.map(t => t.item_id).filter(Boolean))];
+          const { data: itemsData } = await supabase.from('items').select('id, title, cover_url, price').in('id', itemIds);
+          const itemsMap = new Map(itemsData?.map(i => [i.id, i]) || []);
+          
+          const enriched = purchasesData.map(t => ({
+            ...t,
+            items: itemsMap.get(t.item_id)
+          }));
+          setPurchases(enriched);
+        } else {
+          setPurchases([]);
+        }
       } catch (e) {
         console.error('Fetch purchases error:', e);
         setPurchases([]);
@@ -233,18 +247,30 @@ export default function Profile() {
 
       // Fetch user's sales (as seller)
       try {
-        const { data: salesData } = await supabase
+        const { data: salesData, error: sErr } = await supabase
           .from('transactions')
-          .select('*, items!inner(id, title, cover_url, price), buyer:profiles!inner(id, full_name, avatar_url)')
+          .select('*')
           .eq('seller_id', user.id)
           .order('created_at', { ascending: false });
-        setSales(salesData || []);
+        if (sErr) console.error('sales err:', sErr);
+        
+        if (salesData?.length) {
+          const itemIds = [...new Set(salesData.map(t => t.item_id).filter(Boolean))];
+          const { data: itemsData } = await supabase.from('items').select('id, title, cover_url, price').in('id', itemIds);
+          const itemsMap = new Map(itemsData?.map(i => [i.id, i]) || []);
+          
+          const enriched = salesData.map(t => ({
+            ...t,
+            items: itemsMap.get(t.item_id)
+          }));
+          setSales(enriched);
+        } else {
+          setSales([]);
+        }
       } catch (e) {
         console.error('Fetch sales error:', e);
         setSales([]);
       }
-
-      setSales(salesData || []);
 
       // Fetch user's messages
       const { data: messagesData } = await supabase
@@ -1026,7 +1052,7 @@ export default function Profile() {
                               // Recarregar sales
                               const { data: salesData } = await supabase
                                 .from('transactions')
-                                .select('*, items(id, title, cover_url, price), buyer:profiles!transactions_buyer_id_fkey(id, full_name, avatar_url)')
+                                .select('*')
                                 .eq('seller_id', currentUser.id)
                                 .order('created_at', { ascending: false });
                               setSales(salesData || []);
