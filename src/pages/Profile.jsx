@@ -1136,6 +1136,14 @@ toast.success('Venda aprovada! O comprador foi notificado.');
                           Gerar Etiqueta
                         </button>
                       )}
+                      {(sale.status === 'enviado' || sale.status === 'recebido' || sale.status === 'concluido') && (
+                        <button
+                          onClick={() => navigate(`/shipping/${sale.id}`)}
+                          className="ml-2 text-cyan-400 hover:text-cyan-300 text-xs underline"
+                        >
+                          Ver etiqueta
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
