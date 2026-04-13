@@ -279,8 +279,31 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
     try {
       setSaving(true);
 
-      // 1. Salvar código de rastreio na tabela shipping
-      // Usa transaction_id para identificar - não usa shipping_id
+      // Buscar transação para getting buyer/seller
+      const { data: tx } = await supabase
+        .from('transactions')
+        .select('buyer_id, seller_id')
+        .eq('id', transactionId)
+        .single();
+
+      // 1. Verificar se shipping existe, se não criar
+      const { data: existing } = await supabase
+        .from('shipping')
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .single();
+
+      if (!existing) {
+        await supabase.from('shipping').insert({
+          transaction_id: transactionId,
+          buyer_id: tx.buyer_id,
+          seller_id: tx.seller_id,
+          from_cep: '00000-000',
+          to_cep: '00000-000'
+        });
+      }
+
+      // 2. Salvar código de rastreio
       const { error: shippingError } = await supabase
         .from('shipping')
         .update({
@@ -291,7 +314,7 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
 
       if (shippingError) throw shippingError;
 
-      // 2. Atualizar status da transação para 'enviado'
+      // 3. Atualizar status da transação
       const { error: txError } = await supabase
         .from('transactions')
         .update({ status: 'enviado' })
@@ -299,10 +322,17 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
 
       if (txError) throw txError;
 
-      // 3. Atualizar shipping local
+      // 4. Notificar comprador
+      await supabase.from('notifications').insert({
+        user_id: tx.buyer_id,
+        type: 'system',
+        title: 'Código de rastreio!',
+        message: `Seu pedido foi enviado! Código: ${trackingCode.trim()}`
+      });
+
       setShipping({ ...shipping, tracking_code: trackingCode.trim(), status: 'in_transit' });
 
-      toast.success('✓ Código salvo! Status atualizado para "Enviado"');
+      toast.success('✓ Código salvo! O comprador foi notificado.');
       
       if (onTrackingCodeSaved) {
         onTrackingCodeSaved();
