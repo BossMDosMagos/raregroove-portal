@@ -219,20 +219,30 @@ export default function Profile() {
       setWishlistItems(wishlistData || []);
 
       // Fetch user's purchases (as buyer)
-      const { data: purchasesData } = await supabase
-        .from('transactions')
-        .select('*, items(id, title, cover_url, price), seller:profiles!transactions_seller_id_fkey(id, full_name, avatar_url)')
-        .eq('buyer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      setPurchases(purchasesData || []);
+      try {
+        const { data: purchasesData } = await supabase
+          .from('transactions')
+          .select('*, items!inner(id, title, cover_url, price), seller:profiles!inner(id, full_name, avatar_url)')
+          .eq('buyer_id', user.id)
+          .order('created_at', { ascending: false });
+        setPurchases(purchasesData || []);
+      } catch (e) {
+        console.error('Fetch purchases error:', e);
+        setPurchases([]);
+      }
 
       // Fetch user's sales (as seller)
-      const { data: salesData } = await supabase
-        .from('transactions')
-        .select('*, items(id, title, cover_url, price), buyer:profiles!transactions_buyer_id_fkey(id, full_name, avatar_url)')
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false });
+      try {
+        const { data: salesData } = await supabase
+          .from('transactions')
+          .select('*, items!inner(id, title, cover_url, price), buyer:profiles!inner(id, full_name, avatar_url)')
+          .eq('seller_id', user.id)
+          .order('created_at', { ascending: false });
+        setSales(salesData || []);
+      } catch (e) {
+        console.error('Fetch sales error:', e);
+        setSales([]);
+      }
 
       setSales(salesData || []);
 
