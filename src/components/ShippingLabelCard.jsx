@@ -102,20 +102,37 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
         throw new Error('Transação não encontrada');
       }
       
-      // Criar objeto shipping dummy baseado na transação
-      // Não precisa consultar a tabela shipping
-      const shippingData = {
-        id: crypto.randomUUID(),
-        transaction_id: transactionId,
-        buyer_id: txData.buyer_id,
-        seller_id: txData.seller_id,
-        to_address: null,
-        to_cep: null,
-        tracking_code: null,
-        shipped_at: null
-      };
+      // Verificar se há shipping real no banco
+      const { data: existingShipping } = await supabase
+        .from('shipping')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .single();
       
-      console.log('[ShippingLabel] Shipping (mock):', shippingData);
+      let shippingData;
+      if (existingShipping) {
+        // Usar dados reais do banco
+        shippingData = existingShipping;
+        console.log('[ShippingLabel] Shipping do banco:', shippingData);
+      } else {
+        // Criar registro no banco (obj temporário)
+        const { data: newShipping } = await supabase.from('shipping').insert({
+          transaction_id: transactionId,
+          buyer_id: txData.buyer_id,
+          seller_id: txData.seller_id,
+          from_cep: '00000-000',
+          to_cep: '00000-000'
+        }).select().single();
+        
+        shippingData = newShipping || {
+          id: crypto.randomUUID(),
+          transaction_id: transactionId,
+          buyer_id: txData.buyer_id,
+          seller_id: txData.seller_id
+        };
+        console.log('[ShippingLabel] Shipping criado:', shippingData);
+      }
+      
       setShipping(shippingData);
 
       // Buscar URL do portal para QR Code
