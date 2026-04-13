@@ -982,6 +982,29 @@ export default function Profile() {
                         <p className="text-xs text-white/50">
                           {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
                         </p>
+                        {purchase.status === 'enviado' && (
+                          <button
+                            onClick={async () => {
+                              await supabase.from('transactions')
+                                .update({ status: 'recebido' })
+                                .eq('id', purchase.id);
+                              // Notify seller
+                              await supabase.from('notifications').insert({
+                                user_id: purchase.seller?.id,
+                                type: 'system',
+                                title: 'Pedido recebido!',
+                                message: `Comprador confirmou recebimento de "${purchase.items?.title}". Libere o pagamento.`
+                              });
+                              setPurchases(prev => prev.map(p => 
+                                p.id === purchase.id ? { ...p, status: 'recebido' } : p
+                              ));
+                              toast.success('Recebimento confirmado!');
+                            }}
+                            className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            Confirmar Recebimento
+                          </button>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(purchase.price || 0).toFixed(2)}</p>
@@ -1041,12 +1064,31 @@ export default function Profile() {
                       <div className="text-right">
                         <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(sale.price || 0).toFixed(2)}</p>
                         <p className={`text-xs ${
-                          sale.status === 'vendido' ? 'text-green-400' : 
+                          sale.status === 'recebido' ? 'text-green-400' : 
+                          sale.status === 'vendido' ? 'text-blue-400' : 
                           sale.status === 'waiting_approval' ? 'text-yellow-400' : 'text-white/50'
                         }`}>
-                          {sale.status === 'vendido' ? 'Aprovado - Gere etiqueta' : 
+                          {sale.status === 'recebido' ? 'Recebido - Libere PIX' : 
+                           sale.status === 'vendido' ? 'Aprovado - Gere etiqueta' : 
                            sale.status === 'waiting_approval' ? 'Aguardando aprovação' : sale.status}
                         </p>
+                        {sale.status === 'recebido' && (
+                          <button
+                            onClick={async () => {
+                              const valorLiquido = parseFloat(sale.price) * 0.90;
+                              await supabase.from('transactions')
+                                .update({ status: 'concluido' })
+                                .eq('id', sale.id);
+                              setSales(prev => prev.map(s => 
+                                s.id === sale.id ? { ...s, status: 'concluido' } : s
+                              ));
+                              toast.success(`PIX de R$ ${valorLiquido.toFixed(2)} liberado para sua conta!`);
+                            }}
+                            className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            Liberar PIX (R$ {((sale.price || 0) * 0.90).toFixed(2)})
+                          </button>
+                        )}
                       </div>
                       {sale.status === 'waiting_approval' && (
                         <button
