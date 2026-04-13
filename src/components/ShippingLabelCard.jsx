@@ -88,10 +88,10 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
     try {
       setLoading(true);
 
-      // Buscar transação primeiro
+      // Buscar transação primeiro (pela ID da URL se for string)
       const { data: txData, error: txError } = await supabase
         .from('transactions')
-        .select('*')
+        .select('id, buyer_id, seller_id, item_id, price')
         .eq('id', transactionId)
         .single();
 
