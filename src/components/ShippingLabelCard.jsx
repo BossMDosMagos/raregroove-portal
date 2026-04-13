@@ -89,7 +89,7 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
       setLoading(true);
       console.log('[ShippingLabel] Buscando transactionId:', transactionId);
 
-      // Buscar transação primeiro
+      // Buscar transação (dados básicos)
       const { data: txData, error: txError } = await supabase
         .from('transactions')
         .select('id, buyer_id, seller_id, item_id, price')
@@ -102,28 +102,21 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, sh
         throw new Error('Transação não encontrada');
       }
       
-      // Buscar ou criar shipping linked à transação
-      let { data: shippingData, error: shippingError } = await supabase
-        .from('shipping')
-        .select('*')
-        .eq('transaction_id', transactionId)
-        .single();
-
-      console.log('[ShippingLabel] Shipping:', shippingData, 'Erro:', shippingError);
-
-      // Se não existe, criar
-      if (!shippingData) {
-        const { data: newShipping } = await supabase.from('shipping').insert({
-          transaction_id: transactionId,
-          buyer_id: txData.buyer_id,
-          seller_id: txData.seller_id
-        }).select().single();
-        shippingData = newShipping;
-        console.log('[ShippingLabel] Shipping criado:', shippingData);
-      }
+      // Criar objeto shipping dummy baseado na transação
+      // Não precisa consultar a tabela shipping
+      const shippingData = {
+        id: crypto.randomUUID(),
+        transaction_id: transactionId,
+        buyer_id: txData.buyer_id,
+        seller_id: txData.seller_id,
+        to_address: null,
+        to_cep: null,
+        tracking_code: null,
+        shipped_at: null
+      };
       
-      if (shippingError && shippingError.code !== 'PGRST116') console.error('[ShippingLabel] Erro shipping:', shippingError);
-      setShipping(shippingData || { transaction_id: transactionId, buyer_id: txData.buyer_id, seller_id: txData.seller_id });
+      console.log('[ShippingLabel] Shipping (mock):', shippingData);
+      setShipping(shippingData);
 
       // Buscar URL do portal para QR Code
       const { data: settingsData } = await supabase
