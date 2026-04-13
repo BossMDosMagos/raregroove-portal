@@ -229,12 +229,17 @@ export default function Profile() {
         
         if (purchasesData?.length) {
           const itemIds = [...new Set(purchasesData.map(t => t.item_id).filter(Boolean))];
+          const sellerIds = [...new Set(purchasesData.map(t => t.seller_id).filter(Boolean))];
           const { data: itemsData } = await supabase.from('items').select('id, title, cover_url, price').in('id', itemIds);
+          const { data: profilesData } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', sellerIds);
+          
           const itemsMap = new Map(itemsData?.map(i => [i.id, i]) || []);
+          const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
           
           const enriched = purchasesData.map(t => ({
             ...t,
-            items: itemsMap.get(t.item_id)
+            items: itemsMap.get(t.item_id),
+            seller: profilesMap.get(t.seller_id)
           }));
           setPurchases(enriched);
         } else {
@@ -256,12 +261,17 @@ export default function Profile() {
         
         if (salesData?.length) {
           const itemIds = [...new Set(salesData.map(t => t.item_id).filter(Boolean))];
+          const sellerIds = [...new Set(salesData.map(t => t.buyer_id).filter(Boolean))];
           const { data: itemsData } = await supabase.from('items').select('id, title, cover_url, price').in('id', itemIds);
+          const { data: profilesData } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', sellerIds);
+          
           const itemsMap = new Map(itemsData?.map(i => [i.id, i]) || []);
+          const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
           
           const enriched = salesData.map(t => ({
             ...t,
-            items: itemsMap.get(t.item_id)
+            items: itemsMap.get(t.item_id),
+            buyer: profilesMap.get(t.buyer_id)
           }));
           setSales(enriched);
         } else {
@@ -970,8 +980,11 @@ export default function Profile() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(purchase.price || 0).toFixed(2)}</p>
-                        <p className={`text-xs ${purchase.status === 'pago_em_custodia' ? 'text-green-400' : 'text-yellow-400'}`}>
-                          {purchase.status === 'pago_em_custodia' ? 'Pago' : purchase.status}
+                        <p className={`text-xs ${
+                          purchase.status === 'vendido' ? 'text-green-400' : 'text-yellow-400'
+                        }`}>
+                          {purchase.status === 'vendido' ? 'Aprovado' : 
+                           purchase.status === 'waiting_approval' ? 'Aguardando' : purchase.status}
                         </p>
                       </div>
                     </div>
@@ -1016,10 +1029,10 @@ export default function Profile() {
                       <div className="text-right">
                         <p className="text-sm font-bold text-gold-premium">R$ {parseFloat(sale.price || 0).toFixed(2)}</p>
                         <p className={`text-xs ${
-                          sale.status === 'pago_em_custodia' ? 'text-green-400' : 
+                          sale.status === 'vendido' ? 'text-green-400' : 
                           sale.status === 'waiting_approval' ? 'text-yellow-400' : 'text-white/50'
                         }`}>
-                          {sale.status === 'vendido' ? 'Vendido - Libere etiqueta' : 
+                          {sale.status === 'vendido' ? 'Aprovado - Gere etiqueta' : 
                            sale.status === 'waiting_approval' ? 'Aguardando aprovação' : sale.status}
                         </p>
                       </div>
@@ -1047,15 +1060,10 @@ export default function Profile() {
                                 link_url: '/profile?tab=purchases'
                               });
                               
-                              toast.success('Venda aprovada! O comprador foi notificado.');
-                              
-                              // Recarregar sales
-                              const { data: salesData } = await supabase
-                                .from('transactions')
-                                .select('*')
-                                .eq('seller_id', currentUser.id)
-                                .order('created_at', { ascending: false });
-                              setSales(salesData || []);
+toast.success('Venda aprovada! O comprador foi notificado.');
+                               
+                              // Update local state to show approved immediately
+                              setSales(prev => prev.map(s => s.id === sale.id ? { ...s, status: 'vendido' } : s));
                             } catch (err) {
                               console.error('Erro ao aprovar:', err);
                               toast.error('Erro ao aprobar venda');

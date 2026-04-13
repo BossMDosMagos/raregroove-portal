@@ -52,6 +52,7 @@ const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 const AdminUpload = lazy(() => import('./pages/AdminUpload'));
 const AdminTrash = lazy(() => import('./pages/AdminTrash'));
+const ShippingLabelCard = lazy(() => import('./components/ShippingLabelCard'));
 
 // Páginas de Usuário (Lazy Loading)
 const MyItems = lazy(() => import('./pages/MyItems'));
@@ -524,6 +525,16 @@ export default function App() {
                   ? <AdminTrash />
                   : <Navigate to="/" />
                 : <Navigate to="/" />
+            }
+          />
+
+          {/* Rota Gerar Etiqueta */}
+          <Route
+            path="/shipping/:transactionId"
+            element={
+              session
+                ? <ShippingLabelCard />
+                : <Navigate to="/login" />
             }
           />
 

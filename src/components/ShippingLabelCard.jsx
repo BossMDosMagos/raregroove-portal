@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { Printer, CheckCircle, Truck, Save, Disc, Scissors } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchDefaultAddress } from '../utils/addressService';
@@ -35,7 +36,9 @@ const formatPhone = (value) => {
  * 3. Vendedor digita código de rastreio recebido nos Correios
  * 4. Salva e status muda para "Enviado"
  */
-export default function ShippingLabelCard({ transactionId, shippingId, onTrackingCodeSaved }) {
+export default function ShippingLabelCard({ transactionId: propTransactionId, shippingId, onTrackingCodeSaved }) {
+  const params = useParams();
+  const transactionId = propTransactionId || params.transactionId;
   const [loading, setLoading] = useState(true);
   const [shipping, setShipping] = useState(null);
   const [sellerInfo, setSellerInfo] = useState(null);
