@@ -124,6 +124,18 @@ export default function NotificationBell() {
               duration: 5000,
               style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' }
             });
+          } else if (payload.new.type === 'comprovante_received') {
+            toast.info('📄 ' + payload.new.title, {
+              description: payload.new.message,
+              duration: 5000,
+              style: { background: '#050505', border: '1px solid #22c55e', color: '#FFF' }
+            });
+          } else if (payload.new.type === 'payment_approved') {
+            toast.success('✅ ' + payload.new.title, {
+              description: payload.new.message,
+              duration: 5000,
+              style: { background: '#050505', border: '1px solid #22c55e', color: '#FFF' }
+            });
           }
         }
       )
