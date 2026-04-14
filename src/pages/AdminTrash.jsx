@@ -214,17 +214,16 @@ export default function AdminTrash() {
     
     setDeleting((prev) => ({ ...prev, [id]: true }));
     try {
-      // Usar função genérica de delete em cascata
-      const { data, error: rpcError } = await supabase.rpc('admin_delete_with_cascade', { 
-        p_table: selectedTable, 
-        p_id: id 
-      });
+      // Delete directly from the table
+      const { error: deleteError } = await supabase
+        .from(selectedTable)
+        .delete()
+        .eq('id', id);
       
-      if (rpcError) throw rpcError;
-      if (!data?.success) throw new Error(data?.error || 'Erro ao excluir');
+      if (deleteError) throw deleteError;
 
       toast.success('🗑️ EXCLUÍDO', {
-        description: data?.message || 'Registro removido permanentemente.',
+        description: 'Registro removido permanentemente.',
         style: toastSuccessStyle,
       });
       setRecords((prev) => prev.filter((r) => r.id !== id));
