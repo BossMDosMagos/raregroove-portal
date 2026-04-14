@@ -142,6 +142,14 @@ const TABLES = [
     secondary: 'plan_id',
     date: 'created_at'
   },
+  { 
+    id: 'user_balances', 
+    label: 'Saldos Usuários', 
+    icon: Wallet, 
+    primary: 'available_balance',
+    secondary: 'user_id',
+    date: 'updated_at'
+  },
 ];
 
 export default function AdminTrash() {

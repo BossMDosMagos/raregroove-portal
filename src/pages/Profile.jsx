@@ -34,21 +34,17 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-const StatCard = ({ label, value, icon: Icon }) => {
-  const valueSize = value?.toString().length > 15 ? 'text-xs' : value?.toString().length > 8 ? 'text-base' : 'text-3xl';
-  
-  return (
-    <div className="glass-card rounded-[2rem] p-6 flex items-center gap-5 hover:border-gold-premium/30 transition-all duration-500 group shadow-xl">
-      <div className="w-14 h-14 rounded-2xl bg-gold-premium/5 border border-gold-premium/10 flex items-center justify-center text-gold-premium shrink-0 group-hover:bg-gold-premium group-hover:text-charcoal-deep transition-all duration-500 shadow-lg">
-        <Icon size={24} className="group-hover:scale-110 transition-transform" />
+const StatCard = ({ label, value, icon: Icon, color }) => {
+    return (
+      <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl ${color || 'bg-charcoal-mid/50'} border ${color ? 'border-white/10' : 'border-gold-premium/20'}`}>
+        <Icon size={18} className={color || 'text-gold-premium'} />
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">{label}</p>
+          <p className="text-lg font-black text-white">{value}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className={`font-black text-luxury ${valueSize} truncate leading-none`}>{value}</p>
-        <p className="text-silver-premium/30 text-[10px] font-black uppercase tracking-widest leading-tight">{label}</p>
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
 // ─── Funções de Formatação ──────────────────────────────
 const formatCPF = (value) => {
@@ -140,6 +136,7 @@ export default function Profile() {
   const [reviews, setReviews] = useState([]);
   const [ratingStats, setRatingStats] = useState(null);
   const [isElite, setIsElite] = useState(false);
+  const [userBalance, setUserBalance] = useState(0);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [editingWish, setEditingWish] = useState(null);
   const [managingSubscription, setManagingSubscription] = useState(false);
@@ -336,6 +333,15 @@ export default function Profile() {
       } else {
         setIsElite(false);
       }
+
+      // Carregar saldo do usuário
+      const { data: balanceData } = await supabase
+        .from('user_balances')
+        .select('available_balance')
+        .eq('user_id', user.id)
+        .single();
+      
+      setUserBalance(balanceData?.available_balance || 0);
 
       setIsLoading(false);
     };
@@ -742,6 +748,7 @@ export default function Profile() {
                 <StatCard label={t('profile.reputation.title')} value={ratingStats?.avg_rating?.toFixed(1) || '0.0'} icon={Star} />
                 <StatCard label="CDs Listados" value={items.length} icon={Disc} />
                 <StatCard label="Conversas" value={messages.length} icon={MessageSquare} />
+                <StatCard label="Saldo" value={`R$ ${userBalance.toFixed(2)}`} icon={DollarSign} color="bg-green-900/30 border-green-500/30" />
               </div>
             </div>
 
