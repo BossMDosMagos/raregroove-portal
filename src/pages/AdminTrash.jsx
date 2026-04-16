@@ -217,19 +217,37 @@ export default function AdminTrash() {
     try {
       const currentTable = TABLES.find(t => t.id === selectedTable);
       const keyField = currentTable?.keyField || 'id';
-      // Delete directly from the table
-      const { error: deleteError } = await supabase
-        .from(selectedTable)
-        .delete()
-        .eq(keyField, id);
       
-      if (deleteError) throw deleteError;
+      // Para user_balances, zerar saldo ao invés de deletar
+      if (selectedTable === 'user_balances') {
+        const { error: updateError } = await supabase
+          .from('user_balances')
+          .update({ available_balance: 0, pending_balance: 0 })
+          .eq(keyField, id);
+        
+        if (updateError) throw updateError;
+        toast.success('💰 SALDO ZERADO', {
+          description: 'Saldo disponível foi zerado.',
+          style: toastSuccessStyle,
+        });
+        setRecords((prev) => prev.map(r => 
+          r[keyField] === id ? { ...r, available_balance: 0 } : r
+        ));
+      } else {
+        // Delete directly from the table
+        const { error: deleteError } = await supabase
+          .from(selectedTable)
+          .delete()
+          .eq(keyField, id);
+        
+        if (deleteError) throw deleteError;
 
-      toast.success('🗑️ EXCLUÍDO', {
-        description: 'Registro removido permanentemente.',
-        style: toastSuccessStyle,
-      });
-      setRecords((prev) => prev.filter((r) => r[keyField] !== id));
+        toast.success('🗑️ EXCLUÍDO', {
+          description: 'Registro removido permanentemente.',
+          style: toastSuccessStyle,
+        });
+        setRecords((prev) => prev.filter((r) => r[keyField] !== id));
+      }
     } catch (error) {
       console.error('Erro ao excluir:', error);
       toast.error('ERRO AO EXCLUIR', {
