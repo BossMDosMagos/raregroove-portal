@@ -148,7 +148,8 @@ const TABLES = [
     icon: Wallet, 
     primary: 'available_balance',
     secondary: 'user_id',
-    date: 'updated_at'
+    date: 'updated_at',
+    keyField: 'user_id'
   },
 ];
 
@@ -214,11 +215,13 @@ export default function AdminTrash() {
     
     setDeleting((prev) => ({ ...prev, [id]: true }));
     try {
+      const currentTable = TABLES.find(t => t.id === selectedTable);
+      const keyField = currentTable?.keyField || 'id';
       // Delete directly from the table
       const { error: deleteError } = await supabase
         .from(selectedTable)
         .delete()
-        .eq('id', id);
+        .eq(keyField, id);
       
       if (deleteError) throw deleteError;
 
@@ -226,7 +229,7 @@ export default function AdminTrash() {
         description: 'Registro removido permanentemente.',
         style: toastSuccessStyle,
       });
-      setRecords((prev) => prev.filter((r) => r.id !== id));
+      setRecords((prev) => prev.filter((r) => r[keyField] !== id));
     } catch (error) {
       console.error('Erro ao excluir:', error);
       toast.error('ERRO AO EXCLUIR', {
