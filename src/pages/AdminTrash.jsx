@@ -421,11 +421,13 @@ export default function AdminTrash() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRecords.slice(0, 100).map((record) => (
-                        <tr key={record.id} className="border-t border-white/5 hover:bg-white/5 transition">
+                      {(() => {
+                        const keyField = TABLES.find(t => t.id === selectedTable)?.keyField || 'id';
+                        return filteredRecords.slice(0, 100).map((record) => (
+                        <tr key={record[keyField]} className="border-t border-white/5 hover:bg-white/5 transition">
                           <td className="px-4 py-3">
                             <span className="text-white/50 text-xs font-mono">
-                              {record.id?.slice(0, 8)}...
+                              {String(record[keyField] || '').slice(0, 8)}...
                             </span>
                           </td>
                           {getColumns().slice(1, 6).map((col) => (
@@ -443,11 +445,11 @@ export default function AdminTrash() {
                           <td className="px-4 py-3">
                             <div className="flex justify-center">
                               <button
-                                onClick={() => handleDelete(record.id)}
-                                disabled={deleting[record.id]}
+                                onClick={() => handleDelete(record[keyField])}
+                                disabled={deleting[record[keyField]]}
                                 className="px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-xs font-black uppercase hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-2"
                               >
-                                {deleting[record.id] ? (
+                                {deleting[record[keyField]] ? (
                                   <Loader2 className="w-3 h-3 animate-spin" />
                                 ) : (
                                   <Trash2 className="w-3 h-3" />
@@ -457,7 +459,8 @@ export default function AdminTrash() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      ));
+                      }}
                     </tbody>
                   </table>
                 </div>
