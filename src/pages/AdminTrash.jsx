@@ -486,7 +486,7 @@ export default function AdminTrash() {
                             </div>
                           </td>
                         </tr>
-                      ));
+                      );
                       }}
                     </tbody>
                   </table>
