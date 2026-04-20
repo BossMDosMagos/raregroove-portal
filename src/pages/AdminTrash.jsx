@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SERVICE_ROLE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-const adminClient = SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SERVICE_ROLE_KEY) : null;
 import { 
   Trash2, Loader2, Search, Package, CreditCard, RefreshCw, 
   MessageSquare, AlertTriangle, MapPin, Star, Bell, Archive,
@@ -225,16 +220,10 @@ export default function AdminTrash() {
       
       // Para user_balances, zerar saldo ao invés de deletar
       if (selectedTable === 'user_balances') {
-        if (!adminClient) {
-          throw new Error('Service Role Key não configurada. Adicione VITE_SUPABASE_SERVICE_ROLE_KEY no .env.local');
-        }
         console.log('DEBUG: zerando saldo para user_id=', id);
-        const { error: updateError } = await adminClient
-          .from('user_balances')
-          .update({ available_balance: 0, pending_balance: 0 })
-          .eq('user_id', id);
+        const { error: rpcError } = await supabase.rpc('admin_zero_balance', { p_user_id: id });
         
-        if (updateError) throw updateError;
+        if (rpcError) throw rpcError;
         toast.success('💰 SALDO ZERADO', {
           description: 'Saldo disponível foi zerado.',
           style: toastSuccessStyle,
