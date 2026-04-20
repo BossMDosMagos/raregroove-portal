@@ -228,10 +228,11 @@ export default function AdminTrash() {
         if (!adminClient) {
           throw new Error('Service Role Key não configurada. Adicione VITE_SUPABASE_SERVICE_ROLE_KEY no .env.local');
         }
+        console.log('DEBUG: zerando saldo para user_id=', id);
         const { error: updateError } = await adminClient
           .from('user_balances')
           .update({ available_balance: 0, pending_balance: 0 })
-          .eq(keyField, id);
+          .eq('user_id', id);
         
         if (updateError) throw updateError;
         toast.success('💰 SALDO ZERADO', {
