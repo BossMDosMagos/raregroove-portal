@@ -451,43 +451,43 @@ export default function AdminTrash() {
                       {(() => {
                         const keyField = TABLES.find(t => t.id === selectedTable)?.keyField || 'id';
                         return filteredRecords.slice(0, 100).map((record) => (
-                        <tr key={record[keyField]} className="border-t border-white/5 hover:bg-white/5 transition">
-                          <td className="px-4 py-3">
-                            <span className="text-white/50 text-xs font-mono">
-                              {String(record[keyField] || '').slice(0, 8)}...
-                            </span>
-                          </td>
-                          {getColumns().slice(1, 6).map((col) => (
-                            <td key={col} className="px-4 py-3">
-                              <span className="text-white/70 text-xs">
-                                {getValue(record, col)}
+                          <tr key={record[keyField]} className="border-t border-white/5 hover:bg-white/5 transition">
+                            <td className="px-4 py-3">
+                              <span className="text-white/50 text-xs font-mono">
+                                {String(record[keyField] || '').slice(0, 8)}...
                               </span>
                             </td>
-                          ))}
-                          <td className="px-4 py-3">
-                            <span className="text-white/40 text-xs">
-                              {formatDate(record.created_at || record.updated_at)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-center">
-                              <button
-                                onClick={() => handleDelete(record[keyField])}
-                                disabled={deleting[record[keyField]]}
-                                className="px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-xs font-black uppercase hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-2"
-                              >
-                                {deleting[record[keyField]] ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3 h-3" />
-                                )}
-                                Excluir
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                      }}
+                            {getColumns().slice(1, 6).map((col) => (
+                              <td key={col} className="px-4 py-3">
+                                <span className="text-white/70 text-xs">
+                                  {getValue(record, col)}
+                                </span>
+                              </td>
+                            ))}
+                            <td className="px-4 py-3">
+                              <span className="text-white/40 text-xs">
+                                {formatDate(record.created_at || record.updated_at)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-center">
+                                <button
+                                  onClick={() => handleDelete(record[keyField])}
+                                  disabled={deleting[record[keyField]]}
+                                  className="px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-xs font-black uppercase hover:bg-red-500/20 transition disabled:opacity-50 flex items-center gap-2"
+                                >
+                                  {deleting[record[keyField]] ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3 h-3" />
+                                  )}
+                                  Excluir
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
