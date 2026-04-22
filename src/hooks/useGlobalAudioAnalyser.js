@@ -27,7 +27,6 @@ export function initAudioAnalysers(audioContext, gainNode) {
   sharedAnalyserR.maxDecibels = 0;
   
   vuGainNode = getVuGainNode();
-  console.log('[Analyser] Using shared vuGainNode from settings:', vuGainNode ? 'OK' : 'NULL');
   
   if (!sharedState) {
     sharedState = {
@@ -50,28 +49,15 @@ export function getAnalysers() {
 }
 
 export function connectToAnalysers(source) {
-  console.log('[Analyser] connectToAnalysers called');
-  console.log('[Analyser] sharedAnalyserL:', sharedAnalyserL ? 'OK' : 'NULL');
-  console.log('[Analyser] sharedAnalyserR:', sharedAnalyserR ? 'OK' : 'NULL');
-  console.log('[Analyser] vuGainNode:', vuGainNode ? 'OK' : 'NULL');
-  console.log('[Analyser] audioContextRef:', audioContextRef ? 'OK' : 'NULL');
-  console.log('[Analyser] source:', source ? 'OK' : 'NULL');
-  
   if (!sharedAnalyserL || !sharedAnalyserR || !vuGainNode) {
-    console.error('[Analyser] Analysers not initialized!');
     return false;
   }
-  
-  console.log('[Analyser] Connecting source → vuGainNode → splitter → analysers...');
   
   const splitter = audioContextRef.createChannelSplitter(2);
   source.connect(vuGainNode);
   vuGainNode.connect(splitter);
-  splitter.connect(sharedAnalyserL, 0); // Canal Esquerdo (Left)
-  splitter.connect(sharedAnalyserR, 1); // Canal Direito (Right)
-  
-  console.log('[Analyser] ✓ All connections made');
-  console.log('[Analyser] vuGainNode.gain.value:', vuGainNode.gain.value);
+  splitter.connect(sharedAnalyserL, 0);
+  splitter.connect(sharedAnalyserR, 1);
   
   return true;
 }
@@ -97,7 +83,6 @@ export function useGlobalAudioAnalyser() {
     const checkReady = () => {
       const ready = sharedState?.isConnected && sharedAnalyserL && sharedAnalyserR;
       setIsReady(ready);
-      console.log('[Analyser] Hook checkReady - isConnected:', sharedState?.isConnected, 'analyserL:', sharedAnalyserL ? 'OK' : 'NULL');
       forceUpdate(n => n + 1);
     };
     
@@ -124,9 +109,6 @@ export function useGlobalAudioAnalyser() {
   const getRMSL = useCallback(() => {
     if (!sharedAnalyserL) {
       debugLogRef.current.frameCount++;
-      if (debugLogRef.current.frameCount % 120 === 0) {
-        console.warn('[Analyser] getRMSL: analyserL is NULL!');
-      }
       return 0;
     }
     
@@ -140,17 +122,13 @@ export function useGlobalAudioAnalyser() {
       const vL = (dataL[i] - 128) / 128;
       sumL += vL * vL;
       maxL = Math.max(maxL, Math.abs(vL));
-      if (dataL[i] !== 128) nonZeroCount++;
+if (dataL[i] !== 128) nonZeroCount++;
     }
-    
-    const rms = Math.sqrt(sumL / dataL.length);
-    
-    debugLogRef.current.frameCount++;
-    if (debugLogRef.current.frameCount % 60 === 0) {
-      console.log('[Analyser] getRMSL - max:', maxL.toFixed(4), 'rms:', rms.toFixed(6), 'nonZero:', nonZeroCount, 'of', dataL.length);
-    }
-    
-    return rms;
+
+    const maxLdb = 20 * Math.log10(maxL || 1e-10);
+    const rmsLdb = 20 * Math.log10(rms || 1e-10);
+
+    return { max: maxL, rms, maxDb: maxLdb, rmsDb: rmsLdb, nonZero: nonZeroCount, total: dataL.length };
   }, []);
   
   const getRMSR = useCallback(() => {
