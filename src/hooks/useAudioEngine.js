@@ -149,8 +149,8 @@ export function useAudioEngine() {
 
     mergerRef.current = ctx.createChannelMerger(2);
 
-    Howler.masterGain.connect(splitterRef.current);
-
+    const masterGain = Howler.masterGain || ctx.createGain();
+    masterGain.connect(splitterRef.current);
     splitterRef.current.connect(analyserLRef.current, 0);
     splitterRef.current.connect(analyserRRef.current, 1);
 
