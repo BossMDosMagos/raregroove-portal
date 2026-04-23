@@ -66,8 +66,8 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
 
       // 1. Buscar dados dos itens
       const [myItemData, theirItemData] = await Promise.all([
-        supabase.from('items').select('*').eq('id', selectedItemId).single(),
-        supabase.from('items').select('*').eq('id', item.id).single()
+        supabase.from('items').select('id, title').eq('id', selectedItemId).single(),
+        supabase.from('items').select('id, title').eq('id', item.id).single()
       ]);
 
       if (myItemData.error || theirItemData.error) throw new Error('Erro ao buscar itens');

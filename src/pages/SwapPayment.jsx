@@ -78,8 +78,8 @@ export default function SwapPayment() {
 
       // Buscar itens da troca
       const [item1Data, item2Data] = await Promise.all([
-        supabase.from('items').select('*').eq('id', swapData.item_1_id).single(),
-        supabase.from('items').select('*').eq('id', swapData.item_2_id).single()
+        supabase.from('items').select('id, title, image_url, artist, price').eq('id', swapData.item_1_id).single(),
+        supabase.from('items').select('id, title, image_url, artist, price').eq('id', swapData.item_2_id).single()
       ]);
 
       setItem1(item1Data.data);
