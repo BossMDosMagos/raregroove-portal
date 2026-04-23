@@ -62,6 +62,15 @@ export function connectToAnalysers(source) {
   return true;
 }
 
+export function registerAnalysers({ analyserL, analyserR, splitter, merger, onData }) {
+  if (analyserL) sharedAnalyserL = analyserL;
+  if (analyserR) sharedAnalyserR = analyserR;
+}
+
+export function unregisterAnalysers() {
+  // cleanup se necessário
+}
+
 export function resetAnalysers() {
   if (sharedState) {
     sharedState.isConnected = false;
