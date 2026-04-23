@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Howl, Howler } from 'howler';
-import { registerAnalysers, unregisterAnalysers } from './useGlobalAudioAnalyser.js';
 
 const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
@@ -10,8 +9,8 @@ const ANSI = {
   RISE_TIME_MS: 300,
   PEAK_HOLD_MS: 500,
   OVERSHOOT: 0.015,
-  FFT_SIZE: 4096,
-  SMOOTHING: 0.92,
+  FFT_SIZE: 2048,
+  SMOOTHING: 0.85,
   MIN_DB: -60,
   MAX_DB: 3,
   ARC_START_DEG: -55,
@@ -56,10 +55,16 @@ function rmsToPos(rms) {
 
 export function useAudioEngine() {
   const howlRef = useRef(null);
-  
   const animFrameRef = useRef(null);
   const isPlayingRef = useRef(false);
   
+  const ctxRef = useRef(null);
+  const sourceRef = useRef(null);
+  
+  const eqFiltersRef = useRef([]);
+  const toneFiltersRef = useRef({});
+  const masterGainRef = useRef(null);
+  const vuGainRef = useRef(null);
   const analyserLRef = useRef(null);
   const analyserRRef = useRef(null);
   const splitterRef = useRef(null);
@@ -67,6 +72,7 @@ export function useAudioEngine() {
   const dataLRef = useRef(null);
   const dataRRef = useRef(null);
   const isConnectedRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -77,6 +83,7 @@ export function useAudioEngine() {
   const [eqBands, setEqBands] = useState(() => 
     Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0]))
   );
+  const [toneSettings, setToneSettings] = useState({ bass: 0, mid: 0, treble: 0 });
   const [loopMode, setLoopModeState] = useState('none');
   const [shuffle, setShuffleState] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -94,9 +101,8 @@ export function useAudioEngine() {
   const loopModeRef = useRef('none');
   const shuffleRef = useRef(false);
   const preAmpRef = useRef(null);
-  const eqFiltersRef = useRef([]);
-  const masterGainRef = useRef(null);
-  const isInitializedRef = useRef(false);
+  const eqBandsRef = useRef(Object.fromEntries(EQ_FREQUENCIES.map(f => [f, 0])));
+  const toneSettingsRef = useRef({ bass: 0, mid: 0, treble: 0 });
 
   const ensureContextRunning = useCallback(async () => {
     const ctx = Howler.ctx;
@@ -109,65 +115,136 @@ export function useAudioEngine() {
         return false;
       }
     }
-    return ctx.state === 'running';
+    return true;
   }, []);
 
-  const disconnectAnalysers = useCallback(() => {
-    try { if (splitterRef.current) splitterRef.current.disconnect(); } catch (e) {}
-    try { if (analyserLRef.current) analyserLRef.current.disconnect(); } catch (e) {}
-    try { if (analyserRRef.current) analyserRRef.current.disconnect(); } catch (e) {}
-    try { if (mergerRef.current) mergerRef.current.disconnect(); } catch (e) {}
-    splitterRef.current = null;
-    analyserLRef.current = null;
-    analyserRRef.current = null;
-    mergerRef.current = null;
-    dataLRef.current = null;
-    dataRRef.current = null;
-    isConnectedRef.current = false;
-    unregisterAnalysers();
-  }, []);
-
-  const connectAnalysers = useCallback(() => {
+  const createNodeChain = useCallback(() => {
     const ctx = Howler.ctx;
-    if (!ctx) return;
+    if (!ctx || isInitializedRef.current) return;
 
-    disconnectAnalysers();
+    ctxRef.current = ctx;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
 
-    const FFT_SIZE = ANSI.FFT_SIZE;
+    const chain = {};
 
-    splitterRef.current = ctx.createChannelSplitter(2);
+    chain.input = ctx.createGain();
+    chain.input.gain.value = 1;
 
-    analyserLRef.current = ctx.createAnalyser();
-    analyserLRef.current.fftSize = FFT_SIZE;
-    analyserLRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
-    dataLRef.current = new Uint8Array(analyserLRef.current.frequencyBinCount);
-
-    analyserRRef.current = ctx.createAnalyser();
-    analyserRRef.current.fftSize = FFT_SIZE;
-    analyserRRef.current.smoothingTimeConstant = ANSI.SMOOTHING;
-    dataRRef.current = new Uint8Array(analyserRRef.current.frequencyBinCount);
-
-    mergerRef.current = ctx.createChannelMerger(2);
-
-    const masterGain = Howler.masterGain || ctx.createGain();
-    masterGain.connect(splitterRef.current);
-    splitterRef.current.connect(analyserLRef.current, 0);
-    splitterRef.current.connect(analyserRRef.current, 1);
-
-    analyserLRef.current.connect(mergerRef.current, 0, 0);
-    analyserRRef.current.connect(mergerRef.current, 0, 1);
-
-    mergerRef.current.connect(ctx.destination);
-
-    isConnectedRef.current = true;
-    
-    registerAnalysers({
-      analyserL: analyserLRef.current,
-      analyserR: analyserRRef.current,
-      splitter: splitterRef.current,
-      merger: mergerRef.current,
+    chain.eqFilters = EQ_FREQUENCIES.map((freq, i) => {
+      const filter = ctx.createBiquadFilter();
+      if (i === 0) {
+        filter.type = 'lowshelf';
+      } else if (i === EQ_FREQUENCIES.length - 1) {
+        filter.type = 'highshelf';
+      } else {
+        filter.type = 'peaking';
+      }
+      filter.frequency.value = freq;
+      filter.Q.value = 1.4;
+      filter.gain.value = 0;
+      return filter;
     });
-  }, [disconnectAnalysers]);
+    eqFiltersRef.current = chain.eqFilters;
+
+    chain.bassFilter = ctx.createBiquadFilter();
+    chain.bassFilter.type = 'lowshelf';
+    chain.bassFilter.frequency.value = 100;
+    chain.bassFilter.gain.value = 0;
+
+    chain.midFilter = ctx.createBiquadFilter();
+    chain.midFilter.type = 'peaking';
+    chain.midFilter.frequency.value = 1000;
+    chain.midFilter.Q.value = 1.0;
+    chain.midFilter.gain.value = 0;
+
+    chain.trebleFilter = ctx.createBiquadFilter();
+    chain.trebleFilter.type = 'highshelf';
+    chain.trebleFilter.frequency.value = 4000;
+    chain.trebleFilter.gain.value = 0;
+
+    toneFiltersRef.current = {
+      bass: chain.bassFilter,
+      mid: chain.midFilter,
+      treble: chain.trebleFilter,
+    };
+
+    chain.vuGain = ctx.createGain();
+    chain.vuGain.gain.value = 1;
+    vuGainRef.current = chain.vuGain;
+
+    chain.splitter = ctx.createChannelSplitter(2);
+    splitterRef.current = chain.splitter;
+
+    chain.analyserL = ctx.createAnalyser();
+    chain.analyserL.fftSize = ANSI.FFT_SIZE;
+    chain.analyserL.smoothingTimeConstant = ANSI.SMOOTHING;
+    analyserLRef.current = chain.analyserL;
+    dataLRef.current = new Uint8Array(chain.analyserL.frequencyBinCount);
+
+    chain.analyserR = ctx.createAnalyser();
+    chain.analyserR.fftSize = ANSI.FFT_SIZE;
+    chain.analyserR.smoothingTimeConstant = ANSI.SMOOTHING;
+    analyserRRef.current = chain.analyserR;
+    dataRRef.current = new Uint8Array(chain.analyserR.frequencyBinCount);
+
+    chain.merger = ctx.createChannelMerger(2);
+    mergerRef.current = chain.merger;
+
+    chain.masterGain = Howler.masterGain || ctx.createGain();
+    chain.masterGain.gain.value = volumeRef.current;
+    masterGainRef.current = chain.masterGain;
+
+    chain.input.connect(chain.eqFilters[0]);
+    for (let i = 0; i < chain.eqFilters.length - 1; i++) {
+      chain.eqFilters[i].connect(chain.eqFilters[i + 1]);
+    }
+
+    const lastEq = chain.eqFilters[chain.eqFilters.length - 1];
+    lastEq.connect(chain.bassFilter);
+    lastEq.connect(chain.vuGain);
+
+    chain.bassFilter.connect(chain.midFilter);
+    chain.midFilter.connect(chain.trebleFilter);
+
+    chain.trebleFilter.connect(chain.masterGain);
+    chain.masterGain.connect(ctx.destination);
+
+    chain.vuGain.connect(chain.splitter);
+    chain.splitter.connect(chain.analyserL, 0);
+    chain.splitter.connect(chain.analyserR, 1);
+
+    chain.analyserL.connect(chain.merger, 0, 0);
+    chain.analyserR.connect(chain.merger, 0, 1);
+
+    isInitializedRef.current = true;
+    setIsReady(true);
+  }, []);
+
+  const disconnectNodeChain = useCallback(() => {
+    try {
+      if (splitterRef.current) {
+        splitterRef.current.disconnect();
+      }
+      if (analyserLRef.current) {
+        analyserLRef.current.disconnect();
+      }
+      if (analyserRRef.current) {
+        analyserRRef.current.disconnect();
+      }
+      if (mergerRef.current) {
+        mergerRef.current.disconnect();
+      }
+      eqFiltersRef.current.forEach(f => f.disconnect());
+      Object.values(toneFiltersRef.current).forEach(f => f.disconnect());
+      if (vuGainRef.current) {
+        vuGainRef.current.disconnect();
+      }
+    } catch (e) {}
+    isInitializedRef.current = false;
+    isConnectedRef.current = false;
+  }, []);
 
   const stopAnimLoop = useCallback(() => {
     if (animFrameRef.current !== null) {
@@ -184,21 +261,26 @@ export function useAudioEngine() {
 
     if (ctxOk) {
       try {
-        analyserLRef.current.getByteTimeDomainData(dataLRef.current);
-        analyserRRef.current.getByteTimeDomainData(dataRRef.current);
+        const dataL = dataLRef.current;
+        const dataR = dataRRef.current;
+        
+        analyserLRef.current.getByteTimeDomainData(dataL);
+        analyserRRef.current.getByteTimeDomainData(dataR);
 
-        const rmsL = calculateRMS(dataLRef.current);
-        const rmsR = calculateRMS(dataRRef.current);
+        const rmsL = calculateRMS(dataL);
+        const rmsR = calculateRMS(dataR);
 
-        const combinedTime = new Float32Array(dataLRef.current.length + dataRRef.current.length);
-        combinedTime.set(dataLRef.current, 0);
-        combinedTime.set(dataRRef.current, dataLRef.current.length);
+        const combinedTime = new Float32Array(dataL.length + dataR.length);
+        combinedTime.set(dataL, 0);
+        combinedTime.set(dataR, dataL.length);
         setTimeDomainData(combinedTime);
 
-        const timeBytesL = new Uint8Array(dataLRef.current.length);
-        const timeBytesR = new Uint8Array(dataRRef.current.length);
-        analyserLRef.current.getByteTimeDomainData(timeBytesL);
-        analyserRRef.current.getByteTimeDomainData(timeBytesR);
+        const timeBytesL = new Uint8Array(dataL.length);
+        const timeBytesR = new Uint8Array(dataR.length);
+        for (let i = 0; i < dataL.length; i++) {
+          timeBytesL[i] = dataL[i];
+          timeBytesR[i] = dataR[i];
+        }
         setTimeDomainBytesL(timeBytesL);
         setTimeDomainBytesR(timeBytesR);
 
@@ -232,9 +314,7 @@ export function useAudioEngine() {
         }
         setBassDataL(bassL);
         setBassDataR(bassR);
-      } catch (e) {
-        console.log('[Audio] Analyser read error:', e.message);
-      }
+      } catch (e) {}
     }
 
     if (isPlayingRef.current) {
@@ -242,63 +322,14 @@ export function useAudioEngine() {
     }
   }, [stopAnimLoop]);
 
-  const initAudioContext = useCallback(() => {
-    if (isInitializedRef.current) return;
-
-    Howler.autoSuspend = false;
-    Howler.volume(0.8);
-
-    const ctx = Howler.ctx;
-    if (!ctx) return;
-
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-
-    masterGainRef.current = ctx.createGain();
-    masterGainRef.current.gain.value = 0.8;
-    masterGainRef.current.connect(ctx.destination);
-
-    preAmpRef.current = ctx.createGain();
-    preAmpRef.current.gain.value = 1;
-
-    eqFiltersRef.current = EQ_FREQUENCIES.map((freq, i) => {
-      const filter = ctx.createBiquadFilter();
-      if (i === 0) {
-        filter.type = 'lowshelf';
-      } else if (i === EQ_FREQUENCIES.length - 1) {
-        filter.type = 'highshelf';
-      } else {
-        filter.type = 'peaking';
-      }
-      filter.frequency.value = freq;
-      filter.Q.value = 1.4;
-      filter.gain.value = 0;
-      return filter;
-    });
-
-    for (let i = 0; i < eqFiltersRef.current.length - 1; i++) {
-      eqFiltersRef.current[i].connect(eqFiltersRef.current[i + 1]);
-    }
-
-    preAmpRef.current.connect(eqFiltersRef.current[0]);
-    eqFiltersRef.current[eqFiltersRef.current.length - 1].connect(masterGainRef.current);
-
-    isInitializedRef.current = true;
-    setIsReady(true);
-  }, []);
-
   const loadTrack = useCallback(async (url, autoplay = true) => {
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
     }
 
-    stopAnimLoop();
-    disconnectAnalysers();
-    isPlayingRef.current = false;
-
-    initAudioContext();
+    Howler.autoSuspend = false;
+    createNodeChain();
 
     const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
@@ -309,8 +340,6 @@ export function useAudioEngine() {
       const howl = new Howl({
         src: [url],
         html5: false,
-        format: ['mp3'],
-        xhr: { method: 'GET', withCredentials: false },
         volume: volumeRef.current,
         loop: loopModeRef.current === 'track',
         pool: 1,
@@ -319,8 +348,6 @@ export function useAudioEngine() {
         onload: () => {
           const dur = howl.duration();
           setDuration(dur);
-          
-          connectAnalysers();
           
           if (autoplay) {
             howl.play();
@@ -334,24 +361,20 @@ export function useAudioEngine() {
           ensureContextRunning();
           stopAnimLoop();
           animFrameRef.current = requestAnimationFrame(animLoop);
-          
-          window.dispatchEvent(new CustomEvent('grooveflix-play'));
         },
         onpause: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
           stopAnimLoop();
-          window.dispatchEvent(new CustomEvent('grooveflix-pause'));
         },
         onstop: () => {
           setIsPlaying(false);
           isPlayingRef.current = false;
           setCurrentTime(0);
           stopAnimLoop();
-          window.dispatchEvent(new CustomEvent('grooveflix-stop'));
         },
-        onseek: () => {
-          const pos = howl.seek();
+        onseek: (id) => {
+          const pos = howl.seek(id);
           if (typeof pos === 'number') {
             setCurrentTime(pos);
           }
@@ -361,7 +384,6 @@ export function useAudioEngine() {
         },
         onplayerror: (id, err) => {
           reject(new Error('Playback error: ' + err));
-          Howler.ctx?.resume().then(() => howl?.play());
         },
       });
 
@@ -369,28 +391,37 @@ export function useAudioEngine() {
       setCurrentTime(0);
       setDuration(0);
     });
-  }, [initAudioContext, ensureContextRunning, stopAnimLoop, animLoop, connectAnalysers]);
+  }, [createNodeChain, ensureContextRunning, stopAnimLoop, animLoop]);
 
   const play = useCallback(async () => {
     const ctx = Howler.ctx;
     if (ctx?.state === 'suspended') {
       await ctx.resume();
     }
-
     if (howlRef.current) {
       howlRef.current.play();
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+      startAnimLoop();
     }
   }, []);
 
   const pause = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.pause();
-  }, []);
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    stopAnimLoop();
+  }, [stopAnimLoop]);
 
   const stop = useCallback(() => {
     if (!howlRef.current) return;
     howlRef.current.stop();
-  }, []);
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setCurrentTime(0);
+    stopAnimLoop();
+  }, [stopAnimLoop]);
 
   const seek = useCallback((time) => {
     if (!howlRef.current) return;
@@ -402,9 +433,12 @@ export function useAudioEngine() {
   const setVolume = useCallback((value) => {
     const vol = Math.max(0, Math.min(1, value));
     volumeRef.current = vol;
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.setTargetAtTime(vol, ctxRef.current?.currentTime || 0, 0.01);
+    }
     Howler.volume(vol);
-    if (masterGainRef.current && Howler.ctx && Howler.ctx.state !== 'closed') {
-      masterGainRef.current.gain.setTargetAtTime(vol, Howler.ctx.currentTime, 0.01);
+    if (howlRef.current) {
+      howlRef.current.volume(vol);
     }
     setVolumeState(vol);
   }, []);
@@ -416,20 +450,35 @@ export function useAudioEngine() {
 
   const setPreAmp = useCallback((value) => {
     const dbValue = Math.max(-12, Math.min(12, value));
-    const gain = dbToLinear(dbValue);
-    if (preAmpRef.current && Howler.ctx && Howler.ctx.state !== 'closed') {
-      preAmpRef.current.gain.setTargetAtTime(gain, Howler.ctx.currentTime, 0.01);
-    }
+    preAmpRef.current = dbValue;
     setPreAmpState(dbValue);
   }, []);
 
   const setEqBand = useCallback((frequency, value) => {
     const dbValue = Math.max(-12, Math.min(12, value));
+    eqBandsRef.current[frequency] = dbValue;
     const filter = eqFiltersRef.current.find(f => f.frequency.value === frequency);
-    if (filter && Howler.ctx && Howler.ctx.state !== 'closed') {
-      filter.gain.setTargetAtTime(dbValue, Howler.ctx.currentTime, 0.01);
+    if (filter && ctxRef.current) {
+      filter.gain.setTargetAtTime(dbValue, ctxRef.current.currentTime, 0.01);
     }
     setEqBands(prev => ({ ...prev, [frequency]: dbValue }));
+  }, []);
+
+  const setTone = useCallback((tone, value) => {
+    const dbValue = Math.max(-12, Math.min(12, value));
+    toneSettingsRef.current[tone] = dbValue;
+    const filter = toneFiltersRef.current[tone];
+    if (filter && ctxRef.current) {
+      filter.gain.setTargetAtTime(dbValue, ctxRef.current.currentTime, 0.01);
+    }
+    setToneSettings(prev => ({ ...prev, [tone]: dbValue }));
+  }, []);
+
+  const setVuSensitivity = useCallback((value) => {
+    if (vuGainRef.current && ctxRef.current) {
+      const gain = dbToLinear(value);
+      vuGainRef.current.gain.setTargetAtTime(gain, ctxRef.current.currentTime, 0.01);
+    }
   }, []);
 
   const toggleLoop = useCallback(() => {
@@ -444,8 +493,10 @@ export function useAudioEngine() {
   }, []);
 
   const toggleShuffle = useCallback(() => {
-    setShuffleState(prev => !prev);
-    shuffleRef.current = !shuffleRef.current;
+    setShuffleState(prev => {
+      shuffleRef.current = !prev;
+      return !prev;
+    });
   }, []);
 
   const getNextTrack = useCallback((queue, currentIndex) => {
@@ -481,25 +532,45 @@ export function useAudioEngine() {
   }, []);
 
   const dispose = useCallback(() => {
-    isPlayingRef.current = false;
     stopAnimLoop();
-    disconnectAnalysers();
+    disconnectNodeChain();
     if (howlRef.current) {
       howlRef.current.unload();
       howlRef.current = null;
     }
     setIsPlaying(false);
+    isPlayingRef.current = false;
     setCurrentTime(0);
     setDuration(0);
     setIsReady(false);
-    isInitializedRef.current = false;
-  }, [stopAnimLoop, disconnectAnalysers]);
+  }, [stopAnimLoop, disconnectNodeChain]);
+
+  const startAnimLoop = useCallback(() => {
+    stopAnimLoop();
+    const ctx = Howler.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    
+    animFrameRef.current = requestAnimationFrame(animLoop);
+  }, [stopAnimLoop, animLoop]);
 
   useEffect(() => {
     return () => {
       dispose();
     };
   }, [dispose]);
+
+  useEffect(() => {
+    if (!howlRef.current) return;
+    const interval = setInterval(() => {
+      if (howlRef.current && howlRef.current.playing()) {
+        const pos = howlRef.current.seek();
+        if (typeof pos === 'number') {
+          setCurrentTime(pos);
+        }
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   const vuMeterData = useMemo(() => {
     const timeData = timeDomainData;
@@ -532,12 +603,14 @@ export function useAudioEngine() {
 
   return {
     isPlaying, currentTime, duration, volume, pan, preAmp, eqBands,
-    loopMode, shuffle, isReady, analyserData, timeDomainData,
-    eqFrequencies: EQ_FREQUENCIES, vuMeterData, spectrumL, spectrumR,
-    timeDomainBytesL, timeDomainBytesR, bassDataL, bassDataR,
+    toneSettings, loopMode, shuffle, isReady, analyserData, timeDomainData,
+    spectrumL, spectrumR, timeDomainBytesL, timeDomainBytesR,
+    bassDataL, bassDataR,
+    eqFrequencies: EQ_FREQUENCIES, vuMeterData,
     loadTrack, play, pause, stop, seek, setVolume, setPan, setPreAmp,
-    setEqBand, toggleLoop, toggleShuffle, getNextTrack, getPrevTrack,
-    dispose, initAudioContext,
+    setEqBand, setTone, setVuSensitivity, toggleLoop, toggleShuffle,
+    getNextTrack, getPrevTrack, dispose,
+    ensureContextRunning: ensureContextRunning,
   };
 }
 
