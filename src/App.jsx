@@ -1,17 +1,16 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async'; // SEO
+import { HelmetProvider } from 'react-helmet-async';
 import { Toaster, toast } from 'sonner';
 import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
-import { GlobalPlayerProvider, useGlobalPlayer } from './hooks/useGlobalAudioPlayer.jsx';
-import GlobalPlayerControls from './components/GlobalPlayerControls.jsx';
 import Navbar from './components/Navbar';
-import ErrorBoundary from './components/ErrorBoundary'; // Error Boundary
+import ErrorBoundary from './components/ErrorBoundary';
 import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
-import { validateSecretVault } from './utils/secretVaultTest';
+import { GlobalPlayerProvider } from './hooks/useGlobalAudioPlayer.jsx';
+import GlobalPlayerControls from './components/GlobalPlayerControls.jsx';
 
 function GlobalPlayerControlsWrapper() {
   const player = useGlobalPlayer();
@@ -227,9 +226,7 @@ export default function App() {
   return (
     <HelmetProvider>
       <ErrorBoundary>
-        <GlobalPlayerProvider>
-          <GlobalPlayerControlsWrapper />
-          <Router>
+        <Router>
           <UnreadMessagesProvider>
             <CartProvider>
               <Toaster position="top-center" expand={false} richColors theme="dark" />
@@ -541,14 +538,13 @@ export default function App() {
 
           {/* Rota 404 - Catch All */}
           <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </div>
-          </CartProvider>
-        </UnreadMessagesProvider>
-      </Router>
-    </GlobalPlayerProvider>
-  </ErrorBoundary>
+        </Routes>
+      </Suspense>
+    </div>
+  </CartProvider>
+</UnreadMessagesProvider>
+</Router>
+</ErrorBoundary>
 </HelmetProvider>
   );
 }
