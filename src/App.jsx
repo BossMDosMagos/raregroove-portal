@@ -10,13 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
 import { GlobalPlayerProvider, useGlobalPlayer } from './hooks/useGlobalAudioPlayer.jsx';
-import GlobalPlayerControls from './components/GlobalPlayerControls.jsx';
 import { validateSecretVault } from './utils/secretVaultTest';
-
-function GlobalPlayerControlsWrapper() {
-  const player = useGlobalPlayer();
-  return <GlobalPlayerControls player={player} />;
-}
 
 // Componentes de carregamento
 const LoadingFallback = () => (
@@ -272,7 +266,6 @@ export default function App() {
             element={session ? (
               <GlobalPlayerProvider>
                 <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper>
-                <GlobalPlayerControlsWrapper />
               </GlobalPlayerProvider>
             ) : <Navigate to="/" />}
           />
