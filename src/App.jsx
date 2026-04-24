@@ -11,6 +11,7 @@ import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
 import { GlobalPlayerProvider } from './hooks/useGlobalAudioPlayer.jsx';
 import GlobalPlayerControls from './components/GlobalPlayerControls.jsx';
+import { validateSecretVault } from './utils/secretVaultTest';
 
 function GlobalPlayerControlsWrapper() {
   const player = useGlobalPlayer();
