@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Music } from 'lucide-react';
 
 export default function AlbumFlipCard({ 
@@ -14,6 +14,16 @@ export default function AlbumFlipCard({
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const trackListRef = useRef(null);
+
+  useEffect(() => {
+    if (currentTrackIndex !== undefined && currentTrackIndex !== null && trackListRef.current) {
+      const activeButton = trackListRef.current.querySelector(`[data-track-index="${currentTrackIndex}"]`);
+      if (activeButton) {
+        activeButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentTrackIndex]);
 
   const handleFlipClick = (e) => {
     e.stopPropagation();
@@ -173,6 +183,7 @@ export default function AlbumFlipCard({
 
           {/* Tracklist */}
           <div 
+            ref={trackListRef}
             className="overflow-y-auto"
             style={{ 
               height: audioFiles.length > 0 ? 'calc(100% - 95px)' : 'calc(100% - 45px)'
@@ -200,6 +211,7 @@ export default function AlbumFlipCard({
                   return (
                     <button
                       key={index}
+                      data-track-index={index}
                       onClick={(e) => handleTrackClick(index, e)}
                       className={`
                         w-full flex items-center gap-2 px-2 py-1.5 transition-all duration-100 group
