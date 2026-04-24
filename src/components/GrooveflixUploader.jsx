@@ -317,7 +317,7 @@ function FolderUploadZone({ files, onChange, uploadProgress }) {
             </div>
             
             <div className="max-h-48 overflow-y-auto space-y-2 pr-1" ref={listRef}>
-              {audioFiles.slice(0, 20).map((file, index) => (
+              {audioFiles.map((file, index) => (
                 <UploadFileItem
                   key={`${file.name}-${index}`}
                   file={file}
@@ -327,11 +327,6 @@ function FolderUploadZone({ files, onChange, uploadProgress }) {
                   onRemove={() => handleRemoveFile(index)}
                 />
               ))}
-              {audioFiles.length > 20 && (
-                <p className="text-white/30 text-xs text-center py-2">
-                  ... e mais {audioFiles.length - 20} arquivos
-                </p>
-              )}
             </div>
           </div>
         ) : (
