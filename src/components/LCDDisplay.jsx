@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, line4, isPlaying }) {
+export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, line4 }) {
   const bounds = { top: 5, right: 48, bottom: 10, left: 48 };
 
   const textStyle = useMemo(() => ({
@@ -15,25 +15,6 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
       className="relative rounded-lg overflow-hidden"
       style={{ width: '600px', height: '150px', position: 'relative' }}
     >
-      {isPlaying && (
-        <>
-          <div className="absolute inset-0 pointer-events-none"
-            style={{
-              boxShadow: '0 0 15px #0ff, 0 0 30px #0ff, inset 0 0 15px rgba(0,255,255,0.15)',
-              border: '2px solid #0ff',
-              borderRadius: '8px',
-              zIndex: 10,
-            }}
-          />
-          <div className="absolute top-0 left-0 right-0 h-1 pointer-events-none"
-            style={{
-              background: 'linear-gradient(90deg, transparent, #0ff, transparent)',
-              animation: 'scanline 2s linear infinite',
-              zIndex: 11,
-            }}
-          />
-        </>
-      )}
       <img 
         src="/images/painel/lcd.png"
         alt="LCD Panel"

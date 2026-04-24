@@ -61,10 +61,12 @@ export default function AlbumFlipCard({
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-            border: isActive ? '3px solid rgba(212,175,55,0.6)' : 'none',
-            boxShadow: isActive 
-              ? '0 0 35px rgba(212,175,55,0.4), 0 0 70px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.1)' 
-              : 'none'
+            border: isActive && isPlaying ? '3px solid #0ff' : isActive ? '3px solid rgba(212,175,55,0.6)' : 'none',
+            boxShadow: isActive && isPlaying
+              ? '0 0 35px #0ff, 0 0 70px rgba(0,255,255,0.3), inset 0 0 20px rgba(0,255,255,0.1)' 
+              : isActive 
+                ? '0 0 35px rgba(212,175,55,0.4), 0 0 70px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.1)' 
+                : 'none'
           }}
         >
           {coverUrl ? (
@@ -87,14 +89,37 @@ export default function AlbumFlipCard({
           {/* Playing indicator */}
           {isActive && isPlaying && (
             <div 
-              className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-end gap-0.5 h-5 px-3 py-1 bg-black/70 backdrop-blur-sm rounded-full"
+              className="absolute top-3 left-3 right-3 h-0.5 overflow-hidden"
             >
-              <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '40%', animationDelay: '0s' }} />
-              <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.1s' }} />
-              <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '60%', animationDelay: '0.2s' }} />
-              <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '100%', animationDelay: '0.3s' }} />
+              <div className="w-full h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse" />
             </div>
           )}
+          {isActive && isPlaying && (
+            <div 
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-end gap-0.5 h-5 px-3 py-1 bg-black/70 backdrop-blur-sm rounded-full"
+              style={{
+                boxShadow: '0 0 15px #0ff, 0 0 30px #0ff',
+                border: '1px solid #0ff',
+              }}
+            >
+              <span className="w-0.5 bg-cyan-400 rounded-full animate-pulse" style={{ height: '40%', animationDelay: '0s' }} />
+              <span className="w-0.5 bg-cyan-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.1s' }} />
+              <span className="w-0.5 bg-cyan-400 rounded-full animate-pulse" style={{ height: '60%', animationDelay: '0.2s' }} />
+              <span className="w-0.5 bg-cyan-400 rounded-full animate-pulse" style={{ height: '100%', animationDelay: '0.3s' }} />
+            </div>
+          )}
+          {!isActive || !isPlaying ? (
+            isActive && (
+              <div 
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-end gap-0.5 h-5 px-3 py-1 bg-black/70 backdrop-blur-sm rounded-full"
+              >
+                <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '40%', animationDelay: '0s' }} />
+                <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.1s' }} />
+                <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '60%', animationDelay: '0.2s' }} />
+                <span className="w-0.5 bg-amber-400 rounded-full animate-pulse" style={{ height: '100%', animationDelay: '0.3s' }} />
+              </div>
+            )
+          ) : null}
 
           {/* Flip hint */}
           {showFlipHint && (
