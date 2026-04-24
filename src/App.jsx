@@ -269,7 +269,12 @@ export default function App() {
 
           <Route
             path="/grooveflix"
-            element={session ? <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper> : <Navigate to="/" />}
+            element={session ? (
+              <GlobalPlayerProvider>
+                <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper>
+                <GlobalPlayerControlsWrapper />
+              </GlobalPlayerProvider>
+            ) : <Navigate to="/" />}
           />
 
           <Route
