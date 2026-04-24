@@ -1,18 +1,35 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { getVuGainNode } from './useGrooveflixSettings.js';
 
 let audioContextRef = null;
 let sharedAnalyserL = null;
 let sharedAnalyserR = null;
 let vuGainNode = null;
 let sharedState = null;
+let externalAnalyserL = null;
+let externalAnalyserR = null;
+let externalVuGain = null;
 
-export function initAudioAnalysers(audioContext, gainNode) {
+export function initAudioAnalysers(audioContext, gainNode, externalAnalysers = null) {
+  externalAnalyserL = externalAnalysers?.analyserL || null;
+  externalAnalyserR = externalAnalysers?.analyserR || null;
+  externalVuGain = externalAnalysers?.vuGain || null;
+  
+  if (externalAnalyserL && externalAnalyserR) {
+    if (!sharedState) {
+      sharedState = { isConnected: true, listeners: new Set() };
+    }
+    sharedState.isConnected = true;
+    sharedState.listeners.forEach(fn => fn());
+    return { analyserL: externalAnalyserL, analyserR: externalAnalyserR };
+  }
+  
   if (sharedAnalyserL && sharedAnalyserR) {
     return { analyserL: sharedAnalyserL, analyserR: sharedAnalyserR };
   }
   
   audioContextRef = audioContext;
+  
+  if (!audioContext) return { analyserL: null, analyserR: null };
   
   sharedAnalyserL = audioContext.createAnalyser();
   sharedAnalyserL.fftSize = 2048;
@@ -26,7 +43,7 @@ export function initAudioAnalysers(audioContext, gainNode) {
   sharedAnalyserR.minDecibels = -90;
   sharedAnalyserR.maxDecibels = 0;
   
-  vuGainNode = getVuGainNode();
+  vuGainNode = gainNode;
   
   if (!sharedState) {
     sharedState = {
@@ -42,9 +59,9 @@ export function initAudioAnalysers(audioContext, gainNode) {
 
 export function getAnalysers() {
   return {
-    analyserL: sharedAnalyserL,
-    analyserR: sharedAnalyserR,
-    vuGainNode: vuGainNode,
+    analyserL: externalAnalyserL || sharedAnalyserL,
+    analyserR: externalAnalyserR || sharedAnalyserR,
+    vuGainNode: externalVuGain || vuGainNode,
   };
 }
 

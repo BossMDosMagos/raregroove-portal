@@ -7,7 +7,8 @@ import { VolumeKnob } from './VolumeKnob.jsx';
 import { ToneKnob } from './ToneKnob.jsx';
 import { PlayerControls } from './PlayerControls.jsx';
 import EqualizerPanel from './EqualizerPanel.jsx';
-import { useGrooveflixSettings } from '../hooks/useGrooveflixSettings.js';
+
+const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
 const panelStyle = {
   background: 'linear-gradient(145deg, #1f1f1f, #151515)',
@@ -44,43 +45,49 @@ export default function AudioControlPanel({
   onStop,
   onPreviousTrack,
   onNextTrack,
-  onEject
+  onEject,
+  toneSettings,
+  eqBands,
+  setTone,
+  setEqBand,
+  setVuSensitivity
 }) {
-  const {
-    settings,
-    settingsRestored,
-    setVolume,
-    setToneGain,
-    setVuSensitivity,
-    setEqBand,
-    setAllEqBands,
-    resetToDefaults,
-  } = useGrooveflixSettings();
-  
   const eqEnabledRef = useRef(true);
   const [eqEnabled, setEqEnabled] = React.useState(true);
   
-  const bassValue = (settings.bass + 12) / 24;
-  const midValue = (settings.mid + 12) / 24;
-  const trebleValue = (settings.treble + 12) / 24;
-  const vuSensValue = settings.vuSensitivity;
+  const activeTone = toneSettings || { bass: 0, mid: 0, treble: 0 };
+  const activeEqBands = eqBands || {};
   
-  const handleBassChange = (val) => setToneGain('bass', val * 24 - 12);
-  const handleMidChange = (val) => setToneGain('mid', val * 24 - 12);
-  const handleTrebleChange = (val) => setToneGain('treble', val * 24 - 12);
+  const eqArray = EQ_FREQUENCIES.map(f => activeEqBands[f] || 0);
+  
+  const bassValue = (activeTone.bass + 12) / 24;
+  const midValue = (activeTone.mid + 12) / 24;
+  const trebleValue = (activeTone.treble + 12) / 24;
+  const vuSensValue = 0.5;
+
+  const handleBassChange = (val) => {
+    const value = val * 24 - 12;
+    setTone?.('bass', value);
+  };
+  const handleMidChange = (val) => {
+    const value = val * 24 - 12;
+    setTone?.('mid', value);
+  };
+  const handleTrebleChange = (val) => {
+    const value = val * 24 - 12;
+    setTone?.('treble', value);
+  };
   const handleVuSensChange = (val) => {
-    const sensitivity = val <= 0.5 ? val : 0.5 + (val - 0.5) * 1.4;
-    setVuSensitivity(sensitivity);
+    setVuSensitivity?.(val);
   };
   
   const handleVolumeChange = (val) => {
-    setVolume(val);
-    if (onVolumeChange) onVolumeChange(val);
+    onVolumeChange?.(val);
   };
   
   const handleEqBandChange = (idx, val) => {
     if (!eqEnabledRef.current) return;
-    setEqBand(idx, val);
+    setEqBand?.(EQ_FREQUENCIES[idx], val);
   };
   
   const handleEqPresetChange = (presetKey) => {
@@ -97,12 +104,16 @@ export default function AudioControlPanel({
       bass: [6, 5, 4, 2, 0, -1, -1, -1, -1, -1],
     };
     if (presets[presetKey]) {
-      setAllEqBands(presets[presetKey]);
+      presets[presetKey].forEach((val, idx) => {
+        setEqBand?.(EQ_FREQUENCIES[idx], val);
+      });
     }
   };
   
   const handleEqReset = () => {
-    resetToDefaults();
+    EQ_FREQUENCIES.forEach((freq, idx) => {
+      setEqBand?.(freq, 0);
+    });
   };
   
   const handleEqToggle = () => {
@@ -120,7 +131,7 @@ export default function AudioControlPanel({
           <div className="flex justify-center mb-3"><VUMeterLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3"><SpectrumLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3">
-            <VolumeKnob value={settings.volume} onChange={handleVolumeChange} size={120} />
+            <VolumeKnob value={0.7} onChange={handleVolumeChange} size={120} />
           </div>
           <div className="flex justify-center gap-3 mb-3">
             <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
@@ -153,7 +164,7 @@ export default function AudioControlPanel({
           <div className="flex justify-center mb-3"><SpectrumRight isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3">
             <EqualizerPanel
-              gains={settings.eq_bands}
+              gains={eqArray}
               activePreset={null}
               isEnabled={eqEnabled}
               onBandChange={handleEqBandChange}

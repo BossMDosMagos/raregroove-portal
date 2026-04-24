@@ -9,6 +9,8 @@ import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 import { useGlobalPlayer } from '../hooks/useGlobalAudioPlayer.jsx';
+import { useAudioEngine } from '../hooks/useAudioEngine.js';
+import { initAudioAnalysers } from '../hooks/useGlobalAudioAnalyser.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
@@ -54,6 +56,7 @@ function normalizeTracks(items = []) {
 export default function Grooveflix() {
   const { t } = useI18n();
   const player = useGlobalPlayer();
+  const audioEngine = useAudioEngine();
   const { 
     playTrackFromQueue,
     currentTrack: globalCurrentTrack, 
@@ -71,6 +74,14 @@ export default function Grooveflix() {
     currentTime,
     duration,
   } = player;
+  
+  const { toneSettings, eqBands, isReady, analyserL, analyserR, vuGain, setTone, setEqBand, setVuSensitivity } = audioEngine;
+
+  useEffect(() => {
+    if (isReady && analyserL && analyserR) {
+      initAudioAnalysers(null, vuGain, { analyserL, analyserR, vuGain });
+    }
+  }, [isReady, analyserL, analyserR]);
 
   const [focusedAlbum, setFocusedAlbum] = useState(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -352,6 +363,11 @@ export default function Grooveflix() {
         onPreviousTrack={handlePreviousTrack}
         onNextTrack={handleNextTrack}
         onEject={handleEject}
+        toneSettings={toneSettings}
+        eqBands={eqBands}
+        setTone={setTone}
+        setEqBand={setEqBand}
+        setVuSensitivity={setVuSensitivity}
       />
 
       <div className="relative mx-auto px-4 md:px-6 pt-24 pb-8" style={{ marginLeft: '340px', marginRight: '340px' }}>

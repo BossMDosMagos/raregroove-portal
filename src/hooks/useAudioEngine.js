@@ -607,6 +607,7 @@ export function useAudioEngine() {
     spectrumL, spectrumR, timeDomainBytesL, timeDomainBytesR,
     bassDataL, bassDataR,
     eqFrequencies: EQ_FREQUENCIES, vuMeterData,
+    analyserL: analyserLRef.current, analyserR: analyserRRef.current, vuGain: vuGainRef.current,
     loadTrack, play, pause, stop, seek, setVolume, setPan, setPreAmp,
     setEqBand, setTone, setVuSensitivity, toggleLoop, toggleShuffle,
     getNextTrack, getPrevTrack, dispose,
