@@ -171,7 +171,7 @@ function UploadFileItem({ file, index, status, progress, onRemove }) {
   const isUploading = status === 'uploading';
 
   return (
-    <div className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-xl border border-white/5">
+    <div className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-xl border border-white/5" data-file-index={index}>
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
         status === 'done' ? 'bg-emerald-500/20' :
         status === 'error' ? 'bg-red-500/20' :
@@ -214,6 +214,7 @@ function UploadFileItem({ file, index, status, progress, onRemove }) {
 function FolderUploadZone({ files, onChange, uploadProgress }) {
   const [dragOver, setDragOver] = useState(false);
   const [localFiles, setLocalFiles] = useState(() => files ? Array.from(files) : []);
+  const listRef = useRef(null);
 
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
@@ -223,13 +224,24 @@ function FolderUploadZone({ files, onChange, uploadProgress }) {
 
   useEffect(() => {
     if (files) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFiles(Array.from(files));
     } else if (localFiles.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFiles([]);
     }
   }, [files]);
+
+  useEffect(() => {
+    const uploadingIndex = Object.entries(uploadProgress).find(
+      ([key, val]) => key.startsWith('folder_') && !key.endsWith('_progress') && val === 'uploading'
+    );
+    if (uploadingIndex && listRef.current) {
+      const idx = parseInt(uploadingIndex[0].replace('folder_', ''), 10);
+      const activeItem = listRef.current.querySelector(`[data-file-index="${idx}"]`);
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [uploadProgress]);
 
   const audioFiles = localFiles.filter(f => 
     f.type.startsWith('audio/') || f.name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)
@@ -304,7 +316,7 @@ function FolderUploadZone({ files, onChange, uploadProgress }) {
               </button>
             </div>
             
-            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-48 overflow-y-auto space-y-2 pr-1" ref={listRef}>
               {audioFiles.slice(0, 20).map((file, index) => (
                 <UploadFileItem
                   key={`${file.name}-${index}`}
