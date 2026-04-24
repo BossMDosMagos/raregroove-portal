@@ -332,6 +332,7 @@ export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex,
               }
               return '';
             })()}
+            isPlaying={isPlaying}
           />
         )}
         <div style={{ position: 'relative', zIndex: 20 }}>
