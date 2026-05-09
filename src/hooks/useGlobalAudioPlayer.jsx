@@ -220,7 +220,9 @@ export function getAudioPlayer() {
 }
 
 export function useGlobalAudioPlayer() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(() => {
+    return audioElementInstance ? !audioElementInstance.paused : false;
+  });
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -246,7 +248,44 @@ export function useGlobalAudioPlayer() {
   const connectedAudioRef = useRef(null);
   const queueRef = useRef([]);
   const loadAndPlayTrackRef = useRef(null);
-  
+
+  // Persist event listeners across remounts - reattach on mount
+  useEffect(() => {
+    const audio = audioElementInstance;
+    if (!audio) return;
+
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onEnded = () => {
+      setIsPlaying(false);
+      const q = queueRef.current;
+      const nextIndex = currentTrackIndexRef.current + 1;
+      if (q.length > 0 && nextIndex < q.length) {
+        const nextTrack = q[nextIndex];
+        currentTrackIndexRef.current = nextIndex;
+        if (nextTrack && loadAndPlayTrackRef.current) {
+          loadAndPlayTrackRef.current(nextTrack);
+        }
+      }
+    };
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+    };
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -386,37 +425,6 @@ export function useGlobalAudioPlayer() {
     // Connect MediaElementSource to AudioContext BEFORE setting src
     const connected = connectMediaSource(audio);
     console.log('[GlobalPlayer] MediaSource connected:', connected, 'hasFilters:', !!toneFilters, 'eqCount:', eqFilters.length);
-    
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onLoadedMetadata = () => setDuration(audio.duration);
-    const onEnded = () => {
-      setIsPlaying(false);
-      const q = queueRef.current;
-      const nextIndex = currentTrackIndexRef.current + 1;
-      if (q.length > 0 && nextIndex < q.length) {
-        const nextTrack = q[nextIndex];
-        currentTrackIndexRef.current = nextIndex;
-        if (nextTrack && loadAndPlayTrackRef.current) {
-          loadAndPlayTrackRef.current(nextTrack);
-        }
-      }
-    };
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    
-    // Remove old listeners
-    audio.removeEventListener('timeupdate', onTimeUpdate);
-    audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-    audio.removeEventListener('ended', onEnded);
-    audio.removeEventListener('play', onPlay);
-    audio.removeEventListener('pause', onPause);
-    
-    // Add listeners
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
     
     // KEY CHANGE: Just change src, DON'T reconnect MediaElementSource!
     audio.src = url;
