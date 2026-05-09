@@ -366,8 +366,8 @@ export function useGlobalAudioPlayer() {
     setDuration(0);
     setCurrentTrack(track);
     
-    // Ensure audioContext is running
     const ctx = initAudioGraph();
+    console.log('[GlobalPlayer] AudioContext ready, state:', ctx.state, 'mediaSourceInstance:', !!mediaSourceInstance);
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
@@ -381,6 +381,10 @@ export function useGlobalAudioPlayer() {
       audio = createAudioElement();
       audioRef.current = audio;
     }
+    
+    // Connect MediaElementSource to AudioContext BEFORE setting src
+    const connected = connectMediaSource(audio);
+    console.log('[GlobalPlayer] MediaSource connected:', connected, 'hasFilters:', !!toneFilters, 'eqCount:', eqFilters.length);
     
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration);
