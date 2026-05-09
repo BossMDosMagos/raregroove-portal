@@ -140,7 +140,7 @@ function ClickWheel({ onMenu, onSelect, onPlayPause, onPrev, onNext, onVolumeSwi
 
 function MenuView({ items, selectedIndex }) {
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div style={{ background: '#fff', padding: '6px 0' }}>
       {items.map((item, i) => (
         <div
           key={item.label}
@@ -148,16 +148,14 @@ function MenuView({ items, selectedIndex }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '10px 14px',
-            background: i === selectedIndex ? 'linear-gradient(180deg, #4a90d9, #357abd)' : 'transparent',
-            color: i === selectedIndex ? '#fff' : '#222',
-            borderRadius: '4px',
-            margin: '0 6px',
-            fontSize: 'clamp(13px, 3vw, 16px)',
+            padding: '9px 12px',
+            background: i === selectedIndex ? '#4a90d9' : '#fff',
+            color: i === selectedIndex ? '#fff' : '#000',
+            fontSize: '14px',
             fontWeight: i === selectedIndex ? '600' : '400',
           }}
         >
-          <span style={{ fontSize: 'clamp(16px, 3.5vw, 20px)', width: '24px', textAlign: 'center' }}>{item.icon}</span>
+          <span style={{ fontSize: '16px', width: '22px', textAlign: 'center' }}>{item.icon}</span>
           <span>{item.label}</span>
           {i === selectedIndex && (
             <span style={{ marginLeft: 'auto', fontSize: '10px' }}>▸</span>
@@ -172,7 +170,7 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '10px', background: '#fff' }}>
       {/* Album Art */}
       <div style={{
         flex: '1',
@@ -187,13 +185,13 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
           borderRadius: '6px',
           background: coverUrl
             ? `url(${coverUrl}) center/cover no-repeat`
-            : 'linear-gradient(135deg, #667eea, #764ba2)',
+            : '#ddd',
           boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#fff',
-          fontSize: 'clamp(24px, 5vw, 36px)',
+          color: '#999',
+          fontSize: '24px',
         }}>
           {!coverUrl && '♫'}
         </div>
@@ -202,9 +200,9 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
       {/* Track Info */}
       <div style={{ padding: '8px 0 4px', textAlign: 'center' }}>
         <div style={{
-          fontSize: 'clamp(12px, 2.8vw, 15px)',
+          fontSize: '13px',
           fontWeight: '600',
-          color: '#222',
+          color: '#000',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -212,7 +210,7 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
           {currentTrack?.title || 'No Track'}
         </div>
         <div style={{
-          fontSize: 'clamp(10px, 2.2vw, 12px)',
+          fontSize: '11px',
           color: '#666',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -233,7 +231,7 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
           <div style={{
             height: '100%',
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #4a90d9, #357abd)',
+            background: '#4a90d9',
             borderRadius: '2px',
             transition: 'width 0.3s linear',
           }} />
@@ -241,7 +239,7 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          fontSize: 'clamp(8px, 1.8vw, 10px)',
+          fontSize: '9px',
           color: '#888',
           marginTop: '2px',
         }}>
@@ -255,7 +253,7 @@ function NowPlayingView({ currentTrack, isPlaying, currentTime, duration, volume
 
 function AlbumsView({ albums, selectedIndex, onSelect }) {
   return (
-    <div style={{ padding: '8px 0', overflowY: 'auto', height: '100%' }}>
+    <div style={{ background: '#fff', padding: '4px 0', overflowY: 'auto', height: '100%' }}>
       {albums.map((album, i) => (
         <div
           key={album.id}
@@ -264,26 +262,24 @@ function AlbumsView({ albums, selectedIndex, onSelect }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 14px',
-            background: i === selectedIndex ? 'linear-gradient(180deg, #4a90d9, #357abd)' : 'transparent',
-            color: i === selectedIndex ? '#fff' : '#222',
-            borderRadius: '4px',
-            margin: '0 6px',
-            fontSize: 'clamp(12px, 2.5vw, 14px)',
+            padding: '7px 12px',
+            background: i === selectedIndex ? '#4a90d9' : '#fff',
+            color: i === selectedIndex ? '#fff' : '#000',
+            fontSize: '13px',
           }}
         >
           <div style={{
-            width: '32px',
-            height: '32px',
+            width: '28px',
+            height: '28px',
             borderRadius: '4px',
             background: album.coverUrl
               ? `url(${album.coverUrl}) center/cover no-repeat`
-              : 'linear-gradient(135deg, #667eea, #764ba2)',
+              : '#ddd',
             flexShrink: 0,
           }} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{album.title}</div>
-            <div style={{ fontSize: 'clamp(9px, 2vw, 11px)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{album.artist}</div>
+            <div style={{ fontWeight: '600', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{album.title}</div>
+            <div style={{ fontSize: '10px', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{album.artist}</div>
           </div>
         </div>
       ))}
@@ -437,34 +433,32 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
       }}>
         {/* Screen */}
         <div style={{
-          background: '#f5f5f5',
-          borderRadius: '10px',
-          border: '1px solid #aaa',
-          boxShadow: 'inset 0 0 0 3px #555, 0 3px 10px rgba(0,0,0,0.15)',
+          background: '#fff',
+          borderRadius: '8px',
+          border: '2px solid #888',
+          outline: '4px solid #333',
           overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
         }}>
           {/* Status bar */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '3px 8px',
-            fontSize: '10px',
+            padding: '2px 8px',
+            fontSize: '9px',
             color: '#555',
             fontWeight: '600',
-            borderBottom: '1px solid #ddd',
-            flexShrink: 0,
+            background: '#f0f0f0',
+            borderBottom: '1px solid #ccc',
           }}>
-            <span style={{ fontSize: '9px' }}>{currentTrack?.title || 'Grooveflix'}</span>
+            <span>{currentTrack?.title || 'Grooveflix'}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
               {isPlaying && <span>▶</span>}
               <span>{Math.round((volume ?? 0.7) * 100)}%</span>
             </span>
           </div>
           {/* Screen content */}
-          <div style={{ minHeight: '160px' }}>
+          <div style={{ background: '#fff', minHeight: '170px' }}>
             {renderScreen()}
           </div>
         </div>
