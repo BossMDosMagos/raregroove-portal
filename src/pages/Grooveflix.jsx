@@ -11,6 +11,7 @@ import { useI18n } from '../contexts/I18nContext.jsx';
 import { useGlobalPlayer } from '../hooks/useGlobalAudioPlayer.jsx';
 import { registerAnalysers } from '../hooks/useGlobalAudioAnalyser.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
+import iPodClassic from '../components/iPodClassic.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
@@ -87,6 +88,13 @@ export default function Grooveflix() {
   const focusedAlbumRef = useRef(null);
   const currentTrackIndexRef = useRef(-1);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleOpenDeleteModal = () => {
     if (!focusedAlbum) {
@@ -342,6 +350,16 @@ export default function Grooveflix() {
       setFocusedAlbum(items[0]);
     }
   }, [items, focusedAlbum]);
+
+  if (isMobile) {
+    return (
+      <iPodClassic
+        player={player}
+        items={filteredItems}
+        onPlayTrack={handlePlayTrack}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white overflow-y-auto">
