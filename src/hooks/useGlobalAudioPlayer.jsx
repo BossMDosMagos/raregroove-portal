@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
+import { registerAnalysers } from './useGlobalAudioAnalyser.js';
 
 let audioContextInstance = null;
 let audioElementInstance = null;
@@ -163,6 +164,8 @@ function connectAudioGraph() {
   
   splitter.connect(sharedAnalyserL, 0);
   splitter.connect(sharedAnalyserR, 1);
+  
+  registerAnalysers({ analyserL: sharedAnalyserL, analyserR: sharedAnalyserR });
   
   console.log('[GlobalPlayer] Graph connected - analyserL:', !!sharedAnalyserL, 'analyserR:', !!sharedAnalyserR);
 }

@@ -142,19 +142,12 @@ export function useGlobalAudioAnalyser() {
     sharedAnalyserL.getByteTimeDomainData(dataL);
     
     let sumL = 0;
-    let maxL = 0;
-    let nonZeroCount = 0;
     for (let i = 0; i < dataL.length; i++) {
       const vL = (dataL[i] - 128) / 128;
       sumL += vL * vL;
-      maxL = Math.max(maxL, Math.abs(vL));
-if (dataL[i] !== 128) nonZeroCount++;
     }
-
-    const maxLdb = 20 * Math.log10(maxL || 1e-10);
-    const rmsLdb = 20 * Math.log10(rms || 1e-10);
-
-    return { max: maxL, rms, maxDb: maxLdb, rmsDb: rmsLdb, nonZero: nonZeroCount, total: dataL.length };
+    
+    return Math.sqrt(sumL / dataL.length);
   }, []);
   
   const getRMSR = useCallback(() => {
