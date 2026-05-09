@@ -88,12 +88,14 @@ export default function Grooveflix() {
   const focusedAlbumRef = useRef(null);
   const currentTrackIndexRef = useRef(-1);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    const mql = window.matchMedia('(max-width: 767px)');
+    const check = () => setIsMobile(mql.matches);
+    check();
+    mql.addEventListener('change', check);
+    return () => mql.removeEventListener('change', check);
   }, []);
 
   const handleOpenDeleteModal = () => {

@@ -427,9 +427,9 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
     }}>
       {/* Chassis */}
       <div style={{
-        width: 'min(92vw, 360px)',
-        maxHeight: '96vh',
-        aspectRatio: '9 / 16',
+        width: 'min(85vw, 320px)',
+        height: 'calc(min(85vw, 320px) * 16 / 9)',
+        maxHeight: '92vh',
         background: 'linear-gradient(145deg, #f0f0f0, #d0d0d0, #e8e8e8)',
         borderRadius: '36px',
         boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.6)',
