@@ -9,6 +9,7 @@ import EqualizerBackground from '../components/EqualizerBackground';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 import { useGlobalPlayer } from '../hooks/useGlobalAudioPlayer.jsx';
+import { registerAnalysers } from '../hooks/useGlobalAudioAnalyser.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
@@ -247,6 +248,13 @@ export default function Grooveflix() {
       handlePlayTrack(album, nextIndex);
     }
   }, [handlePlayTrack]);
+
+  // Reconnect analysers on mount if audio is already playing
+  useEffect(() => {
+    if (isAudioContextPlaying) {
+      registerAnalysers(player.getAnalysers());
+    }
+  }, []);
 
   const lastTrackIdRef = useRef(null);
 

@@ -287,12 +287,13 @@ export function useGlobalAudioPlayer() {
   }, []);
   
   const createAudioElement = useCallback(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.crossOrigin = 'anonymous';
-      audioRef.current.preload = 'metadata';
+    if (!audioElementInstance) {
+      audioElementInstance = new Audio();
+      audioElementInstance.crossOrigin = 'anonymous';
+      audioElementInstance.preload = 'metadata';
     }
-    return audioRef.current;
+    audioRef.current = audioElementInstance;
+    return audioElementInstance;
   }, []);
   
   const initAudioGraph = useCallback(() => {
