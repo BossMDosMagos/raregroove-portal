@@ -226,6 +226,15 @@ export function useGlobalAudioPlayer() {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [volume, setVolumeState] = useState(0.7);
+  const [toneSettings, setToneSettingsState] = useState(() => {
+    const s = loadSettings();
+    return { bass: s.bass ?? 0, mid: s.mid ?? 0, treble: s.treble ?? 0 };
+  });
+  const [eqBands, setEqBandsState] = useState(() => {
+    const s = loadSettings();
+    const freqs = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    return Object.fromEntries(freqs.map((f, i) => [f, s.eq_bands?.[i] ?? 0]));
+  });
   
   const urlCacheRef = useRef(new Map());
   const userIdRef = useRef(null);
@@ -509,6 +518,41 @@ export function useGlobalAudioPlayer() {
     currentTrackIndexRef.current = queue.findIndex(t => t.id === track.id);
     await loadAndPlayTrack(track);
   }, [loadAndPlayTrack, queue]);
+
+  const setTone = useCallback((tone, value) => {
+    const dbValue = Math.max(-12, Math.min(12, value));
+    if (toneFilters && toneFilters[tone]) {
+      toneFilters[tone].gain.value = dbValue;
+      setToneSettingsState(prev => ({ ...prev, [tone]: dbValue }));
+      const settings = loadSettings();
+      saveSettings({ ...settings, [tone]: dbValue });
+    }
+  }, []);
+
+  const setEqBand = useCallback((frequency, value) => {
+    const dbValue = Math.max(-12, Math.min(12, value));
+    if (eqFilters.length > 0) {
+      const filter = eqFilters.find(f => Math.abs(f.frequency.value - frequency) < 0.1);
+      if (filter) {
+        filter.gain.value = dbValue;
+        setEqBandsState(prev => ({ ...prev, [frequency]: dbValue }));
+        const settings = loadSettings();
+        const bands = [...(settings.eq_bands || DEFAULTS.eq_bands)];
+        const freqs = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+        const idx = freqs.indexOf(frequency);
+        if (idx >= 0) bands[idx] = dbValue;
+        saveSettings({ ...settings, eq_bands: bands });
+      }
+    }
+  }, []);
+
+  const setVuSensitivity = useCallback((value) => {
+    if (vuGainNode) {
+      vuGainNode.gain.value = value;
+      const settings = loadSettings();
+      saveSettings({ ...settings, vuSensitivity: value });
+    }
+  }, []);
   
   useEffect(() => {
     queueRef.current = queue;
@@ -525,6 +569,8 @@ export function useGlobalAudioPlayer() {
     duration,
     queue,
     volume,
+    toneSettings,
+    eqBands,
     loadTrack: loadAndPlayTrack,
     playAlbum,
     play,
@@ -532,6 +578,9 @@ export function useGlobalAudioPlayer() {
     stop,
     seek,
     setVolume,
+    setTone,
+    setEqBand,
+    setVuSensitivity,
     updateCurrentTrack,
     playNext,
     playPrevious,
