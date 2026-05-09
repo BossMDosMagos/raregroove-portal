@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 import { Sparkles, Plus, RotateCw, Disc, Trash2, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -90,10 +90,10 @@ export default function Grooveflix() {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const mql = window.matchMedia('(max-width: 767px)');
-    const check = () => setIsMobile(mql.matches);
-    check();
+    setIsMobile(mql.matches);
+    const check = (e) => setIsMobile(e.matches);
     mql.addEventListener('change', check);
     return () => mql.removeEventListener('change', check);
   }, []);

@@ -417,72 +417,63 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
       position: 'fixed',
       inset: 0,
       zIndex: 9999,
-      background: 'linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 50%, #2a2a2a 100%)',
+      background: '#1a1a1a',
       display: 'flex',
-      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px',
-      overflow: 'hidden',
+      padding: '12px',
     }}>
       {/* Chassis */}
       <div style={{
-        width: 'min(85vw, 320px)',
-        height: 'calc(min(85vw, 320px) * 16 / 9)',
-        maxHeight: '92vh',
-        background: 'linear-gradient(145deg, #f0f0f0, #d0d0d0, #e8e8e8)',
-        borderRadius: '36px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.6)',
+        width: '100%',
+        maxWidth: '300px',
+        background: 'linear-gradient(145deg, #eaeaea 0%, #cccccc 50%, #e0e0e0 100%)',
+        borderRadius: '30px',
+        padding: '14px 14px 10px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
         display: 'flex',
         flexDirection: 'column',
-        padding: 'clamp(12px, 3vw, 20px)',
-        position: 'relative',
+        gap: '6px',
       }}>
         {/* Screen */}
         <div style={{
-          flex: '1 1 0',
-          minHeight: 0,
           background: '#f5f5f5',
-          borderRadius: '12px',
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: 'inset 0 0 0 2px #888, inset 0 0 0 4px #333, inset 0 0 0 1px #666',
+          borderRadius: '10px',
+          border: '1px solid #aaa',
+          boxShadow: 'inset 0 0 0 3px #555, 0 3px 10px rgba(0,0,0,0.15)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          marginBottom: 'clamp(6px, 1.5vw, 10px)',
-          position: 'relative',
         }}>
           {/* Status bar */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '4px 10px',
-            fontSize: 'clamp(8px, 1.8vw, 10px)',
+            padding: '3px 8px',
+            fontSize: '10px',
             color: '#555',
             fontWeight: '600',
-            borderBottom: '1px solid #e0e0e0',
+            borderBottom: '1px solid #ddd',
             flexShrink: 0,
           }}>
-            <span>{currentTrack?.title || 'Grooveflix'}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {isPlaying && <span style={{ fontSize: '6px' }}>▶</span>}
+            <span style={{ fontSize: '9px' }}>{currentTrack?.title || 'Grooveflix'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {isPlaying && <span>▶</span>}
               <span>{Math.round((volume ?? 0.7) * 100)}%</span>
             </span>
           </div>
           {/* Screen content */}
-          <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <div style={{ minHeight: '160px' }}>
             {renderScreen()}
           </div>
         </div>
 
-        {/* Click Wheel area */}
+        {/* Click Wheel */}
         <div style={{
-          flex: '0 0 auto',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'center',
-          padding: 'clamp(4px, 1vw, 8px) 0',
+          padding: '6px 0 2px',
         }}>
           <ClickWheel
             onMenu={handleMenu}
@@ -493,19 +484,6 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
             onVolumeSwipe={handleVolumeSwipe}
           />
         </div>
-
-        {/* Dock connector detail */}
-        <div style={{
-          position: 'absolute',
-          bottom: 'clamp(4px, 1vw, 8px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '30%',
-          height: '3px',
-          background: '#999',
-          borderRadius: '2px',
-          opacity: 0.3,
-        }} />
       </div>
     </div>
   );
