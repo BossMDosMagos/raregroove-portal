@@ -423,20 +423,19 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
       <div style={{
         width: '100%',
         maxWidth: '300px',
-        background: 'linear-gradient(145deg, #eaeaea 0%, #cccccc 50%, #e0e0e0 100%)',
-        borderRadius: '30px',
-        padding: '14px 14px 10px',
+        background: '#e0e0e0',
+        borderRadius: '28px',
+        padding: '12px 12px 8px',
         boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '4px',
       }}>
         {/* Screen */}
         <div style={{
           background: '#fff',
-          borderRadius: '8px',
-          border: '2px solid #888',
-          outline: '4px solid #333',
+          borderRadius: '6px',
+          border: '2px solid #777',
           overflow: 'hidden',
         }}>
           {/* Status bar */}
@@ -444,21 +443,19 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '2px 8px',
-            fontSize: '9px',
-            color: '#555',
-            fontWeight: '600',
-            background: '#f0f0f0',
+            padding: '3px 8px',
+            fontSize: '10px',
+            color: '#444',
+            background: '#eee',
             borderBottom: '1px solid #ccc',
           }}>
             <span>{currentTrack?.title || 'Grooveflix'}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              {isPlaying && <span>▶</span>}
-              <span>{Math.round((volume ?? 0.7) * 100)}%</span>
+            <span>
+              {isPlaying && '▶'} {Math.round((volume ?? 0.7) * 100)}%
             </span>
           </div>
           {/* Screen content */}
-          <div style={{ background: '#fff', minHeight: '170px' }}>
+          <div style={{ background: '#fff' }}>
             {renderScreen()}
           </div>
         </div>
