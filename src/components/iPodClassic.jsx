@@ -217,7 +217,7 @@ export default function iPodClassic({ player, items = [], onPlayTrack }) {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', zIndex: 9999, position: 'relative' }}>
+    <div style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', overflow: 'hidden', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', zIndex: 2147483647 }}>
       {/* Chassis */}
       <div style={{ width: '100%', maxWidth: '300px', background: '#f0f0f0', borderRadius: '28px', padding: '12px 12px 8px', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
         {/* Screen */}
