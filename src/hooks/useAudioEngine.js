@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { Howl, Howler } from 'howler';
 
 const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -150,6 +150,15 @@ export function useAudioEngine() {
       Object.values(toneFiltersRef.current).forEach(f => f.disconnect());
       vuGainRef.current?.disconnect();
     } catch (e) {}
+    analyserLRef.current = null;
+    analyserRRef.current = null;
+    splitterRef.current = null;
+    mergerRef.current = null;
+    vuGainRef.current = null;
+    masterGainRef.current = null;
+    inputGainRef.current = null;
+    eqFiltersRef.current = [];
+    toneFiltersRef.current = {};
     isInitializedRef.current = false;
     isConnectedRef.current = false;
   }, []);
@@ -229,6 +238,13 @@ export function useAudioEngine() {
     if (howlRef.current) { howlRef.current.unload(); howlRef.current = null; }
     disconnectNodeChain();
     setIsPlaying(false); setCurrentTime(0); setDuration(0); setIsReady(false);
+  }, [disconnectNodeChain]);
+
+  useEffect(() => {
+    return () => {
+      if (howlRef.current) { howlRef.current.unload(); howlRef.current = null; }
+      disconnectNodeChain();
+    };
   }, [disconnectNodeChain]);
 
   return {

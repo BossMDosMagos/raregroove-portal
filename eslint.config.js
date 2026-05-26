@@ -29,7 +29,6 @@ export default defineConfig([
     rules: {
       'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]' }],
       'no-useless-escape': 'warn',
-      'no-undef': 'off',
     },
   },
   {

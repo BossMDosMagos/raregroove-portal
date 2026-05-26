@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Disc, Search, Music, Calendar, Play, Upload, Library, Sparkles, Crown, Gem, Plus, ChevronDown } from 'lucide-react';
+import { Disc, Search, Music, Calendar, Upload, Library, Sparkles, Crown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ItemCard } from '../components/ItemCard';
@@ -14,7 +14,7 @@ export default function Catalogo() {
   const [loadingItems, setLoadingItems] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [currentlyPlaying] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
     genre: '',
@@ -93,8 +93,7 @@ export default function Catalogo() {
   };
 
   const handlePlay = (item) => {
-    setCurrentlyPlaying(item.id);
-    navigate(`/play/${item.id}`);
+    navigate(`/item/${item.id}`);
   };
 
   return (
@@ -265,7 +264,7 @@ export default function Catalogo() {
               {filteredProducts.map((item, index) => (
                 <div 
                   key={item.id} 
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  className="animate-fade-in"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <ItemCard item={item} />

@@ -10,10 +10,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const B2_KEY_ID = Deno.env.get('B2_KEY_ID') || '0056f3db4a31f570000000002';
-const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY') || 'K005n2NHKFxbs/Y8Yinyklp3we5FPmE';
-const BUCKET_NAME = 'Cofre-RareGroove-01';
-const BUCKET_ID = '56cfb33d8ba45a4391cf0517';
+const B2_KEY_ID = Deno.env.get('B2_KEY_ID');
+const B2_APPLICATION_KEY = Deno.env.get('B2_APPLICATION_KEY');
+const BUCKET_NAME = Deno.env.get('B2_BUCKET_NAME');
+const BUCKET_ID = Deno.env.get('B2_BUCKET_ID');
 const B2_NATIVE_URL = 'https://f005.backblazeb2.com';
 
 function getServiceClient() {

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useState, memo } from 'react';
+import React, { useMemo, useRef, useCallback, useState, memo, useEffect } from 'react';
 
 const FREQUENCY_LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
 
@@ -17,6 +17,7 @@ const PRESETS = [
 
 const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequency, isEnabled }) {
   const sliderRef = useRef(null);
+  const isDraggingRef = useRef(false);
   
   const trackHeight = 90;
   const trackWidth = 14;
@@ -26,8 +27,17 @@ const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequen
   const knobWidth = 16;
   const ledSize = 5;
   
+  useEffect(() => {
+    return () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+      }
+    };
+  }, []);
+  
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
+    isDraggingRef.current = true;
     
     const updateValue = (clientY) => {
       if (!sliderRef.current) return;
@@ -43,6 +53,7 @@ const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequen
     };
     
     const handleMouseUp = () => {
+      isDraggingRef.current = false;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -51,11 +62,6 @@ const DraggableSlider = memo(function DraggableSlider({ value, onChange, frequen
     document.addEventListener('mouseup', handleMouseUp);
     
     updateValue(e.clientY);
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
   }, [onChange, trackHeight]);
   
   const handleTrackClick = useCallback((e) => {

@@ -26,8 +26,6 @@ const emptyFormData = {
 };
 
 export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit }) {
-  if (!isOpen) return null;
-
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(emptyFormData);
@@ -217,6 +215,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div 

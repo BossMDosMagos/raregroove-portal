@@ -15,12 +15,19 @@ export function AudioPlayerProvider({ children }) {
   const [loadingTrackId, setLoadingTrackId] = useState(null);
 
   const urlCacheRef = useRef(new Map());
+  const urlCacheTimeRef = useRef(new Map());
+  const URL_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+  const URL_CACHE_MAX_SIZE = 50;
   const currentQueueRef = useRef([]);
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserId(session?.user?.id || null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUserId(session?.user?.id || null);
+      } catch (err) {
+        console.error('[AudioPlayer] Auth init error:', err);
+      }
     };
     
     init();
@@ -35,13 +42,13 @@ export function AudioPlayerProvider({ children }) {
   const getPresignedUrl = useCallback(async (filePath) => {
     if (!filePath) return null;
     
-    if (urlCacheRef.current.has(filePath)) {
-      return urlCacheRef.current.get(filePath);
+    const cached = urlCacheRef.current.get(filePath);
+    const cachedTime = urlCacheTimeRef.current.get(filePath);
+    if (cached && cachedTime && Date.now() - cachedTime < URL_CACHE_TTL) {
+      return cached;
     }
     
-    if (!userId) {
-      return null;
-    }
+    if (!userId) return null;
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -51,11 +58,16 @@ export function AudioPlayerProvider({ children }) {
         body: { file_path: filePath, userId: userId, type: 'audio' },
       });
 
-      if (error || !data?.url) {
-        return null;
+      if (error || !data?.url) return null;
+
+      if (urlCacheRef.current.size >= URL_CACHE_MAX_SIZE) {
+        const firstKey = urlCacheRef.current.keys().next().value;
+        urlCacheRef.current.delete(firstKey);
+        urlCacheTimeRef.current.delete(firstKey);
       }
 
       urlCacheRef.current.set(filePath, data.url);
+      urlCacheTimeRef.current.set(filePath, Date.now());
       return data.url;
     } catch {
       return null;
@@ -118,9 +130,7 @@ export function AudioPlayerProvider({ children }) {
     
     let queueTracks = [];
     
-    if (track.category === 'album' && track.audio_files?.length > 0) {
-      queueTracks = expandAlbumTracks(track);
-    } else if (track.category === 'album' && track.audioFiles?.length > 0) {
+      if (track.category === 'album' && (track.audio_files?.length > 0 || track.audioFiles?.length > 0)) {
       queueTracks = expandAlbumTracks(track);
     } else {
       queueTracks = [track];
@@ -128,7 +138,7 @@ export function AudioPlayerProvider({ children }) {
     
     currentQueueRef.current = queueTracks;
     setQueue(queueTracks);
-    setCurrentTrack(track);
+    setCurrentTrack(queueTracks[0] || track);
     setIsPlaying(true);
   }, [expandAlbumTracks]);
 
@@ -198,7 +208,6 @@ export function AudioPlayerProvider({ children }) {
     closePlayer,
     getPresignedUrl,
     expandAlbumTracks,
-    urlCache: urlCacheRef.current,
   }), [
     currentTrack,
     queue,

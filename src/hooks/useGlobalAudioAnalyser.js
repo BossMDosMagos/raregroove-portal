@@ -8,6 +8,7 @@ let sharedState = null;
 let externalAnalyserL = null;
 let externalAnalyserR = null;
 let externalVuGain = null;
+let currentSplitterRef = null;
 
 export function initAudioAnalysers(audioContext, gainNode, externalAnalysers = null) {
   externalAnalyserL = externalAnalysers?.analyserL || null;
@@ -66,11 +67,16 @@ export function getAnalysers() {
 }
 
 export function connectToAnalysers(source) {
-  if (!sharedAnalyserL || !sharedAnalyserR || !vuGainNode) {
+  if (!sharedAnalyserL || !sharedAnalyserR || !vuGainNode || !audioContextRef) {
     return false;
   }
   
+  if (currentSplitterRef) {
+    try { currentSplitterRef.disconnect(); } catch (e) {}
+  }
+  
   const splitter = audioContextRef.createChannelSplitter(2);
+  currentSplitterRef = splitter;
   source.connect(vuGainNode);
   vuGainNode.connect(splitter);
   splitter.connect(sharedAnalyserL, 0);
@@ -91,7 +97,13 @@ export function registerAnalysers({ analyserL, analyserR, splitter, merger, onDa
 }
 
 export function unregisterAnalysers() {
-  // cleanup se necessário
+  if (sharedAnalyserL) { try { sharedAnalyserL.disconnect(); } catch (e) {} sharedAnalyserL = null; }
+  if (sharedAnalyserR) { try { sharedAnalyserR.disconnect(); } catch (e) {} sharedAnalyserR = null; }
+  if (sharedState) {
+    sharedState.isConnected = false;
+    sharedState.listeners.clear();
+  }
+  vuGainNode = null;
 }
 
 export function resetAnalysers() {
@@ -106,16 +118,23 @@ export function resetAnalysers() {
   audioContextRef = null;
 }
 
+const BUFFER_POOL = {};
+
+function getBuffer(size) {
+  if (!BUFFER_POOL[size] || BUFFER_POOL[size].length !== size) {
+    BUFFER_POOL[size] = new Uint8Array(size);
+  }
+  return BUFFER_POOL[size];
+}
+
+const FALLBACK_WAVEFORM = new Uint8Array(1024).fill(128);
+
 export function useGlobalAudioAnalyser() {
   const [isReady, setIsReady] = useState(false);
-  const [, forceUpdate] = useState(0);
-  const debugLogRef = useRef({ frameCount: 0 });
   
   useEffect(() => {
     const checkReady = () => {
-      const ready = sharedState?.isConnected && sharedAnalyserL && sharedAnalyserR;
-      setIsReady(ready);
-      forceUpdate(n => n + 1);
+      setIsReady(sharedState?.isConnected && !!sharedAnalyserL && !!sharedAnalyserR);
     };
     
     if (sharedState) {
@@ -139,12 +158,9 @@ export function useGlobalAudioAnalyser() {
   }, []);
   
   const getRMSL = useCallback(() => {
-    if (!sharedAnalyserL) {
-      debugLogRef.current.frameCount++;
-      return 0;
-    }
+    if (!sharedAnalyserL) return 0;
     
-    const dataL = new Uint8Array(sharedAnalyserL.frequencyBinCount);
+    const dataL = getBuffer(sharedAnalyserL.frequencyBinCount);
     sharedAnalyserL.getByteTimeDomainData(dataL);
     
     let sumL = 0;
@@ -159,7 +175,7 @@ export function useGlobalAudioAnalyser() {
   const getRMSR = useCallback(() => {
     if (!sharedAnalyserR) return 0;
     
-    const dataR = new Uint8Array(sharedAnalyserR.frequencyBinCount);
+    const dataR = getBuffer(sharedAnalyserR.frequencyBinCount);
     sharedAnalyserR.getByteTimeDomainData(dataR);
     
     let sumR = 0;
@@ -174,7 +190,7 @@ export function useGlobalAudioAnalyser() {
   const getBassEnergyL = useCallback(() => {
     if (!sharedAnalyserL) return 0;
     
-    const freqL = new Uint8Array(sharedAnalyserL.frequencyBinCount);
+    const freqL = getBuffer(sharedAnalyserL.frequencyBinCount);
     sharedAnalyserL.getByteFrequencyData(freqL);
     
     const binSize = 48000 / sharedAnalyserL.frequencyBinCount;
@@ -197,7 +213,7 @@ export function useGlobalAudioAnalyser() {
   const getBassEnergyR = useCallback(() => {
     if (!sharedAnalyserR) return 0;
     
-    const freqR = new Uint8Array(sharedAnalyserR.frequencyBinCount);
+    const freqR = getBuffer(sharedAnalyserR.frequencyBinCount);
     sharedAnalyserR.getByteFrequencyData(freqR);
     
     const binSize = 48000 / sharedAnalyserR.frequencyBinCount;
@@ -216,15 +232,15 @@ export function useGlobalAudioAnalyser() {
   }, []);
 
   const getWaveformL = useCallback(() => {
-    if (!sharedAnalyserL) return new Uint8Array(1024).fill(128);
-    const data = new Uint8Array(sharedAnalyserL.frequencyBinCount);
+    if (!sharedAnalyserL) return FALLBACK_WAVEFORM;
+    const data = getBuffer(sharedAnalyserL.frequencyBinCount);
     sharedAnalyserL.getByteTimeDomainData(data);
     return data;
   }, []);
 
   const getWaveformR = useCallback(() => {
-    if (!sharedAnalyserR) return new Uint8Array(1024).fill(128);
-    const data = new Uint8Array(sharedAnalyserR.frequencyBinCount);
+    if (!sharedAnalyserR) return FALLBACK_WAVEFORM;
+    const data = getBuffer(sharedAnalyserR.frequencyBinCount);
     sharedAnalyserR.getByteTimeDomainData(data);
     return data;
   }, []);
