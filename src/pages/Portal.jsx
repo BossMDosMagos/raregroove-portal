@@ -620,7 +620,7 @@ export default function Portal() {
       {/* Banner Footer com identificação legal (CDC Art. 33) */}
       <div className="border-t border-[#D4AF37]/20 bg-black/60 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 text-center">
-          <p className="text-[#C0C0C0]/40 text-xs mb-2">© 2026 RAREGROOVE · Todos os direitos reservados</p>
+          <p className="text-[#C0C0C0]/40 text-xs mb-2">© 2026 RareGroove · Todos os direitos reservados</p>
           <div className="flex flex-col md:flex-row justify-center gap-4 text-[#C0C0C0]/30 text-[10px]">
             <span>{LEGAL.razaoSocial}</span>
             <span>CNPJ: {LEGAL.cnpj}</span>
