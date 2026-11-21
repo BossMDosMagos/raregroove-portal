@@ -1000,7 +1000,7 @@ export default function Profile() {
                                 user_id: purchase.seller?.id,
                                 type: 'system',
                                 title: 'Pedido recebido!',
-                                message: `Comprador confirmou recebimento de "${purchase.items?.title}". Libere o pagamento.`
+                                message: `Comprador confirmou recebimento de "${purchase.items?.title}". Pagamento será processado pelo PSP.`
                               });
                               setPurchases(prev => prev.map(p => 
                                 p.id === purchase.id ? { ...p, status: 'recebido' } : p
@@ -1089,11 +1089,11 @@ export default function Profile() {
                               setSales(prev => prev.map(s => 
                                 s.id === sale.id ? { ...s, status: 'concluido' } : s
                               ));
-                              toast.success(`PIX de R$ ${valorLiquido.toFixed(2)} liberado para sua conta!`);
+                              toast.success(`Valor líquido de R$ ${valorLiquido.toFixed(2)} será processado pelo PSP e repassado após cumprimento dos prazos.`);
                             }}
                             className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-xs"
                           >
-                            Liberar PIX (R$ {((sale.price || 0) * 0.90).toFixed(2)})
+                            Solicitar Repasse via PSP (R$ {((sale.price || 0) * 0.90).toFixed(2)})
                           </button>
                         )}
                       </div>

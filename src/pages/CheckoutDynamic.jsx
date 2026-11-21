@@ -249,7 +249,7 @@ export default function CheckoutDynamic() {
         <header className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-500/30 bg-white/5 text-[10px] font-black uppercase tracking-[0.22em]">
             <Sparkles className="w-4 h-4 text-fuchsia-400" />
-            {t('checkout.subscription.badge') || 'CHECKOUT GROOVEFLIX'}
+            {t('checkout.subscription.badge') || 'CHECKOUT RAREGROOVE VAULT'}
           </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter">
             {t('checkout.subscription.title') || 'Finalizando seu'}{' '}
@@ -351,7 +351,7 @@ export default function CheckoutDynamic() {
                           {selectedGateway === 'pix_portal' && 'PIX - Transferência Instantânea'}
                         </p>
                         <p className="text-white/40 text-xs">
-                          {selectedGateway === 'pix_portal' ? 'Pagamento direto para o portal' : 'Ambiente seguro de pagamento'}
+                          {selectedGateway === 'pix_portal' ? 'Pagamento processado via PSP (parceiro licenciado pelo Banco Central)' : 'Ambiente seguro de pagamento'}
                         </p>
                       </div>
                     </div>
@@ -387,7 +387,7 @@ export default function CheckoutDynamic() {
                     user_level: plan.userLevel,
                     buyerId: user?.id,
                     buyerEmail: user?.email,
-                    itemTitle: `GROOVEFLIX • ${plan.title}`,
+                    itemTitle: `RAREGROOVE VAULT • ${plan.title}`,
                     transactionId,
                     currency
                   }}
@@ -426,7 +426,7 @@ export default function CheckoutDynamic() {
             onClick={() => navigate('/grooveflix')}
             className="px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-black rounded-xl"
           >
-            Voltar ao Grooveflix
+            Voltar ao RareGroove Vault
           </button>
         </div>
       )}

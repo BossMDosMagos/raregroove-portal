@@ -45,12 +45,12 @@ export function AudioControlsPanel({
   const lcdFgColor = LCD_FG;
 
   const nowPlayingText = useMemo(() => {
-    if (!currentTrack) return 'GROOVEFLIX HI-FI...';
+    if (!currentTrack) return 'RAREGROOVE VAULT HI-FI...';
     const parts = [];
     if (currentTrack.title) parts.push(currentTrack.title);
     if (currentTrack.artist) parts.push(currentTrack.artist);
     if (currentTrack.album) parts.push(currentTrack.album);
-    return parts.length > 0 ? parts.join('  *  ') + '  *  ' + parts[0] + '  *  ' : 'GROOVEFLIX HI-FI...';
+    return parts.length > 0 ? parts.join('  *  ') + '  *  ' + parts[0] + '  *  ' : 'RAREGROOVE VAULT HI-FI...';
   }, [currentTrack]);
 
   const duration_text = textWidth > 0 ? `${textWidth / 25}s` : '20s';
@@ -312,7 +312,7 @@ export function AudioControlsPanel({
 
         <div className="flex justify-center gap-4 mt-2 pt-2 border-t" style={{ borderColor: lcdFgColor }}>
           <span className="text-[6px]" style={{ color: lcdFgColor, fontFamily: FONT_FAMILY, opacity: 0.5 }}>
-            GROOVEFLIX Hi-Fi AUDIO SYSTEM
+            RAREGROOVE VAULT Hi-Fi AUDIO SYSTEM
           </span>
         </div>
       </div>

@@ -400,7 +400,7 @@ export default function Grooveflix() {
                 <Sparkles className="w-3 h-3" /> HI-FI STREAMING
               </span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight">GROOVEFLIX<span className="text-fuchsia-400">.</span></h1>
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight">RAREGROOVE VAULT<span className="text-fuchsia-400">.</span></h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

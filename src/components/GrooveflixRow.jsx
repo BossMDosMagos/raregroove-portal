@@ -20,7 +20,7 @@ const GrooveflixCard = memo(function GrooveflixCard({ item, onPick, onDelete, ca
   const handleDelete = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (window.confirm(`Excluir "${item.title}" do Grooveflix?`)) {
+    if (window.confirm(`Excluir "${item.title}" do RareGroove Vault?`)) {
       onDelete?.(item.id);
     }
   };

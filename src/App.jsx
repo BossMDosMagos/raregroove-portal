@@ -21,6 +21,7 @@ const LoadingFallback = () => (
 
 // Páginas Públicas e Essenciais (Carregamento Imediato)
 import Login from './pages/Auth/Login';
+import Home from './pages/Home';
 import VerifyEmail from './pages/Auth/VerifyEmail';
 import CompleteSignUp from './pages/Auth/CompleteSignUp';
 import Portal from './pages/Portal';
@@ -235,7 +236,7 @@ export default function App() {
           {/* Se estiver logado, manda pro Portal. Se não, manda pro Login */}
           <Route 
             path="/" 
-            element={session ? <Navigate to="/portal" /> : <Login />} 
+            element={session ? <Navigate to="/portal" /> : <Home />} 
           />
 
           {/* Rota de Login explícita */}

@@ -316,7 +316,7 @@ export default function PaymentSuccess() {
 
           <p className="text-white/60 text-sm max-w-2xl mx-auto">
             {isActive
-              ? (t('checkout.subscription.unlocked.desc') || 'Sua assinatura foi ativada. Redirecionando para o Grooveflix…')
+              ? (t('checkout.subscription.unlocked.desc') || 'Sua assinatura foi ativada. Redirecionando para o RareGroove Vault…')
               : isFailed
               ? (t('checkout.subscription.unlocked.failDesc') || 'O webhook ainda está sincronizando. Aguarde alguns segundos e tente novamente.')
               : (t('checkout.subscription.unlocked.pendingDesc') || 'Estamos aguardando a confirmação final do gateway. Isso pode levar alguns segundos.')}
@@ -344,7 +344,7 @@ export default function PaymentSuccess() {
               disabled={!isActive}
               className="w-full md:w-auto px-8 py-4 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/25 to-purple-500/15 text-white hover:border-fuchsia-500/70 transition disabled:opacity-30"
             >
-              {t('checkout.subscription.unlocked.cta') || 'Entrar no Grooveflix'}
+              {t('checkout.subscription.unlocked.cta') || 'Entrar no RareGroove Vault'}
             </button>
             <button
               type="button"
@@ -778,7 +778,7 @@ export default function PaymentSuccess() {
               <>
                 <li>O vendedor receberá uma notificação para gerar a etiqueta de envio</li>
                 <li>Você receberá o código de rastreamento assim que o item for postado</li>
-                <li>O pagamento fica em custódia até você confirmar o recebimento</li>
+                <li>Os valores são processados e retidos por PSP licenciado pelo Banco Central; liberados ao vendedor após entrega e prazo de garantia</li>
                 <li>Use o chat para esclarecer dúvidas com o vendedor</li>
               </>
             ) : (

@@ -65,12 +65,12 @@ export function StatusBadge({ status }) {
       color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30'
     },
     pago_em_custodia: {
-      label: 'Pago em Custódia',
+      label: 'Pago - Aguardando PSP',
       icon: CheckCircle,
       color: 'text-blue-400 bg-blue-500/20 border-blue-500/30'
     },
     pago_custodia: {
-      label: 'Pago em Custódia',
+      label: 'Pago - Aguardando PSP',
       icon: CheckCircle,
       color: 'text-blue-400 bg-blue-500/20 border-blue-500/30'
     },
@@ -729,7 +729,7 @@ export function WithdrawalModal({ isOpen, onClose, userProfile, availableBalance
               </p>
             )}
             <p className="text-white/40 text-xs mt-2">
-              O valor será transferido para esta chave em até 2 dias úteis
+              O valor será transferido para esta chave após processamento pelo PSP (parceiro de pagamentos licenciado pelo Banco Central).
             </p>
           </div>
 
@@ -738,9 +738,9 @@ export function WithdrawalModal({ isOpen, onClose, userProfile, availableBalance
             <div className="text-xs text-blue-200">
               <p className="font-bold mb-1">Importante:</p>
               <ul className="space-y-1 text-blue-300/80">
-                <li>• Processamento em até 2 dias úteis</li>
+                <li>• Processamento conforme prazos do PSP</li>
                 <li>• Apenas chaves PIX cadastradas no seu CPF</li>
-                <li>• Taxa de saque: R$ 0,00</li>
+                <li>• Taxa de saque: R$ 0,00 (comissão da plataforma descontada automaticamente no split)</li>
               </ul>
             </div>
           </div>

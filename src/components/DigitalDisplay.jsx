@@ -22,12 +22,12 @@ export function DigitalDisplay({ currentTrack, loopMode, shuffle, showEq }) {
   }, [currentTrack, textColor]);
 
   const nowPlayingText = useMemo(() => {
-    if (!currentTrack) return 'GROOVEFLIX READY...';
+    if (!currentTrack) return 'RAREGROOVE VAULT READY...';
     const parts = [];
     if (currentTrack.title) parts.push(currentTrack.title);
     if (currentTrack.artist) parts.push(currentTrack.artist);
     if (currentTrack.album) parts.push(currentTrack.album);
-    return parts.length > 0 ? parts.join('  //  ') : 'GROOVEFLIX READY...';
+    return parts.length > 0 ? parts.join('  //  ') : 'RAREGROOVE VAULT READY...';
   }, [currentTrack]);
 
   const duration = textWidth > 0 ? `${textWidth / 35}s` : '15s';

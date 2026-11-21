@@ -88,7 +88,7 @@ function FileUploadZone({ file, isFolder, fileCount, onChange, icon: Icon, progr
           </div>
           <div>
             <p className="text-emerald-300 font-medium">Enviado com sucesso!</p>
-            <p className="text-white/40 text-xs">Arquivo disponível no Grooveflix</p>
+            <p className="text-white/40 text-xs">Arquivo disponível no RareGroove Vault</p>
           </div>
         </div>
       ) : isError ? (
@@ -1251,7 +1251,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
               </div>
               <div>
                 <h2 className="text-xl font-black uppercase tracking-wider text-white">
-                  Adicionar ao Grooveflix
+                  Adicionar ao RareGroove Vault
                 </h2>
                 <p className="text-white/40 text-xs">Upload de conteúdo Hi-Fi</p>
               </div>
@@ -1322,7 +1322,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  {t('grooveflix.upload.submit') || 'Adicionar ao Grooveflix'}
+                  {t('grooveflix.upload.submit') || 'Adicionar ao RareGroove Vault'}
                 </>
               )}
             </button>

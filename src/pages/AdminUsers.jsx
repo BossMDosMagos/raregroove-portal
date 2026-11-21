@@ -827,7 +827,7 @@ export default function AdminUsers() {
               </div>
               <div>
                 <h3 className="text-base font-black text-white mb-1">CONFIRMAR REVOGAÇÃO</h3>
-                <p className="text-white/60 text-[10px] uppercase tracking-wider">Ação imediata no Grooveflix</p>
+                <p className="text-white/60 text-[10px] uppercase tracking-wider">Ação imediata no RareGroove Vault</p>
               </div>
             </div>
 
@@ -839,7 +839,7 @@ export default function AdminUsers() {
                 {revokeConfirmData.full_name || '—'}
               </p>
               <p className="text-white/50 text-[10px] mt-1">
-                Isso cancelará o plano e bloqueará o Grooveflix imediatamente.
+                Isso cancelará o plano e bloqueará o RareGroove Vault imediatamente.
               </p>
             </div>
 

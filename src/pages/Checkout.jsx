@@ -706,7 +706,7 @@ const handlePaymentSuccess = async (paymentData) => {
                 <div className="flex items-center gap-3 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
                   <Shield size={16} className="text-gold-premium" />
                   <span className="text-[9px] font-black uppercase tracking-widest text-silver-premium/60">
-                    {t('checkout.securePayment') || 'Pagamento 100% Criptografado'}
+                    {t('checkout.securePayment') || 'Pagamento Criptografado'}
                   </span>
                 </div>
               </div>

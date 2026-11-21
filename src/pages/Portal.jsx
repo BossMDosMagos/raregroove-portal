@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, FileText, Lock, Truck, Users, AlertTriangle,
-  ChevronDown, ChevronRight, ExternalLink, Mail, LogOut, Download, UploadCloud, Disc3, Infinity as InfinityIcon
+  ChevronDown, ChevronRight, ExternalLink, Mail, LogOut, Download, UploadCloud, Disc3, Infinity as InfinityIcon, RefreshCw, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -10,7 +10,6 @@ import { useI18n } from '../contexts/I18nContext.jsx';
 
 // Importando nossos componentes modulares
 import { Section, SubSection, Li, InfoBox, Pill } from '../components/UIComponents';
-import { CompareTable } from '../components/CompareTable';
 
 // ── Componente FAQ Accordion ──────────────────────────────────────────────────
 function FAQ({ q, children }) {
@@ -157,7 +156,11 @@ export default function Portal() {
             </SubSection>
 
             <SubSection title={t('portal.about.compare.title')}>
-              <CompareTable />
+              <div className="glass-card p-6 rounded-3xl">
+                <p className="text-silver-premium/60 text-sm leading-relaxed">
+                  RareGroove opera como marketplace especializado em mídias físicas raras (CDs e vinis/LPs), com processamento de pagamentos exclusivamente via parceiro PSP licenciado pelo Banco Central. Não comparamos nossos serviços com concorrentes diretos.
+                </p>
+              </div>
             </SubSection>
 
             <SubSection title={t('portal.about.compliance.title')}>
@@ -220,7 +223,7 @@ export default function Portal() {
                         href="/grooveflix"
                         className="flex-1 inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/80 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.22em] hover:border-white/20 transition"
                       >
-                        GROOVEFLIX
+                        RAREGROOVE VAULT
                       </a>
                       <a
                         href="/plans"
@@ -321,6 +324,16 @@ export default function Portal() {
             <SubSection title={t('portal.terms.section7.title')}>
               <p className="text-[#C0C0C0]/70 text-sm">{t('portal.terms.section7.body')}</p>
             </SubSection>
+
+            <SubSection title={t('portal.terms.identificacao.title')}>
+              <ul className="space-y-1">
+                <Li className="text-[#C0C0C0]/70 text-sm">{t('portal.terms.identificacao.razao_social')}</Li>
+                <Li className="text-[#C0C0C0]/70 text-sm">{t('portal.terms.identificacao.cnpj')}</Li>
+                <Li className="text-[#C0C0C0]/70 text-sm">{t('portal.terms.identificacao.endereco')}</Li>
+                <Li className="text-[#C0C0C0]/70 text-sm">{t('portal.terms.identificacao.sac')}</Li>
+              </ul>
+              <p className="text-[#C0C0C0]/60 text-xs mt-2">{t('portal.terms.identificacao.desc')}</p>
+            </SubSection>
           </Section>
 
           {/* PRIVACIDADE */}
@@ -337,18 +350,22 @@ export default function Portal() {
                     <Li>{t('portal.privacy.collect.items.timestamps')}</Li>
                     <Li>{t('portal.privacy.collect.items.ua')}</Li>
                     <Li>{t('portal.privacy.collect.items.history')}</Li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-red-400 text-xs font-semibold mb-2 uppercase">{t('portal.privacy.section.collect.not')}</p>
-                  <ul className="space-y-1">
-                    <Li>{t('portal.privacy.collect.not.audio')}</Li>
-                    <Li>{t('portal.privacy.collect.not.biometric')}</Li>
-                    <Li>{t('portal.privacy.collect.not.browsing')}</Li>
-                    <Li>{t('portal.privacy.collect.not.selling')}</Li>
+                    <Li>{t('portal.privacy.collect.items.arquivos_usuario')}</Li>
                   </ul>
                 </div>
               </div>
+            </SubSection>
+
+            <SubSection title={t('portal.privacy.section.controlador.title')}>
+              <ul className="space-y-1">
+                <Li>{t('portal.privacy.controlador.nome')}</Li>
+                <Li>{t('portal.privacy.dpo.nome')}</Li>
+                <Li>{t('portal.privacy.dpo.canal')}</Li>
+              </ul>
+            </SubSection>
+
+            <SubSection title={t('portal.privacy.internacional.title')}>
+              <p className="text-[#C0C0C0]/70 text-sm">{t('portal.privacy.internacional.desc')}</p>
             </SubSection>
 
             <SubSection title={t('portal.privacy.section.share.title')}>
@@ -376,6 +393,16 @@ export default function Portal() {
                 <Li>{t('portal.privacy.security.items.passwords')}</Li>
                 <Li>{t('portal.privacy.security.items.audit')}</Li>
               </ul>
+            </SubSection>
+
+            <SubSection title={t('portal.privacy.cookies.title')}>
+              <InfoBox type="info">
+                {t('portal.privacy.cookies.desc')}
+              </InfoBox>
+            </SubSection>
+
+            <SubSection title={t('portal.privacy.idade.title')}>
+              <p className="text-[#C0C0C0]/70 text-sm">{t('portal.privacy.idade.desc')}</p>
             </SubSection>
           </Section>
 
@@ -473,7 +500,28 @@ export default function Portal() {
             </SubSection>
           </Section>
 
-          {/* DMCA */}
+          {/* TROCAS E DEVOLUÇÕES */}
+          <Section id="trocas" icon={RefreshCw} title={t('portal.returns.title')}>
+            <p className="text-[#C0C0C0]/70 text-sm mb-6">{t('portal.returns.lead')}</p>
+            <ul className="space-y-2">
+              <Li>{t('portal.returns.step1')}</Li>
+              <Li>{t('portal.returns.step2')}</Li>
+              <Li>{t('portal.returns.step3')}</Li>
+              <Li>{t('portal.returns.frete_arrependimento')}</Li>
+              <Li>{t('portal.returns.frete_avaria')}</Li>
+            </ul>
+          </Section>
+
+          {/* TRANSPARÊNCIA COMERCIAL */}
+          <Section id="transparencia" icon={DollarSign} title={t('portal.transparency.title')}>
+            <ul className="space-y-2">
+              <Li>{t('portal.transparency.fee')}</Li>
+              <Li>{t('portal.transparency.nf')}</Li>
+              <Li>{t('portal.transparency.vendedor')}</Li>
+            </ul>
+          </Section>
+
+          {/* Marco Civil */}
           <Section id="dmca" icon={AlertTriangle} title={t('portal.section.dmca')}>
             <p className="text-[#C0C0C0]/50 text-xs mb-6">{t('portal.dmca.lastUpdate')}</p>
 
@@ -534,8 +582,8 @@ export default function Portal() {
             <div className="bg-black/40 border border-[#D4AF37]/20 rounded-xl p-5 flex items-center gap-4">
               <Mail className="w-6 h-6 text-[#D4AF37] shrink-0" />
               <div>
-                <p className="text-white font-semibold text-sm">Contato para Notificações DMCA</p>
-                <p className="text-[#C0C0C0]/50 text-xs">Agente Designado para Conformidade DMCA</p>
+                <p className="text-white font-semibold text-sm">Contato para Denúncias de Violação de Direitos Autorais</p>
+                <p className="text-[#C0C0C0]/50 text-xs">Canal Oficial para Remoção de Conteúdo Irregular</p>
                 <a href="mailto:raregroovecdseswapsafe@gmail.com" className="text-[#D4AF37] text-sm hover:underline flex items-center gap-1 mt-1">
                   raregroovecdseswapsafe@gmail.com <ExternalLink size={12} />
                 </a>
@@ -568,10 +616,16 @@ export default function Portal() {
         </main>
       </div>
 
-      {/* Banner Footer fininho */}
+      {/* Banner Footer com identificação legal (CDC Art. 33) */}
       <div className="border-t border-[#D4AF37]/20 bg-black/60 backdrop-blur-sm">
-        <div className="text-center text-[#C0C0C0]/40 text-xs py-3">
-          <p>© 2026 RAREGROOVE · Todos os direitos reservados ·</p>
+        <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 text-center">
+          <p className="text-[#C0C0C0]/40 text-xs mb-2">© 2026 RAREGROOVE · Todos os direitos reservados</p>
+          <div className="flex flex-col md:flex-row justify-center gap-4 text-[#C0C0C0]/30 text-[10px]">
+            <span>COMMAND SOLUÇÕES TECNOLOGIA [OU RAZÃO SOCIAL OFICIAL]</span>
+            <span>CNPJ: [INSERIR CNPJ]</span>
+            <span>Endereço: [INSERIR ENDEREÇO COMERCIAL]</span>
+            <span>SAC: [INSERIR E-MAIL/WHATSAPP OFICIAL]</span>
+          </div>
         </div>
       </div>
     </div>

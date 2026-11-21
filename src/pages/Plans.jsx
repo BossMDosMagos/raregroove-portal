@@ -160,7 +160,7 @@ export default function Plans() {
                 {t('plans.restricted.title') || 'A Catraca Bloqueou o Sarcófago'}
               </h2>
               <p className="text-white/60 text-sm mt-2">
-                {t('plans.restricted.body') || 'Para entrar no Grooveflix, ative um plano Guardião com assinatura ativa.'}
+                {t('plans.restricted.body') || 'Para entrar no RareGroove Vault, ative um plano Guardião com assinatura ativa.'}
               </p>
               <div className="mt-6 flex gap-3">
                 <button
@@ -201,7 +201,7 @@ export default function Plans() {
             {t('plans.badge') || 'GUARDIÕES DO SARCOFÁGO'}
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
-            {t('plans.title') || 'Assinaturas'} <span className="text-fuchsia-400">GROOVEFLIX</span>
+            {t('plans.title') || 'Assinaturas'} <span className="text-fuchsia-400">RAREGROOVE VAULT</span>
           </h1>
           <p className="text-white/55 text-sm md:text-base max-w-2xl">
             {t('plans.subtitle') || 'Escolha seu nível de Guardião para imortalizar e ouvir sua coleção com estética Hi‑Fi.'}
@@ -266,7 +266,7 @@ export default function Plans() {
                     onClick={() => navigate('/grooveflix')}
                     className="w-full py-3 rounded-2xl font-black uppercase tracking-[0.22em] text-[10px] border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition"
                   >
-                    {t('plans.preview') || 'Ver Grooveflix'}
+                    {t('plans.preview') || 'Ver RareGroove Vault'}
                   </button>
                 </div>
               </div>
@@ -279,7 +279,7 @@ export default function Plans() {
             {t('plans.note.title') || 'Nota'}
           </div>
           <p className="text-white/60 text-sm">
-            {t('plans.note.body') || 'O checkout de pagamento e a validação automática de uploads entram na próxima fase. Por enquanto, esta tela define o plano escolhido e libera a navegação do Grooveflix.'}
+            {t('plans.note.body') || 'Esta tela define o plano escolhido e libera a navegação do RareGroove Vault.'}
           </p>
         </div>
       </div>

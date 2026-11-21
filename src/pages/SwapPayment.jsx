@@ -248,10 +248,10 @@ export default function SwapPayment() {
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-2 text-sm">
             <p className="font-bold text-blue-300">💡 Como funciona?</p>
             <ul className="text-blue-100/80 space-y-1 text-xs">
-              <li>✓ Ambos pagam uma taxa de garantia</li>
-              <li>✓ Taxa garante que ambos enviarão os itens</li>
-              <li>✓ Após confirmação de entrega, taxas são reembolsadas</li>
-              <li>✓ Se alguém cancelar, quem cumpriu recebe reembolso total</li>
+              <li>✓ Ambos pagam taxa de intermediação via PSP</li>
+              <li>✓ Taxa garante compromisso de envio de ambos</li>
+              <li>✓ Após confirmação de entrega e prazo de garantia, valores são processados pelo PSP</li>
+              <li>✓ Se alguém cancelar, quem cumpriu recebe reembolso integral</li>
             </ul>
           </div>
         </div>
