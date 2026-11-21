@@ -46,6 +46,16 @@ export const discogsService = {
     }
   },
 
+  async searchByBarcode(barcode, options = {}) {
+    try {
+      const limit = options.limit || 20;
+      const data = await callEdgeFunction({ barcode, type: 'barcode', limit });
+      return { data: data.data || [], error: null };
+    } catch (error) {
+      return { data: [], error };
+    }
+  },
+
   async getRelease(releaseId) {
     try {
       const data = await callEdgeFunction({ type: 'release', releaseId });

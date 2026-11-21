@@ -89,7 +89,7 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { query, type = 'search', releaseId, limit = 20 } = body
+    const { query, type = 'search', releaseId, limit = 20, barcode } = body
 
     const baseUrl = 'https://api.discogs.com'
     const userAgent = 'RareGroovePortal/1.0 (+https://portalraregroove.com)'
@@ -99,6 +99,23 @@ serve(async (req) => {
     if (type === 'search') {
       const params = new URLSearchParams({
         q: query,
+        type: 'release',
+        per_page: limit.toString(),
+        page: '1',
+      })
+      apiUrl = `${baseUrl}/database/search?${params}`
+    } else if (type === 'barcode') {
+      // Busca exata por código de barras (EAN/UPC). A API do Discogs aceita
+      // o parâmetro `barcode` diretamente no endpoint /database/search.
+      const cleanBarcode = String(barcode || '').replace(/[^0-9]/g, '')
+      if (!cleanBarcode) {
+        return new Response(JSON.stringify({ error: 'Invalid barcode' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const params = new URLSearchParams({
+        barcode: cleanBarcode,
         type: 'release',
         per_page: limit.toString(),
         page: '1',
@@ -123,7 +140,7 @@ serve(async (req) => {
       })
     }
 
-    console.log(`[Discogs] Fetching: ${type} - ${query || releaseId}`)
+    console.log(`[Discogs] Fetching: ${type} - ${query || releaseId || barcode}`)
 
     const response = await fetch(apiUrl, {
       headers: {

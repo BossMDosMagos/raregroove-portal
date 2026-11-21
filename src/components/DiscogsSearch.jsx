@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Check, Disc, Loader2, ExternalLink, DollarSign, TrendingUp } from 'lucide-react';
+import { Search, Check, Disc, Loader2, ExternalLink, DollarSign, TrendingUp, Barcode, ScanLine } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { getExchangeRates, formatBRL, convertToBRL } from '../utils/currency';
@@ -19,6 +19,26 @@ async function searchDiscogs(query, limit = 20) {
   });
 
   if (!response.ok) throw new Error(`Erro ${response.status}`);
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data.data;
+}
+
+async function searchDiscogsByBarcode(barcode, limit = 20) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/discogs-search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ barcode, type: 'barcode', limit }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Erro ${response.status}`);
+  }
   const data = await response.json();
   if (data.error) throw new Error(data.error);
   return data.data;
@@ -68,6 +88,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
   const [priceSuggestions, setPriceSuggestions] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [exchangeRates, setExchangeRates] = useState(null);
+  const [searchMode, setSearchMode] = useState('text'); // 'text' | 'barcode'
 
   useEffect(() => {
     getExchangeRates().then(setExchangeRates);
@@ -85,10 +106,15 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
     setHasSearched(true);
 
     try {
-      const data = await searchDiscogs(searchQuery, 20);
+      const term = searchQuery.trim();
+      const data = searchMode === 'barcode'
+        ? await searchDiscogsByBarcode(term, 20)
+        : await searchDiscogs(term, 20);
       setResults(data || []);
       if (!data || data.length === 0) {
-        toast.info('Nenhum resultado encontrado');
+        toast.info(searchMode === 'barcode'
+          ? 'Nenhum lançamento encontrado para este código de barras'
+          : 'Nenhum resultado encontrado');
       }
     } catch (error) {
       toast.error('Erro ao buscar', { description: error.message });
@@ -244,14 +270,47 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
 
   return (
     <div className="space-y-4">
+      {/* Alternância entre busca por texto e por código de barras */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => { setSearchMode('text'); setResults([]); setSelected(null); setFullDetails(null); }}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+            searchMode === 'text'
+              ? 'bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-300'
+              : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" /> Título / Artista
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSearchMode('barcode'); setResults([]); setSelected(null); setFullDetails(null); }}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+            searchMode === 'barcode'
+              ? 'bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-300'
+              : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+          }`}
+        >
+          <Barcode className="w-3.5 h-3.5" /> Código de Barras
+        </button>
+      </div>
+
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fuchsia-400" />
+          {searchMode === 'barcode' ? (
+            <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fuchsia-400" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fuchsia-400" />
+          )}
           <input
             type="text"
+            inputMode={searchMode === 'barcode' ? 'numeric' : 'text'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar no Discogs..."
+            placeholder={searchMode === 'barcode'
+              ? 'Digite o EAN/UPC (ex: 077774643924)...'
+              : 'Buscar no Discogs...'}
             className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:border-fuchsia-500 focus:outline-none transition-colors"
           />
         </div>
@@ -263,6 +322,11 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
         </button>
       </form>
+      {searchMode === 'barcode' && (
+        <p className="text-[10px] text-white/40 leading-tight">
+          A busca por código de barras (EAN/UPC) localiza o lançamento exato no Discogs. Você também pode usar o leitor de código de barras do celular — o campo aceita apenas números.
+        </p>
+      )}
 
       {results.length > 0 && !selected && (
         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
