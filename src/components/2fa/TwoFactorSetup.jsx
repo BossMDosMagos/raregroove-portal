@@ -73,7 +73,7 @@ export function TwoFactorSetup({ onComplete }) {
   };
 
   const downloadBackupCodes = () => {
-    const content = `CÓDIGOS DE BACKUP - RAREGROOVE\n\n${backupCodes.join('\n')}\n\nGuarde estes códigos em local seguro.\nCada código pode ser usado apenas uma vez.`;
+    const content = `CÓDIGOS DE BACKUP - RareGroove\n\n${backupCodes.join('\n')}\n\nGuarde estes códigos em local seguro.\nCada código pode ser usado apenas uma vez.`;
     
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);

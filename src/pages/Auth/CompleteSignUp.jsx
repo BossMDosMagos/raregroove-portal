@@ -351,7 +351,7 @@ export default function CompleteSignUp() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="mb-8 text-center">
           <h1 className="text-5xl font-bold text-[#D4AF37] tracking-wider mb-2">
-            RAREGROOVE
+            RareGroove
           </h1>
           <p className="text-gray-400 text-sm tracking-widest">COFRE DIGITAL</p>
         </div>
@@ -373,7 +373,7 @@ export default function CompleteSignUp() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="mb-8 text-center">
           <h1 className="text-5xl font-bold text-[#D4AF37] tracking-wider mb-2">
-            RAREGROOVE
+            RareGroove
           </h1>
           <p className="text-gray-400 text-sm tracking-widest">COFRE DIGITAL</p>
         </div>

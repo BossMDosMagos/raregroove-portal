@@ -172,7 +172,7 @@ export default function VerifyEmail() {
       {/* Logo */}
       <div className="mb-8 text-center">
         <h1 className="text-5xl font-bold text-[#D4AF37] tracking-wider mb-2">
-          RAREGROOVE
+          RareGroove
         </h1>
         <p className="text-gray-400 text-sm tracking-widest">COFRE DIGITAL</p>
       </div>

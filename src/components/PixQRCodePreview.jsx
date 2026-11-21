@@ -9,7 +9,7 @@ import { AlertCircle, Check } from 'lucide-react';
 import { generatePixBrcode } from '../utils/pixBrcode';
 import { validatePixKey, getPixTypeIcon } from '../utils/pixFormatter';
 
-export function PixQRCodePreview({ pixKey, merchantName = 'RAREGROOVE', merchantCity = 'BRASIL' }) {
+export function PixQRCodePreview({ pixKey, merchantName = 'RareGroove', merchantCity = 'BRASIL' }) {
   const safePixKey = String(pixKey || '').trim();
 
   // Validar a chave

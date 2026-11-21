@@ -470,7 +470,7 @@ export default function Login() {
           <Pill color="gold">{isLogin ? t('auth.login.badge') || "ACESSO RESTRITO" : t('auth.signup.badge') || "NOVO MEMBRO"}</Pill>
           <div className="space-y-1">
             <h2 className="text-5xl font-black tracking-tighter text-luxury uppercase leading-none">
-              RAREGROOVE<span className="text-gold-premium">.</span>
+              RareGroove<span className="text-gold-premium">.</span>
             </h2>
             <p className="text-silver-premium/30 text-[10px] uppercase tracking-[0.4em] font-black italic">
               {t('auth.subtitle') || "O COFRE DOS COLECIONADORES"}

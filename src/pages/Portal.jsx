@@ -84,7 +84,7 @@ export default function Portal() {
             <Shield size={14} className="animate-pulse" /> {t('portal.hero.badge')}
           </div>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-tight text-luxury drop-shadow-2xl">
-            RAREGROOVE
+            RareGroove
           </h1>
           <p className="text-silver-premium/80 text-xl md:text-2xl font-medium mb-4 max-w-2xl mx-auto tracking-tight">
             {t('portal.hero.subtitle1')}

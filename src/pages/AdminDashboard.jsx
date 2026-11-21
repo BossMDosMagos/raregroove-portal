@@ -1054,7 +1054,7 @@ function WithdrawalProcessModal({ isOpen, onClose, withdrawal, onSuccess }) {
   const brcode = useMemo(() => {
     if (!withdrawal) return null;
     return generatePixBrcode(withdrawal.pix_key, withdrawal.amount, {
-      merchantName: 'RAREGROOVE',
+      merchantName: 'RareGroove',
       merchantCity: 'BRASIL',
       txid: '***'
     });

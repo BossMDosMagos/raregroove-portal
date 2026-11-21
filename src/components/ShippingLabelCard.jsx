@@ -559,7 +559,7 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
               </div>
 
               <div style={{ fontSize: '8pt', fontWeight: '700', marginBottom: '2px', color: '#000000', lineHeight: '1.1' }}>
-                {sellerInfo?.full_name || 'RAREGROOVE'}
+                {sellerInfo?.full_name || 'RareGroove'}
               </div>
 
               <div style={{ fontSize: '7pt', color: '#000000', lineHeight: '1.2' }}>

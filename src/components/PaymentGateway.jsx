@@ -716,7 +716,7 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
 
       const txid = `RG${Date.now()}`;
       const generatedBrcode = generatePixBrcode(data.pix_key, amount, {
-        merchantName: data.pix_beneficiary || 'RAREGROOVE',
+        merchantName: data.pix_beneficiary || 'RareGroove',
         merchantCity: 'BRASIL',
         txid: txid
       });
