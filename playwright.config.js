@@ -6,11 +6,15 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
+  // No CI, sem retries: os testes E2E são informativos (continue-on-error no workflow)
+  // e retries com expect() falhando apenas prolongam o job.
+  retries: 0,
   workers: isCI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    // Usar 127.0.0.1 explicitamente: "localhost" pode resolver para IPv6 (::1)
+    // enquanto o Vite escuta apenas em IPv4, causando timeout no CI.
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -29,9 +33,9 @@ export default defineConfig({
   // tentam acessar localhost:5173 sem nada rodando e expiram por timeout.
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1',
-    url: 'http://localhost:5173',
+    url: 'http://127.0.0.1:5173',
     reuseExistingServer: !isCI,
     timeout: 120 * 1000,
   },
-  timeout: 30 * 1000,
+  timeout: isCI ? 15 * 1000 : 30 * 1000,
 });
