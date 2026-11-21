@@ -1,0 +1,27 @@
+{
+  " gerado_em": "2026-11-21",
+  "observacao": "Backup lógico do estado dos itens ANTES do reset (cancelar vendas/reservas, transferir ao admin, deixar tudo disponível).",
+  "admin_id": "17a7f638-45d4-48ee-b4b4-276ce8668803",
+  "john_wick_id": "9c62ebf9-6e45-49c1-8318-b359c0cf0a19",
+  "itens": [
+    {"id":"976950b5-fe40-4a97-b511-25c66a8a09cc","title":"Al Di Meola","status":"pendente","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"8c1e784e-7f2b-43e0-bee3-3fa0b78668ec","title":"Nós","status":"vendido","is_sold":true,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"4f265193-a940-42cb-bfc0-77ed957d6251","title":"The John Lennon Collection","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"83aef859-4f62-4511-9617-72f692d73c1f","title":"Roberto Carlos","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"419cd275-804a-4dc8-9f0c-750320382b9a","title":"Roberto Carlos Em Ritmo De Aventura","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"7925e95a-ea43-4894-8935-d54a2f73a1c1","title":"The Wall","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"d668f29c-fd67-438b-b17c-e6f1a29c5152","title":"Supernatural","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"94df8592-3ed6-4351-9138-c937631cd217","title":"Frank Sinatra","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"a9216813-a0f5-4d97-947f-6396004e81ae","title":"Bee Gees Live","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"7008f3a3-4adb-4da8-837c-6d2147863103","title":"Radio One","status":"vendido","is_sold":true,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"f7e187da-1ccf-4699-82f7-b735e5db102e","title":"Festa Iê Iê Iê Vol.1","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"ba77bbde-23b5-47d2-8412-2dab64ff47c3","title":"The Best Of Bond","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"e131d386-e22a-4413-9f51-b36b98508ee9","title":"Ao Vivo","status":"vendido","is_sold":true,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"396cbabb-bdc8-4b4b-90ff-49bdf0a0be61","title":"Jovem Guarda Ao Vivo Vol.01","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"d9d3e5a1-71a3-4c01-93b2-2fab2d8437ee","title":"MPB Compositores Noel Rosa","status":"vendido","is_sold":true,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"835ea3b3-1533-4482-8368-9f3e7c19a179","title":"Help!","status":"vendido","is_sold":true,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"fd3e252b-9a48-4110-b25a-0a054c808911","title":"Moeda","status":"vendido","is_sold":true,"seller_id":"9c62ebf9-6e45-49c1-8318-b359c0cf0a19"},
+    {"id":"7bf44e35-47c2-4b70-9add-2c5c7c9a1fbd","title":"12","status":"reservado","is_sold":false,"seller_id":"9c62ebf9-6e45-49c1-8318-b359c0cf0a19","reserved_by":"17a7f638-45d4-48ee-b4b4-276ce8668803"},
+    {"id":"59f59156-004c-4944-8de6-e2858c3d91e3","title":"Supla","status":"disponivel","is_sold":false,"seller_id":"17a7f638-45d4-48ee-b4b4-276ce8668803","price":0,"condition":null}
+  ]
+}
