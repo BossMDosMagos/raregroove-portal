@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Supabase CLI temp (project ref gerado pelo `supabase link`/deploy)
+supabase/.temp/
