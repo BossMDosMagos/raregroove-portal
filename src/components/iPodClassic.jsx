@@ -78,7 +78,7 @@ function AlbumsView({ albums, selectedIndex }) {
   );
 }
 
-export default function iPodClassic({ player, items = [], onPlayTrack }) {
+export default function IPodClassic({ player, items = [], onPlayTrack }) {
   const [view, setView] = useState('menu');
   const [stack, setStack] = useState([]);
   const [menuIdx, setMenuIdx] = useState(0);

@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { useSubscription } from '../contexts/SubscriptionContext.jsx';
+import { formatPixKeyDisplay } from '../utils/pixFormatter.js';
 
 const GoldInput = ({ label, ...props }) => (
   <div className="flex flex-col gap-2 group">

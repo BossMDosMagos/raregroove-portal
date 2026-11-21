@@ -11,7 +11,7 @@ import { useI18n } from '../contexts/I18nContext.jsx';
 import { useGlobalPlayer } from '../hooks/useGlobalAudioPlayer.jsx';
 import { registerAnalysers } from '../hooks/useGlobalAudioAnalyser.js';
 import AudioControlPanel from '../components/AudioControlPanel.jsx';
-import iPodClassic from '../components/iPodClassic.jsx';
+import IPodClassic from '../components/iPodClassic.jsx';
 
 const CATEGORY_OPTIONS = ['all', 'single', 'album', 'coletanea', 'iso'];
 
@@ -355,7 +355,7 @@ export default function Grooveflix() {
 
   if (isMobile) {
     return (
-      <iPodClassic
+      <IPodClassic
         player={player}
         items={filteredItems}
         onPlayTrack={handlePlayTrack}
