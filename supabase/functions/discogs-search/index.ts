@@ -161,7 +161,9 @@ serve(async (req) => {
     }
 
     const data = await response.json()
-    const results = type === 'search' ? (data.results || []) : data
+    // Tanto 'search' quanto 'barcode' usam /database/search, cuja resposta
+    // contém `results`; os demais tipos retornam o objeto diretamente.
+    const results = (type === 'search' || type === 'barcode') ? (data.results || []) : data
 
     console.log(`[Discogs] Success: found ${Array.isArray(results) ? results.length : 1} items`)
 
