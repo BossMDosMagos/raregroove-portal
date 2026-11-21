@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // 1. Importado
+import { useNavigate, useSearchParams } from 'react-router-dom'; // 1. Importado
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 import { createProfileOnSignUp } from '../../utils/profileService';
@@ -29,6 +29,16 @@ export default function Login() {
   const [websiteUrl, setWebsiteUrl] = useState(''); // Honeypot extra para login
 
   const navigate = useNavigate(); // 2. Inicializado
+  const [searchParams] = useSearchParams();
+
+  // URL de destino após autenticação (ex: /item/:id ou /checkout/:id)
+  const redirectTo = useMemo(() => {
+    const raw = searchParams.get('redirect');
+    if (!raw) return '/portal';
+    // Segurança: aceitar apenas caminhos internos absolutos (começam com / e não com //)
+    if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+    return '/portal';
+  }, [searchParams]);
 
   const authIdentifier = useMemo(() => (email || '').trim().toLowerCase(), [email]);
 
@@ -255,7 +265,7 @@ export default function Login() {
           style: { background: '#050505', border: '1px solid #D4AF37', color: '#FFF' },
         });
         
-        navigate('/portal'); 
+        navigate(redirectTo);
       } else {
         if (!validateFormTiming(formStartedAt, { minMs: 1800 })) {
           toast.error('ACESSO NEGADO', {

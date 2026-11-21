@@ -144,7 +144,7 @@ export default function Catalogo() {
                 <span className="relative z-10">Admin</span>
               </Link>
             )}
-            {currentUser && (
+            {currentUser ? (
               <button 
                 onClick={() => setIsModalOpen(true)} 
                 className="group relative flex items-center justify-center gap-3 bg-gradient-to-r from-gold-premium to-yellow-500 text-charcoal-deep px-8 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest overflow-hidden"
@@ -153,6 +153,16 @@ export default function Catalogo() {
                 <Sparkles size={16} className="relative z-10 text-charcoal-deep" />
                 <span className="relative z-10 flex items-center gap-2">
                   {t('catalog.actions.add')} <span className="hidden sm:inline">Item</span>
+                </span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigate('/login?redirect=' + encodeURIComponent('/catalogo'))}
+                className="group relative flex items-center justify-center gap-3 bg-gradient-to-r from-gold-premium to-yellow-500 text-charcoal-deep px-8 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest overflow-hidden"
+              >
+                <Sparkles size={16} className="relative z-10 text-charcoal-deep" />
+                <span className="relative z-10 flex items-center gap-2">
+                  Entrar para Anunciar <span className="hidden sm:inline">Item</span>
                 </span>
               </button>
             )}

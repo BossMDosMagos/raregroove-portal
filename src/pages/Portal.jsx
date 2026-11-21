@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
+import { LEGAL } from '../config/legal.js';
 import { useI18n } from '../contexts/I18nContext.jsx';
 
 // Importando nossos componentes modulares
@@ -621,10 +622,10 @@ export default function Portal() {
         <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 text-center">
           <p className="text-[#C0C0C0]/40 text-xs mb-2">© 2026 RAREGROOVE · Todos os direitos reservados</p>
           <div className="flex flex-col md:flex-row justify-center gap-4 text-[#C0C0C0]/30 text-[10px]">
-            <span>COMMAND SOLUÇÕES TECNOLOGIA [OU RAZÃO SOCIAL OFICIAL]</span>
-            <span>CNPJ: [INSERIR CNPJ]</span>
-            <span>Endereço: [INSERIR ENDEREÇO COMERCIAL]</span>
-            <span>SAC: [INSERIR E-MAIL/WHATSAPP OFICIAL]</span>
+            <span>{LEGAL.razaoSocial}</span>
+            <span>CNPJ: {LEGAL.cnpj}</span>
+            <span>Endereço: {LEGAL.endereco}</span>
+            <span>SAC: {LEGAL.sac}</span>
           </div>
         </div>
       </div>

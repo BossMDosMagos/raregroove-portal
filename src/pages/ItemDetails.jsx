@@ -28,6 +28,12 @@ export default function ItemDetails() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isInWishlist, setIsInWishlist] = useState(false);
 
+  // Envia visitantes ao Login e retoma a ação (compra/troca) após autenticar.
+  const requireLogin = (target = `/item/${id}`) => {
+    toast.error(t('auth.required') || 'Faça login ou crie uma conta para continuar');
+    navigate(`/login?redirect=${encodeURIComponent(target)}`);
+  };
+
   useEffect(() => {
     const fetchItem = async () => {
       // Buscar usuário autenticado
@@ -446,8 +452,7 @@ export default function ItemDetails() {
                   <button 
                     onClick={() => {
                       if (!currentUser) {
-                        toast.error(t('auth.required') || 'Faça login para continuar');
-                        navigate('/');
+                        requireLogin(`/checkout/${item.id}`);
                         return;
                       }
                       if (currentUser.id === item.seller_id) {
@@ -482,8 +487,7 @@ export default function ItemDetails() {
                 <button
                   onClick={() => {
                     if (!currentUser) {
-                      toast.error(t('auth.required') || 'Faça login para continuar');
-                      navigate('/');
+                      requireLogin(`/item/${item.id}`);
                       return;
                     }
                     if (currentUser.id === item.seller_id) {
@@ -510,8 +514,7 @@ export default function ItemDetails() {
                 <button 
                   onClick={() => {
                     if (!currentUser) {
-                      toast.error(t('auth.required') || 'Faça login para continuar');
-                      navigate('/');
+                      requireLogin(`/item/${item.id}`);
                       return;
                     }
                     if (currentUser.id === item.seller_id) {

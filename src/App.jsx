@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase';
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext';
 import { CartProvider } from './contexts/CartContext.jsx';
 import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
@@ -239,10 +240,10 @@ export default function App() {
             element={session ? <Navigate to="/portal" /> : <Home />} 
           />
 
-          {/* Rota de Login explícita */}
+          {/* Rota de Login explícita (aceita ?redirect= para retomar o fluxo) */}
           <Route 
             path="/login" 
-            element={session ? <Navigate to="/portal" /> : <Login />} 
+            element={session ? <Navigate to="/portal" replace /> : <Login />} 
           />
 
           {/* Rota de Completar Cadastro (Pública - após clicar email) */}
@@ -256,92 +257,94 @@ export default function App() {
             element={<VerifyEmail />}
           />
           
-          {/* Rota do Portal (Protegida) */}
+          {/* Rota do Portal (PÚBLICA para leitura dos documentos legais; links internos protegem ações) */}
           <Route 
             path="/portal" 
-            element={session ? <Portal /> : <Navigate to="/" />} 
+            element={<Portal />} 
           />
 
           <Route
             path="/grooveflix"
-            element={session ? (
-              <GlobalPlayerProvider>
-                <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper>
-              </GlobalPlayerProvider>
-            ) : <Navigate to="/" />}
+            element={
+              <ProtectedRoute isAuthenticated={!!session}>
+                <GlobalPlayerProvider>
+                  <GrooveflixGatekeeper><Grooveflix /></GrooveflixGatekeeper>
+                </GlobalPlayerProvider>
+              </ProtectedRoute>
+            }
           />
 
           <Route
             path="/plans"
-            element={session ? <Plans /> : <Navigate to="/" />}
+            element={<ProtectedRoute isAuthenticated={!!session}><Plans /></ProtectedRoute>}
           />
           
-          {/* Rota do Catálogo (Protegida) */}
+          {/* Rota do Catálogo (PÚBLICA - visitantes podem explorar o acervo) */}
           <Route 
             path="/catalogo" 
-            element={session ? <Catalogo /> : <Navigate to="/" />} 
+            element={<Catalogo />} 
           />
 
           {/* Rota do Meu Acervo (Protegida) */}
           <Route 
             path="/meu-acervo" 
-            element={session ? <MyItems /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><MyItems /></ProtectedRoute>} 
           />
           
-          {/* Rota do Item Details (Protegida) */}
+          {/* Rota do Item Details (PÚBLICA - visitante vê o item; compra exige login) */}
           <Route 
             path="/item/:id" 
-            element={session ? <ItemDetails /> : <Navigate to="/" />} 
+            element={<ItemDetails />} 
           />
 
           {/* Rota das Mensagens (Protegida) */}
           <Route 
             path="/mensagens" 
-            element={session ? <MessagesWithUnread /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><MessagesWithUnread /></ProtectedRoute>} 
           />
 
           {/* Rota da Thread de Conversa (Protegida) */}
           <Route 
             path="/chat/:itemId" 
-            element={session ? <ChatThread /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><ChatThread /></ProtectedRoute>} 
           />
 
           {/* Rota do Perfil (Protegida) */}
           <Route 
             path="/profile" 
-            element={session ? <Profile /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><Profile /></ProtectedRoute>} 
           />
 
           {/* Rota de Disputas (Protegida) */}
           <Route
             path="/disputas"
-            element={session ? <Disputes /> : <Navigate to="/" />}
+            element={<ProtectedRoute isAuthenticated={!!session}><Disputes /></ProtectedRoute>}
           />
           <Route
             path="/disputas/:disputeId"
-            element={session ? <DisputeDetail /> : <Navigate to="/" />}
+            element={<ProtectedRoute isAuthenticated={!!session}><DisputeDetail /></ProtectedRoute>}
           />
 
           {/* Rota do Simulador de Swaps (Protegida) */}
           <Route 
             path="/swaps" 
-            element={session ? <SwapSimulator /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><SwapSimulator /></ProtectedRoute>} 
           />
 
           {/* Rota do Checkout de CDs (Protegida) */}
           <Route
             path="/checkout"
-            element={session ? <Checkout key={location.pathname} /> : <Navigate to="/" />}
+            element={<ProtectedRoute isAuthenticated={!!session}><Checkout /></ProtectedRoute>}
           />
           <Route 
             path="/checkout/:itemId" 
-            element={session ? <Checkout key={location.pathname} /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><Checkout /></ProtectedRoute>} 
           />
 
           {/* Rota de Pagamento de Taxa de Swap (Protegida) */}
           <Route 
             path="/swap-payment/:swapId" 
-            element={session ? <SwapPayment /> : <Navigate to="/" />} 
+            element={<ProtectedRoute isAuthenticated={!!session}><SwapPayment /></ProtectedRoute>} 
           />
 
           {/* Rotas de retorno do pagamento (Públicas para garantir callback) */}

@@ -5,6 +5,7 @@ import {
   Music, Disc, ExternalLink, Mail, ArrowRight, Play
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { LEGAL } from '../config/legal.js';
 import { ItemCard } from '../components/ItemCard';
 import { Section, SubSection, Li, Pill, InfoBox } from '../components/UIComponents';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -39,14 +40,38 @@ export default function Home() {
   }, []);
 
   const handleExplore = () => navigate('/catalogo');
-  const handleList = () => navigate('/meu-acervo');
+  const handleList = () => navigate('/login?redirect=' + encodeURIComponent('/meu-acervo'));
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-gold-premium/30 selection:text-gold-light">
+      {/* ===== HEADER PÚBLICO (Entrar / Admin) ===== */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/img/LogoRareGrooveSymbol.svg" alt="RareGroove" className="h-8 w-auto" />
+            <span className="text-sm font-black uppercase tracking-widest">RareGroove</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/catalogo"
+              className="hidden sm:inline-block px-4 py-2 text-xs font-bold uppercase tracking-wider text-silver-premium/60 hover:text-white transition-colors"
+            >
+              Acervo
+            </Link>
+            <Link
+              to={'/login?redirect=' + encodeURIComponent('/portal')}
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-gold-premium border border-gold-premium/30 rounded-xl hover:bg-gold-premium/10 transition-colors"
+            >
+              Entrar / Admin
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* ======================================== */}
       {/* SEÇÃO 1 - HERO */}
       {/* ======================================== */}
-      <section className="relative overflow-hidden border-b border-white/5 bg-gradient-to-b from-charcoal-deep to-charcoal-deep py-20 md:py-32 px-4">
+      <section className="relative overflow-hidden border-b border-white/5 bg-gradient-to-b from-charcoal-deep to-charcoal-deep pt-32 md:pt-40 pb-20 md:pb-32 px-4">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'radial-gradient(circle at 20% 50%, #D4AF37 0%, transparent 60%), radial-gradient(circle at 80% 20%, #D4AF37 0%, transparent 40%)'
         }} />
@@ -235,7 +260,7 @@ export default function Home() {
               <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight">Transparência de Taxas</h2>
               <InfoBox type="info">
                 <p className="text-silver-premium/70 text-sm leading-relaxed">
-                  <strong className="text-white">Comissão da Plataforma:</strong> [INSERIR % DE COMISSÃO]% sobre o valor da venda, descontada automaticamente no split de pagamento pelo PSP.<br /><br />
+                  <strong className="text-white">Comissão da Plataforma:</strong> {LEGAL.comissaoPct}% sobre o valor da venda, descontada automaticamente no split de pagamento pelo PSP.<br /><br />
                   <strong className="text-white">Nota Fiscal:</strong> Emissão de Nota Fiscal de serviço referente à intermediação pela plataforma.<br /><br />
                   <strong className="text-white">Responsabilidade Fiscal:</strong> do vendedor pelo produto comercializado.
                 </p>
@@ -303,8 +328,8 @@ export default function Home() {
               <span className="text-xs font-black uppercase tracking-widest text-silver-premium/40">RareGroove</span>
             </div>
             <div className="text-[10px] text-silver-premium/40">
-              <p>© 2026 COMMAND SOLUÇÕES TECNOLOGIA [OU RAZÃO SOCIAL OFICIAL] · CNPJ: [INSERIR CNPJ]</p>
-              <p>Endereço: [INSERIR ENDEREÇO COMERCIAL] · SAC: [INSERIR E-MAIL/WHATSAPP OFICIAL]</p>
+              <p>© 2026 {LEGAL.razaoSocial} · CNPJ: {LEGAL.cnpj}</p>
+              <p>Endereço: {LEGAL.endereco} · SAC: {LEGAL.sac}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-10">
@@ -329,7 +354,7 @@ export default function Home() {
               <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="text-xs text-silver-premium/50 hover:text-white transition-colors">WhatsApp Oficial</a>
               <div className="flex items-center gap-2 text-[10px] text-silver-premium/40 mt-4">
                 <Mail size={12} />
-                <span>DPO: [INSERIR E-MAIL DPO]</span>
+                <span>DPO: {LEGAL.dpoEmail}</span>
               </div>
             </div>
           </div>
