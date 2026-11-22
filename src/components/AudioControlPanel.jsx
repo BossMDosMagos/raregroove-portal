@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { VUMeterLeft } from './VUMeterLeft.jsx';
 import { VUMeterRight } from './VUMeterRight.jsx';
 import { VirtualWooferLeft, VirtualWooferRight, WooferDebugPanel } from './VirtualWoofer.jsx';
@@ -39,6 +39,8 @@ export default function AudioControlPanel({
   currentTime,
   duration,
   onSeek,
+  volume = 0.7,
+  vuSensitivity = 0.5,
   onVolumeChange,
   onPlay,
   onPause,
@@ -54,6 +56,15 @@ export default function AudioControlPanel({
 }) {
   const eqEnabledRef = useRef(true);
   const [eqEnabled, setEqEnabled] = React.useState(true);
+  // Preset ativo destacado no painel do equalizador (persistido na sessão).
+  const [activeEqPreset, setActiveEqPreset] = React.useState(() => {
+    try { return sessionStorage.getItem('raregroove_eq_preset') || 'flat'; } catch { return 'flat'; }
+  });
+
+  const rememberEqPreset = useCallback((key) => {
+    setActiveEqPreset(key);
+    try { sessionStorage.setItem('raregroove_eq_preset', key); } catch { /* ignore */ }
+  }, []);
   
   const activeTone = toneSettings || { bass: 0, mid: 0, treble: 0 };
   const activeEqBands = eqBands || {};
@@ -63,7 +74,8 @@ export default function AudioControlPanel({
   const bassValue = (activeTone.bass + 12) / 24;
   const midValue = (activeTone.mid + 12) / 24;
   const trebleValue = (activeTone.treble + 12) / 24;
-  const vuSensValue = 0.5;
+  // Sensibilidade do VU reflete o valor real do player (persistido no localStorage).
+  const vuSensValue = vuSensitivity;
 
   const handleBassChange = (val) => {
     const value = val * 24 - 12;
@@ -107,13 +119,15 @@ export default function AudioControlPanel({
       presets[presetKey].forEach((val, idx) => {
         setEqBand?.(EQ_FREQUENCIES[idx], val);
       });
+      rememberEqPreset(presetKey);
     }
   };
-  
+
   const handleEqReset = () => {
-    EQ_FREQUENCIES.forEach((freq, idx) => {
+    EQ_FREQUENCIES.forEach((freq) => {
       setEqBand?.(freq, 0);
     });
+    rememberEqPreset('flat');
   };
   
   const handleEqToggle = () => {
@@ -124,14 +138,24 @@ export default function AudioControlPanel({
   
   return (
     <>
-      <div className="fixed top-20 left-4 z-50" style={{ perspective: '1000px' }}>
+      <div className="fixed top-20 left-4 z-50 hidden lg:block" style={{ perspective: '1000px' }}>
         <div className="relative flex flex-col rounded-xl" style={panelStyle}>
           <div className="absolute bottom-3 left-3 z-10"><CrownSvg id="L" /></div>
+
+          {/* Identificação da faixa (complementa o LCD central) */}
+          <div className="mb-3 text-center px-2" style={{ minHeight: '34px' }}>
+            <div className="truncate font-black text-[10px] uppercase tracking-widest" style={{ color: '#22d3ee' }}>
+              {currentTrack?.title || 'Nenhuma faixa'}
+            </div>
+            <div className="truncate text-[9px] text-white/40 mt-0.5">
+              {currentTrack?.album || currentTrack?.artist || 'Selecione um álbum'}
+            </div>
+          </div>
 
           <div className="flex justify-center mb-3"><VUMeterLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3"><SpectrumLeft isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3">
-            <VolumeKnob value={0.7} onChange={handleVolumeChange} size={120} />
+            <VolumeKnob value={volume} onChange={handleVolumeChange} size={120} />
           </div>
           <div className="flex justify-center gap-3 mb-3">
             <ToneKnob value={bassValue} onChange={handleBassChange} size={70} label="Bass" />
@@ -156,16 +180,16 @@ export default function AudioControlPanel({
         </div>
       </div>
 
-      <div className="fixed top-20 right-4 z-40" style={{ perspective: '1000px' }}>
+      <div className="fixed top-20 right-4 z-40 hidden lg:block" style={{ perspective: '1000px' }}>
         <div className="relative flex flex-col rounded-xl" style={panelStyle}>
           <div className="absolute bottom-3 right-3 z-10"><CrownSvg id="R" /></div>
 
           <div className="flex justify-center mb-3"><VUMeterRight isPlaying={isPlaying} /></div>
           <div className="flex justify-center mb-3"><SpectrumRight isPlaying={isPlaying} /></div>
-          <div className="flex justify-center mb-3">
+          <div className="flex justify-center mb-3" style={{ opacity: eqEnabled ? 1 : 0.55, transition: 'opacity 200ms ease' }}>
             <EqualizerPanel
               gains={eqArray}
-              activePreset={null}
+              activePreset={activeEqPreset}
               isEnabled={eqEnabled}
               onBandChange={handleEqBandChange}
               onPresetChange={handleEqPresetChange}

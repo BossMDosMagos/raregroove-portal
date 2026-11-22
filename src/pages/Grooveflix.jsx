@@ -64,12 +64,15 @@ export default function Grooveflix() {
     playAlbum,
     playNext,
     playPrevious,
+    volume,
+    vuSensitivity,
     setVolume,
     setTone,
     setEqBand,
     setVuSensitivity,
     toneSettings,
     eqBands,
+    play,
     pause,
     stop,
     seek,
@@ -91,7 +94,9 @@ export default function Grooveflix() {
   const [isMobile, setIsMobile] = useState(false);
 
   useLayoutEffect(() => {
-    const mql = window.matchMedia('(max-width: 767px)');
+    // Tablets usam a interface iPod (controles integrados); desktop (≥1024px)
+    // usa os painéis laterais com VUs e equalizadores separados.
+    const mql = window.matchMedia('(max-width: 1023px)');
     setIsMobile(mql.matches);
     const check = (e) => setIsMobile(e.matches);
     mql.addEventListener('change', check);
@@ -223,6 +228,42 @@ export default function Grooveflix() {
       document.removeEventListener('keydown', unlockAudio);
     };
   }, []);
+
+  // Atalhos de teclado: Espaço = play/pause, ←/→ = faixa, ↑/↓ = volume.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          if (isAudioContextPlaying) pause();
+          else handlePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentTrackIndexRef.current >= 0) playNext();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentTrackIndexRef.current > 0) playPrevious();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setVolume(Math.min(1, volume + 0.05));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setVolume(Math.max(0, volume - 0.05));
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isAudioContextPlaying, pause, handlePlay, playNext, playPrevious, setVolume, volume]);
 
   const handlePause = useCallback(() => pause(), [pause]);
   const handleStop = useCallback(() => { stop(); clearQueue(); }, [stop, clearQueue]);
@@ -358,6 +399,8 @@ export default function Grooveflix() {
         currentTime={currentTime}
         duration={duration}
         onSeek={seek}
+        volume={volume}
+        vuSensitivity={vuSensitivity}
         onVolumeChange={setVolume}
         onPlay={handlePlay}
         onPause={handlePause}
@@ -372,7 +415,7 @@ export default function Grooveflix() {
         setVuSensitivity={setVuSensitivity}
       />
 
-      <div className="relative mx-auto px-4 md:px-6 pt-24 pb-8" style={{ marginLeft: '340px', marginRight: '340px' }}>
+      <div className="relative mx-auto px-4 md:px-6 pt-24 pb-8 xl:ml-[340px] xl:mr-[340px] lg:ml-[300px] lg:mr-[300px]">
         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-2">

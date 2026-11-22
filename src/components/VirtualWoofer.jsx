@@ -88,7 +88,8 @@ function applyVisuals(coneEl, glowEl, shadowEl, wrapEl, c) {
 
 function DebugPanel() {
   const [params, setParams] = useState({ ...P });
-  const [isOpen, setIsOpen] = useState(true);
+  // Painel de tuning (dev/debug) começa fechado para não poluir a arte do player.
+  const [isOpen, setIsOpen] = useState(false);
   const [activePreset, setActivePreset] = useState(null);
 
   const updateParam = (key, value) => {
@@ -188,7 +189,6 @@ export function VirtualWooferLeft({ isPlaying }) {
   const shadowRef = useRef(null);
   const wrapRef = useRef(null);
   const animationRef = useRef(null);
-  const debugCountRef = useRef(0);
 
   const { isReady, getBassEnergyL } = useGlobalAudioAnalyser();
 
@@ -203,13 +203,7 @@ export function VirtualWooferLeft({ isPlaying }) {
       }
 
       const rawL = getBassEnergyL();
-      
-      // DEBUG: Log a cada 60 frames
-      debugCountRef.current++;
-      if (debugCountRef.current % 60 === 0) {
-        console.log("Woofer L - isReady:", isReady, "isPlaying:", isPlaying, "BassEnergy:", rawL.toFixed(6));
-      }
-      
+
       stepMSD(ch.L, rawL);
       applyVisuals(coneRef.current, glowRef.current, shadowRef.current, wrapRef.current, ch.L);
     };

@@ -14,6 +14,10 @@ let sharedAnalyserR = null;
 
 const STORAGE_KEY = 'raregroove_settings';
 
+// Logs informativos apenas em desenvolvimento; erros reais continuam visíveis.
+const IS_DEV = typeof import.meta !== 'undefined' && !!import.meta.env?.DEV;
+const devLog = (...args) => { if (IS_DEV) console.log(...args); };
+
 const DEFAULTS = {
   volume: 0.7,
   bass: 0,
@@ -167,7 +171,7 @@ function connectAudioGraph() {
   
   registerAnalysers({ analyserL: sharedAnalyserL, analyserR: sharedAnalyserR });
   
-  console.log('[GlobalPlayer] Graph connected - analyserL:', !!sharedAnalyserL, 'analyserR:', !!sharedAnalyserR);
+  devLog('[GlobalPlayer] Graph connected - analyserL:', !!sharedAnalyserL, 'analyserR:', !!sharedAnalyserR);
 }
 
 function initAudioContext() {
@@ -176,7 +180,7 @@ function initAudioContext() {
   }
   
   audioContextInstance = new (window.AudioContext || window.webkitAudioContext)();
-  console.log('[GlobalPlayer] AudioContext created, state:', audioContextInstance.state);
+  devLog('[GlobalPlayer] AudioContext created, state:', audioContextInstance.state);
   
   initToneFilters(audioContextInstance);
   initEqFilters(audioContextInstance);
@@ -231,6 +235,7 @@ export function useGlobalAudioPlayer() {
   const [currentTrackIndex, setCurrentTrackIndexState] = useState(-1);
   const [queue, setQueue] = useState([]);
   const [volume, setVolumeState] = useState(0.7);
+  const [vuSensitivity, setVuSensitivityState] = useState(() => loadSettings().vuSensitivity ?? 0.5);
   const [toneSettings, setToneSettingsState] = useState(() => {
     const s = loadSettings();
     return { bass: s.bass ?? 0, mid: s.mid ?? 0, treble: s.treble ?? 0 };
@@ -325,7 +330,7 @@ export function useGlobalAudioPlayer() {
     
     // If source exists but connected to different element, can't reuse - must be same element
     if (mediaSourceInstance && connectedAudioRef.current && connectedAudioRef.current !== audioElement) {
-      console.warn('[GlobalPlayer] Cannot reuse sourceNode with different audio element');
+      devLog('[GlobalPlayer] Cannot reuse sourceNode with different audio element');
     }
     
     try {
@@ -336,7 +341,7 @@ export function useGlobalAudioPlayer() {
       if (!mediaSourceInstance) {
         mediaSourceInstance = ctx.createMediaElementSource(audioElement);
         connectAudioGraph();
-        console.log('[GlobalPlayer] MediaElementSource created once');
+        devLog('[GlobalPlayer] MediaElementSource created once');
       }
       
       connectedAudioRef.current = audioElement;
@@ -384,7 +389,7 @@ export function useGlobalAudioPlayer() {
     setCurrentTrack({ ...track, index: trackIndex >= 0 ? trackIndex : undefined });
     
     const ctx = initAudioGraph();
-    console.log('[GlobalPlayer] AudioContext ready, state:', ctx.state, 'mediaSourceInstance:', !!mediaSourceInstance);
+    devLog('[GlobalPlayer] AudioContext ready, state:', ctx.state, 'mediaSourceInstance:', !!mediaSourceInstance);
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
@@ -401,7 +406,7 @@ export function useGlobalAudioPlayer() {
     
     // Connect MediaElementSource to AudioContext BEFORE setting src
     const connected = connectMediaSource(audio);
-    console.log('[GlobalPlayer] MediaSource connected:', connected, 'hasFilters:', !!toneFilters, 'eqCount:', eqFilters.length);
+    devLog('[GlobalPlayer] MediaSource connected:', connected, 'hasFilters:', !!toneFilters, 'eqCount:', eqFilters.length);
     
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration);
@@ -534,7 +539,7 @@ export function useGlobalAudioPlayer() {
 
   const playTrackFromQueue = useCallback(async (track) => {
     if (!track) return;
-    console.log('[GlobalPlayer] playTrackFromQueue:', track.title);
+    devLog('[GlobalPlayer] playTrackFromQueue:', track.title);
     currentTrackIdRef.current = track.id;
     const idx = queueRef.current.findIndex(t => t.id === track.id);
     if (idx >= 0) setCurrentTrackIndex(idx);
@@ -569,11 +574,10 @@ export function useGlobalAudioPlayer() {
   }, []);
 
   const setVuSensitivity = useCallback((value) => {
-    if (vuGainNode) {
-      vuGainNode.gain.value = value;
-      const settings = loadSettings();
-      saveSettings({ ...settings, vuSensitivity: value });
-    }
+    if (vuGainNode) vuGainNode.gain.value = value;
+    setVuSensitivityState(value);
+    const settings = loadSettings();
+    saveSettings({ ...settings, vuSensitivity: value });
   }, []);
   
   useEffect(() => {
@@ -592,6 +596,7 @@ export function useGlobalAudioPlayer() {
     duration,
     queue,
     volume,
+    vuSensitivity,
     toneSettings,
     eqBands,
     loadTrack: loadAndPlayTrack,
