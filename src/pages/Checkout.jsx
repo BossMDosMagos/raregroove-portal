@@ -576,7 +576,7 @@ const handlePaymentSuccess = async (paymentData) => {
                           {gateway.id === 'stripe' ? t('checkout.payment.creditCard') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPago') : gateway.id === 'pix_portal' ? 'PIX do Portal' : t('checkout.payment.paypal')}
                         </p>
                         <p className="text-white font-bold text-xs tracking-tight">
-                          {gateway.id === 'stripe' ? t('checkout.payment.creditCardDesc') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPagoDesc') : gateway.id === 'pix_portal' ? 'Pagamento direto para o portal' : t('checkout.payment.paypalDesc')}
+                          {gateway.id === 'stripe' ? t('checkout.payment.creditCardDesc') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPagoDesc') : gateway.id === 'pix_portal' ? 'PIX processado via PSP licenciado pelo Banco Central' : t('checkout.payment.paypalDesc')}
                         </p>
                       </div>
                     </button>
