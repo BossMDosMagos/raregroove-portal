@@ -123,12 +123,23 @@ serve(async (req) => {
       console.log('[GROOVEFLIX-DELETE] No userId provided, skipping admin check');
     }
 
-    // Buscar o item para obter os paths
-    const { data: item, error: fetchError } = await supabaseAdmin
-      .from('items')
+    // Buscar o backup na tabela do acervo digital (independente dos anúncios de venda)
+    let { data: item, error: fetchError } = await supabaseAdmin
+      .from('vault_items')
       .select('id, title, metadata')
       .eq('id', itemId)
       .single();
+
+    // Compatibilidade com registros antigos que ainda vivem em `items`
+    if (fetchError || !item) {
+      const fallback = await supabaseAdmin
+        .from('items')
+        .select('id, title, metadata')
+        .eq('id', itemId)
+        .single();
+      item = fallback.data;
+      fetchError = fallback.error;
+    }
 
     if (fetchError || !item) {
       return new Response(JSON.stringify({ error: 'Item não encontrado' }), {
@@ -168,11 +179,19 @@ serve(async (req) => {
       }
     }
 
-    // Deletar do banco de dados
-    const { error: deleteError } = await supabaseAdmin
-      .from('items')
+    // Deletar do acervo digital (tabela vault_items). Tentar items como fallback legado.
+    let { error: deleteError } = await supabaseAdmin
+      .from('vault_items')
       .delete()
       .eq('id', itemId);
+
+    if (deleteError) {
+      const legacy = await supabaseAdmin
+        .from('items')
+        .delete()
+        .eq('id', itemId);
+      deleteError = legacy.error;
+    }
 
     if (deleteError) {
       return new Response(JSON.stringify({ 

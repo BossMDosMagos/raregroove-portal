@@ -1003,17 +1003,16 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       const { data: { user } } = await supabase.auth.getUser();
       const currentUserId = user.id;
       
-      const itemData = {
+      // Acervo digital: gravado em `vault_items`, separado dos anúncios de venda.
+      // Vender/excluir o CD físico nunca apaga o backup privado do colecionador.
+      const vaultData = {
+        owner_id: currentUserId,
         title: metadata.title,
         artist: metadata.artist,
-        year: metadata.year || null,
-        genre: metadata.genre || null,
-        status: 'disponivel',
-        seller_id: currentUserId,
-        price: 0,
-        is_sold: false,
+        cover_url: metadata.coverUrl || null,
         metadata: {
-          ...(item?.metadata || {}),
+          year: metadata.year || null,
+          genre: metadata.genre || null,
           grooveflix: {
             category,
             audio_path: null,
@@ -1038,11 +1037,11 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       };
 
       let itemId = item?.id;
-      
+
       if (!itemId) {
         const { data: insertedItem, error: insertError } = await supabase
-          .from('items')
-          .insert([itemData])
+          .from('vault_items')
+          .insert([vaultData])
           .select('id')
           .single();
 
@@ -1051,7 +1050,7 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       }
 
       const grooveflixData = {
-        ...((item?.metadata?.grooveflix) || (itemData.metadata?.grooveflix) || {}),
+        ...((item?.metadata?.grooveflix) || (vaultData.metadata?.grooveflix) || {}),
         discogsId: metadata.discogsId || item?.metadata?.grooveflix?.discogsId || null,
         discogsMasterId: metadata.discogsMasterId || item?.metadata?.grooveflix?.discogsMasterId || null,
         country: metadata.country || item?.metadata?.grooveflix?.country || null,
@@ -1151,8 +1150,8 @@ export default function GrooveflixUploader({ isOpen, onClose, item, onSuccess, i
       }
 
       const { error: updateError } = await supabase
-        .from('items')
-        .update({ metadata: { ...item?.metadata, source: 'grooveflix', grooveflix: grooveflixData } })
+        .from('vault_items')
+        .update({ metadata: { ...(item?.metadata || {}), source: 'grooveflix', grooveflix: grooveflixData } })
         .eq('id', itemId);
 
       if (updateError) throw updateError;

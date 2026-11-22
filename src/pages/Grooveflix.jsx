@@ -26,7 +26,7 @@ function normalizeTracks(items = []) {
     const category = String(grooveflix.category || 'single').toLowerCase();
     const audioPath = grooveflix.audio_path || grooveflix.flac_path || null;
     const coverPath = grooveflix.cover_path || null;
-    const coverUrl = item.image_url || null;
+    const coverUrl = item.cover_url || item.image_url || null;
     const audioFiles = grooveflix.audio_files || [];
     const tracklist = grooveflix.tracklist || [];
 
@@ -315,22 +315,21 @@ export default function Grooveflix() {
     setDebugInfo(null);
 
     try {
+      // O acervo digital (cofre privado) é INDEPENDENTE dos anúncios de venda.
+      // Lemos da tabela vault_items: vender/excluir o CD físico nunca apaga o backup.
       const { data, error } = await supabase
-        .from('items')
-        .select('id, title, artist, image_url, metadata, created_at')
-        .eq('seller_id', userId)
+        .from('vault_items')
+        .select('id, title, artist, cover_url, metadata, created_at')
+        .eq('owner_id', userId)
         .order('created_at', { ascending: false })
         .limit(120);
 
       if (error) throw error;
 
       const allItems = data || [];
-      // Um item aparece no Vault quando possui áudio enviado, independente do
-      // `source` (catalog/grooveflix). Assim o mesmo CD pode ser ouvido no cofre
-      // privado e também anunciado na vitrine.
       const grooveflixItems = allItems.filter(item => {
         const gf = item.metadata?.grooveflix || {};
-        const temAudio = (gf.audio_files?.length > 0) || !!gf.audio_path || !!item.audio_path;
+        const temAudio = (gf.audio_files?.length > 0) || !!gf.audio_path;
         return temAudio;
       });
 
