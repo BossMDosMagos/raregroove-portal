@@ -324,13 +324,18 @@ export default function CoverFlow3D({ items, focusedIndex: externalFocusedIndex,
             line1={focusedItem?.title || ''}
             line2={focusedItem?.artist || ''}
             line3={(() => {
-              if (currentTrackIndex >= 0) {
+              if (currentTrackIndex < 0) return '';
+              // Preferir o título da faixa que o player global está tocando (sempre
+              // sincronizado, inclusive no auto-avanço). Fallback para a tracklist
+              // do álbum focado caso o player ainda não tenha exposto o título.
+              const fromPlayer = currentTrack?.title;
+              let name = fromPlayer;
+              if (!name) {
                 const grooveflix = focusedItem?.metadata?.grooveflix || {};
                 const tracklist = grooveflix.tracklist || focusedItem?.tracklist || [];
-                const currentTrackName = tracklist[currentTrackIndex]?.title || `Track ${currentTrackIndex + 1}`;
-                return `${currentTrackIndex + 1}. ${currentTrackName}`;
+                name = tracklist[currentTrackIndex]?.title || `Track ${currentTrackIndex + 1}`;
               }
-              return '';
+              return `${currentTrackIndex + 1}. ${name}`;
             })()}
             isPlaying={isPlaying}
           />

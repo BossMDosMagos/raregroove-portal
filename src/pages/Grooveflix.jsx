@@ -57,24 +57,22 @@ export default function Grooveflix() {
   const { t } = useI18n();
   const player = useGlobalPlayer();
   const { 
-    playTrackFromQueue,
     currentTrack: globalCurrentTrack, 
+    currentTrackIndex: globalTrackIndex,
     isPlaying: isAudioContextPlaying, 
     clearQueue,
-    loadAndPlayTrack,
     playAlbum,
-    volume,
+    playNext,
+    playPrevious,
     setVolume,
     setTone,
     setEqBand,
     setVuSensitivity,
     toneSettings,
     eqBands,
-    play,
     pause,
     stop,
     seek,
-    queue,
     currentTime,
     duration,
   } = player;
@@ -86,8 +84,10 @@ export default function Grooveflix() {
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const focusedAlbumRef = useRef(null);
+  // Índice da faixa atual vem do player global (reativo). A UI (LCD, capas)
+  // usa este valor para refletir a música que está tocando de verdade.
+  const currentTrackIndex = globalTrackIndex;
   const currentTrackIndexRef = useRef(-1);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
   const [isMobile, setIsMobile] = useState(false);
 
   useLayoutEffect(() => {
@@ -154,9 +154,8 @@ export default function Grooveflix() {
   };
 
   const handlePlayTrack = useCallback(async (album, trackIndex) => {
-    setCurrentTrackIndex(trackIndex);
     currentTrackIndexRef.current = trackIndex;
-    
+
     const grooveflixData = album?.metadata?.grooveflix || {};
     let audioFiles = grooveflixData.audio_files || [];
     
@@ -229,35 +228,22 @@ export default function Grooveflix() {
   const handleStop = useCallback(() => { stop(); clearQueue(); }, [stop, clearQueue]);
   const handleEject = useCallback(() => clearQueue(), [clearQueue]);
 
+  // Navegação de faixas usa a fila do player global. Se ainda não houver fila
+  // carregada, toca o álbum focado como fallback (primeira faixa).
   const handlePreviousTrack = useCallback(() => {
-    const currentIdx = currentTrackIndexRef.current;
-    
-    if (currentIdx > 0) {
-      const album = focusedAlbumRef.current;
-      if (album) {
-        handlePlayTrack(album, currentIdx - 1);
-      }
+    if (currentTrackIndexRef.current > 0) {
+      playPrevious();
     }
-  }, [handlePlayTrack]);
+  }, [playPrevious]);
 
   const handleNextTrack = useCallback(() => {
-    const currentIdx = currentTrackIndexRef.current;
-    
-    const album = focusedAlbumRef.current;
-    if (!album) {
+    if (currentTrackIndexRef.current >= 0) {
+      playNext();
       return;
     }
-    
-    let audioFiles = album?.audio_files || [];
-    if (audioFiles.length === 0) {
-      audioFiles = album?.metadata?.grooveflix?.audio_files || [];
-    }
-    
-    if (currentIdx >= 0 && currentIdx < audioFiles.length - 1) {
-      const nextIndex = currentIdx + 1;
-      handlePlayTrack(album, nextIndex);
-    }
-  }, [handlePlayTrack]);
+    const album = focusedAlbumRef.current;
+    if (album) handlePlayTrack(album, 0);
+  }, [playNext, handlePlayTrack]);
 
   // Reconnect analysers on mount if audio is already playing
   useEffect(() => {
@@ -265,16 +251,6 @@ export default function Grooveflix() {
       registerAnalysers(player.getAnalysers());
     }
   }, []);
-
-  const lastTrackIdRef = useRef(null);
-
-  useEffect(() => {
-    const trackId = globalCurrentTrack?.id;
-    if (trackId && trackId !== lastTrackIdRef.current && globalCurrentTrack.audioPath && loadAndPlayTrack) {
-      lastTrackIdRef.current = trackId;
-      loadAndPlayTrack(globalCurrentTrack);
-    }
-  }, [globalCurrentTrack, loadAndPlayTrack]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);

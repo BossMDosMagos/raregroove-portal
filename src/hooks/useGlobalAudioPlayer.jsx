@@ -226,6 +226,9 @@ export function useGlobalAudioPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTrack, setCurrentTrack] = useState(null);
+  // Índice reativo da faixa atual na fila. Espelha currentTrackIndexRef para que
+  // a UI (LCD, capas, progresso) reaja quando a faixa muda (inclusive auto-avanço).
+  const [currentTrackIndex, setCurrentTrackIndexState] = useState(-1);
   const [queue, setQueue] = useState([]);
   const [volume, setVolumeState] = useState(0.7);
   const [toneSettings, setToneSettingsState] = useState(() => {
@@ -248,6 +251,12 @@ export function useGlobalAudioPlayer() {
   const connectedAudioRef = useRef(null);
   const queueRef = useRef([]);
   const loadAndPlayTrackRef = useRef(null);
+
+  // Atualiza ref + estado do índice de forma atômica (a UI reage junto).
+  const setCurrentTrackIndex = useCallback((index) => {
+    currentTrackIndexRef.current = index;
+    setCurrentTrackIndexState(index);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -367,7 +376,12 @@ export function useGlobalAudioPlayer() {
     currentTrackIdRef.current = trackId;
     setCurrentTime(0);
     setDuration(0);
-    setCurrentTrack(track);
+    // Anexa o índice atual da fila ao track para a UI (LCD) saber qual faixa toca.
+    const trackIndex = queueRef.current.findIndex(t => t.id === trackId);
+    if (trackIndex >= 0 && trackIndex !== currentTrackIndexRef.current) {
+      setCurrentTrackIndex(trackIndex);
+    }
+    setCurrentTrack({ ...track, index: trackIndex >= 0 ? trackIndex : undefined });
     
     const ctx = initAudioGraph();
     console.log('[GlobalPlayer] AudioContext ready, state:', ctx.state, 'mediaSourceInstance:', !!mediaSourceInstance);
@@ -397,7 +411,7 @@ export function useGlobalAudioPlayer() {
       const nextIndex = currentTrackIndexRef.current + 1;
       if (q.length > 0 && nextIndex < q.length) {
         const nextTrack = q[nextIndex];
-        currentTrackIndexRef.current = nextIndex;
+        setCurrentTrackIndex(nextIndex);
         if (nextTrack && loadAndPlayTrackRef.current) {
           loadAndPlayTrackRef.current(nextTrack);
         }
@@ -430,7 +444,7 @@ export function useGlobalAudioPlayer() {
         console.warn('[GlobalPlayer] Play warning:', err.message);
       }
     }
-  }, [initAudioGraph, getPresignedUrl, createAudioElement]);
+  }, [initAudioGraph, getPresignedUrl, createAudioElement, setCurrentTrackIndex]);
   
   const playAlbum = useCallback(async (album, startIndex = 0) => {
     const audioFiles = album?.audio_files || album?.metadata?.grooveflix?.audio_files || [];
@@ -450,12 +464,12 @@ export function useGlobalAudioPlayer() {
     
     queueRef.current = tracks;
     setQueue(tracks);
-    currentTrackIndexRef.current = startIndex;
-    
+    setCurrentTrackIndex(startIndex);
+
     if (tracks[startIndex]) {
       loadAndPlayTrack(tracks[startIndex]);
     }
-  }, [loadAndPlayTrack]);
+  }, [loadAndPlayTrack, setCurrentTrackIndex]);
   
   const play = useCallback(async () => {
     await ensureContextRunning();
@@ -478,8 +492,8 @@ export function useGlobalAudioPlayer() {
     updateCurrentTrack(null);
     queueRef.current = [];
     setQueue([]);
-    currentTrackIndexRef.current = -1;
-  }, [stopAudio, updateCurrentTrack]);
+    setCurrentTrackIndex(-1);
+  }, [stopAudio, updateCurrentTrack, setCurrentTrackIndex]);
   
   const seek = useCallback((time) => {
     if (audioRef.current && audioRef.current.duration) {
@@ -499,30 +513,33 @@ export function useGlobalAudioPlayer() {
   const clearQueue = useCallback(() => {
     queueRef.current = [];
     setQueue([]);
-    currentTrackIndexRef.current = -1;
-  }, []);
+    setCurrentTrackIndex(-1);
+  }, [setCurrentTrackIndex]);
 
   const playNext = useCallback(() => {
-    if (queue.length > 0 && currentTrackIndexRef.current < queue.length - 1) {
-      currentTrackIndexRef.current += 1;
-      loadAndPlayTrack(queue[currentTrackIndexRef.current]);
+    const nextIndex = currentTrackIndexRef.current + 1;
+    if (nextIndex < queueRef.current.length) {
+      setCurrentTrackIndex(nextIndex);
+      loadAndPlayTrackRef.current?.(queueRef.current[nextIndex]);
     }
-  }, [queue, loadAndPlayTrack]);
+  }, [setCurrentTrackIndex]);
   
   const playPrevious = useCallback(() => {
-    if (currentTrackIndexRef.current > 0) {
-      currentTrackIndexRef.current -= 1;
-      loadAndPlayTrack(queue[currentTrackIndexRef.current]);
+    const prevIndex = currentTrackIndexRef.current - 1;
+    if (prevIndex >= 0) {
+      setCurrentTrackIndex(prevIndex);
+      loadAndPlayTrackRef.current?.(queueRef.current[prevIndex]);
     }
-  }, [queue, loadAndPlayTrack]);
+  }, [setCurrentTrackIndex]);
 
   const playTrackFromQueue = useCallback(async (track) => {
     if (!track) return;
     console.log('[GlobalPlayer] playTrackFromQueue:', track.title);
     currentTrackIdRef.current = track.id;
-    currentTrackIndexRef.current = queue.findIndex(t => t.id === track.id);
+    const idx = queueRef.current.findIndex(t => t.id === track.id);
+    if (idx >= 0) setCurrentTrackIndex(idx);
     await loadAndPlayTrack(track);
-  }, [loadAndPlayTrack, queue]);
+  }, [loadAndPlayTrack, setCurrentTrackIndex]);
 
   const setTone = useCallback((tone, value) => {
     const dbValue = Math.max(-12, Math.min(12, value));
@@ -569,6 +586,7 @@ export function useGlobalAudioPlayer() {
   
   return {
     currentTrack,
+    currentTrackIndex,
     isPlaying,
     currentTime,
     duration,
