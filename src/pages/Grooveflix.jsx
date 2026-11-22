@@ -325,9 +325,14 @@ export default function Grooveflix() {
       if (error) throw error;
 
       const allItems = data || [];
-      const grooveflixItems = allItems.filter(item =>
-        item.metadata?.source === 'grooveflix' && item.metadata?.grooveflix?.category
-      );
+      // Um item aparece no Vault quando possui áudio enviado, independente do
+      // `source` (catalog/grooveflix). Assim o mesmo CD pode ser ouvido no cofre
+      // privado e também anunciado na vitrine.
+      const grooveflixItems = allItems.filter(item => {
+        const gf = item.metadata?.grooveflix || {};
+        const temAudio = (gf.audio_files?.length > 0) || !!gf.audio_path || !!item.audio_path;
+        return temAudio;
+      });
 
       setDebugInfo({
         totalItems: allItems.length,

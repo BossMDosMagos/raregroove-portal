@@ -33,12 +33,9 @@ export default function Catalogo() {
       .order('created_at', { ascending: false });
     
     if (!error) {
-      const filtered = (data || []).filter(item => {
-        if (item.metadata?.source === 'catalog') return true;
-        if (item.metadata?.source === 'grooveflix') return false;
-        if (item.metadata?.grooveflix?.isAlbum === true) return false;
-        return true;
-      });
+      // Itens com allow_sale (padrão: true) aparecem na vitrine, inclusive
+      // álbuns que também estão no cofre privado (backups do próprio colecionador).
+      const filtered = (data || []).filter(item => item.allow_sale !== false);
       setItems(filtered);
     }
     setLoadingItems(false);
