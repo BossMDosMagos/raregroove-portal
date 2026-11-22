@@ -4,9 +4,10 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
   const bounds = { top: 5, right: 48, bottom: 10, left: 48 };
 
   const textStyle = useMemo(() => ({
-    fontFamily: "'5x7DotMatrix', 'Courier New', monospace",
+    fontFamily: "'LCDDotMatrix', '5x7DotMatrix', 'Courier New', monospace",
     color: '#1a1a1a',
     fontWeight: 'bold',
+    letterSpacing: '0.5px',
     textShadow: '1px 1px 0 rgba(255,255,255,0.3)',
   }), []);
 
@@ -32,12 +33,12 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
         }}
       >
         {line1 && (
-          <div className="text-center" style={{ ...textStyle, fontSize: '16px', marginBottom: '4px' }}>
+          <div className="text-center" style={{ ...textStyle, fontSize: '18px', marginBottom: '4px' }}>
             {line1}
           </div>
         )}
         {line2 && line2.trim().toLowerCase() !== String(line1 || '').trim().toLowerCase() && (
-          <div className="text-center" style={{ ...textStyle, fontSize: '14px', opacity: 0.8 }}>
+          <div className="text-center" style={{ ...textStyle, fontSize: '16px', opacity: 0.8 }}>
             {line2}
           </div>
         )}
@@ -45,7 +46,7 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
           <div className="relative w-full overflow-hidden h-6 flex items-center mt-2">
             <div 
               className="absolute whitespace-nowrap flex items-center"
-              style={{ ...textStyle, fontSize: '12px', animation: 'marquee-left 12s linear infinite' }}
+              style={{ ...textStyle, fontSize: '14px', animation: 'marquee-left 12s linear infinite' }}
             >
               <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
               <span>{line3} &nbsp;&nbsp;•&nbsp;&nbsp; </span>
@@ -55,7 +56,7 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
           </div>
         )}
         {line4 && (
-          <div style={{ ...textStyle, fontSize: '12px', marginTop: '2px' }}>
+          <div style={{ ...textStyle, fontSize: '14px', marginTop: '2px' }}>
             {line4}
           </div>
         )}

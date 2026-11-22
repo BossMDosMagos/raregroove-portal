@@ -5,6 +5,13 @@
   src: url('/fonts/5x7-dot-matrix.otf') format('opentype');
 }
 
+/* Fonte LCD dot-matrix autêntica (estilo display de ponto de calculadora) */
+@font-face {
+  font-family: 'LCDDotMatrix';
+  src: url('/fonts/silkscreen-lcd.woff2') format('woff2');
+  font-display: swap;
+}
+
 @keyframes marquee-left {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
