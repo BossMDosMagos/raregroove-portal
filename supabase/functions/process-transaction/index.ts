@@ -281,7 +281,8 @@ serve(async (req) => {
       paymentProvider,
       shippingData,
       swapId,
-      mpDetails // Extraído do payload (se disponível)
+      mpDetails, // Extraído do payload (se disponível)
+      comprovanteUrl // URL do comprovante PIX enviado pelo comprador
     } = payload
 
     console.log('[process-transaction] Variáveis extraídas:', {
@@ -465,7 +466,8 @@ serve(async (req) => {
         net_amount: isPortalSale ? 0 : netAmount,
         shipping_cost: shippingCost,
         insurance_cost: insuranceCost,
-        status: 'pago',
+        status: comprovanteUrl ? 'waiting_approval' : 'pago',
+        comprovante_url: comprovanteUrl || null,
         payment_id: paymentId
       }
       

@@ -1078,8 +1078,16 @@ export default function Profile() {
                         }`}>
                           {sale.status === 'recebido' ? 'Recebido - Libere PIX' : 
                            sale.status === 'vendido' ? 'Aprovado - Gere etiqueta' : 
-                           sale.status === 'waiting_approval' ? 'Aguardando aprovação' : sale.status}
+                           sale.status === 'waiting_approval' ? 'Aguardando sua aprovação' : sale.status}
                         </p>
+                        {sale.status === 'waiting_approval' && sale.comprovante_url && (
+                          <div className="mt-2 space-y-2">
+                            <p className="text-[10px] text-gold-premium/70 uppercase tracking-wider font-bold">Comprovante enviado pelo comprador</p>
+                            <a href={sale.comprovante_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 underline">
+                              Ver comprovante
+                            </a>
+                          </div>
+                        )}
                         {sale.status === 'recebido' && (
                           <button
                             onClick={async () => {
