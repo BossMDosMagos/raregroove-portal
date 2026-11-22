@@ -36,7 +36,7 @@ export const LCDDisplay = React.memo(function LCDDisplay({ line1, line2, line3, 
             {line1}
           </div>
         )}
-        {line2 && (
+        {line2 && line2.trim().toLowerCase() !== String(line1 || '').trim().toLowerCase() && (
           <div className="text-center" style={{ ...textStyle, fontSize: '14px', opacity: 0.8 }}>
             {line2}
           </div>
