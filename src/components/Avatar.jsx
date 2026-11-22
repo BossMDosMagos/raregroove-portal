@@ -2,7 +2,7 @@ import React from 'react';
 import { User } from 'lucide-react';
 
 /**
- * Componente Avatar Reutilizável - RAREGROOVE
+ * Componente Avatar Reutilizável - RareGroove
  * 
  * @param {string} src - URL completa do avatar
  * @param {string} name - Nome do usuário (para fallback com inicial)

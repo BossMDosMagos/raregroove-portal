@@ -49,25 +49,17 @@ export default function AdminSales() {
 
       const dateFrom = getDateFilter();
 
-      // Tentar buscar com múltiplos statuses que podem ser equivalentes
-      const possibleStatuses = ['pago_em_custodia', 'pago', 'pago_custodia', 'aprovado', 'concluido'];
-      let transactions = [];
-      let foundStatus = null;
-      
-      for (const status of possibleStatuses) {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('id, created_at, total_amount, platform_fee, status, seller_id, buyer_id, item_id')
-          .eq('status', status)
-          .gte('created_at', dateFrom)
-          .order('created_at', { ascending: false });
+      // Buscar todas as vendas de uma vez (statuses reais do fluxo de pagamento)
+      const saleStatuses = ['pago', 'waiting_approval', 'vendido', 'enviado', 'recebido', 'concluido'];
+      const { data: transactionsData, error } = await supabase
+        .from('transactions')
+        .select('id, created_at, total_amount, platform_fee, status, seller_id, buyer_id, item_id')
+        .in('status', saleStatuses)
+        .gte('created_at', dateFrom)
+        .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
-          transactions = data;
-          foundStatus = status;
-          break;
-        }
-      }
+      if (error) throw error;
+      let transactions = transactionsData || [];
 
       if (transactions.length === 0) {
         setSales([]);
@@ -482,7 +474,7 @@ export default function AdminSales() {
         {/* Info Card */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-2">
           <p className="text-sm text-white/60">
-            <strong>Nota:</strong> Esta página mostra todas as transações com status "pago_em_custodia". Os itens marcados como vendidos não aparecem no catálogo e estão indisponíveis para novos compradores.
+            <strong>Nota:</strong> Esta página mostra as transações de venda. Os itens vendidos não aparecem no catálogo e ficam indisponíveis para novos compradores. Os valores são processados e retidos por PSP licenciado pelo Banco Central.
           </p>
         </div>
       </div>

@@ -303,12 +303,13 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
         .eq('id', transactionId)
         .single();
 
-      // 1. Verificar se shipping existe, se não criar
+      // 1. Verificar se shipping existe (maybeSingle evita erro quando há duplicados)
       const { data: existing } = await supabase
         .from('shipping')
-        .select('id')
+        .select('shipping_id')
         .eq('transaction_id', transactionId)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (!existing) {
         await supabase.from('shipping').insert({

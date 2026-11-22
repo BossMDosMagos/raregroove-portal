@@ -131,7 +131,7 @@ function encodeTagValue(tag, value) {
 export function generatePixBrcode(pixKey, amount, options = {}) {
   try {
     const {
-      merchantName = 'RAREGROOVE',
+      merchantName = 'RareGroove',
       merchantCity = 'BRASIL',
       txid = '***'
     } = options;
@@ -139,7 +139,7 @@ export function generatePixBrcode(pixKey, amount, options = {}) {
     const cleanPixKey = normalizePixKey(pixKey);
     if (!cleanPixKey) return '';
 
-    const safeMerchantName = onlyValidPixChars(merchantName).substring(0, 25) || 'RAREGROOVE';
+    const safeMerchantName = onlyValidPixChars(merchantName).substring(0, 25) || 'RareGroove';
     const safeMerchantCity = onlyValidPixChars(merchantCity).substring(0, 15) || 'BRASIL';
     const safeTxid = normalizeTxid(txid);
 

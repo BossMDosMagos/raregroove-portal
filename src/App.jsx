@@ -10,8 +10,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import CartDrawer from './components/CartDrawer.jsx';
 import GrooveflixGatekeeper from './components/GrooveflixGatekeeper.jsx';
-import { GlobalPlayerProvider, useGlobalPlayer } from './hooks/useGlobalAudioPlayer.jsx';
-import { validateSecretVault } from './utils/secretVaultTest';
+import { GlobalPlayerProvider } from './hooks/useGlobalAudioPlayer.jsx';
+
 
 // Componentes de carregamento
 const LoadingFallback = () => (
@@ -48,7 +48,6 @@ const SwapSimulator = lazy(() => import('./pages/SwapSimulator'));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 const AdminUpload = lazy(() => import('./pages/AdminUpload'));
 const AdminTrash = lazy(() => import('./pages/AdminTrash'));
-const ShippingLabelCard = lazy(() => import('./components/ShippingLabelCard'));
 const ShippingLabelPage = lazy(() => import('./pages/ShippingLabel'));
 
 // Páginas de Usuário (Lazy Loading)
@@ -69,9 +68,6 @@ export default function App() {
   const [adminLoading, setAdminLoading] = useState(true);
 
   useEffect(() => {
-    // 🔐 Validar Cofre Invisível na startup
-    validateSecretVault();
-
     // Verifica se já existe uma sessão ativa ao abrir o site
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
