@@ -465,7 +465,7 @@ serve(async (req) => {
         net_amount: isPortalSale ? 0 : netAmount,
         shipping_cost: shippingCost,
         insurance_cost: insuranceCost,
-        status: 'pago_em_custodia',
+        status: 'pago',
         payment_id: paymentId
       }
       
