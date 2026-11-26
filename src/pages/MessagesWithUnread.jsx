@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Disc, MessageSquare, Archive, ArchiveRestore, Trash2, X, Loader2 } from 'lucide-react';
+import { Disc, MessageSquare, Archive, ArchiveRestore, Trash2, X, Loader2, CheckCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Avatar from '../components/Avatar';
 import { Pill } from '../components/UIComponents';
@@ -16,7 +16,7 @@ export default function MessagesWithUnread() {
   const [activeTab, setActiveTab] = useState('conversas');
   const [deletingConversationKey, setDeletingConversationKey] = useState(null);
   const navigate = useNavigate();
-  const { unreadCount } = useUnreadMessages();
+  const { unreadCount, refreshUnreadCount } = useUnreadMessages();
   const { t } = useI18n();
 
   const fetchConversations = async () => {
@@ -167,8 +167,53 @@ export default function MessagesWithUnread() {
       toast.success('CONVERSA RESTAURADA');
       fetchConversations();
       fetchArchivedConversations();
+      refreshUnreadCount?.();
     } catch (error) {
       toast.error('ERRO AO DESARQUIVAR');
+    }
+  };
+
+  const handleArchive = async (conversation, e) => {
+    e.stopPropagation();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Evita duplicar caso a constraint única não exista na tabela.
+      await supabase
+        .from('archived_conversations')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('item_id', conversation.itemId);
+      const { error } = await supabase
+        .from('archived_conversations')
+        .insert([{ user_id: user.id, item_id: conversation.itemId }]);
+      if (error) throw error;
+      toast.success('CONVERSA ARQUIVADA');
+      fetchConversations();
+      fetchArchivedConversations();
+      refreshUnreadCount?.();
+    } catch (error) {
+      toast.error('ERRO AO ARQUIVAR');
+    }
+  };
+
+  const handleMarkAsRead = async (conversation, e) => {
+    e.stopPropagation();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('item_id', conversation.itemId)
+        .eq('receiver_id', user.id)
+        .is('read_at', null);
+      if (error) throw error;
+      toast.success('MENSAGENS MARCADAS COMO LIDAS');
+      fetchConversations();
+      refreshUnreadCount?.();
+    } catch (error) {
+      toast.error('ERRO AO MARCAR COMO LIDA');
     }
   };
 
@@ -198,6 +243,7 @@ export default function MessagesWithUnread() {
       toast.success('CONVERSA EXTERMINADA');
       setConversations(prev => prev.filter(c => c.itemId !== conversation.itemId));
       setArchivedConversations(prev => prev.filter(c => c.itemId !== conversation.itemId));
+      refreshUnreadCount?.();
     } catch (error) {
       toast.error('ERRO AO APAGAR');
     } finally {
@@ -354,6 +400,26 @@ export default function MessagesWithUnread() {
                   
                   {/* Floating Actions */}
                   <div className="absolute right-8 top-1/2 -translate-y-1/2 flex gap-3 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
+                    {activeTab === 'conversas' && (
+                      <>
+                        {unreadCounts[conv.itemId] > 0 && (
+                          <button
+                            onClick={(e) => handleMarkAsRead(conv, e)}
+                            className="w-12 h-12 flex items-center justify-center bg-charcoal-mid/80 backdrop-blur-xl border border-gold-premium/20 rounded-2xl text-gold-premium hover:bg-gold-premium hover:text-charcoal-deep transition-all duration-300 shadow-2xl"
+                            title="Marcar como lida"
+                          >
+                            <CheckCheck size={20} />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => handleArchive(conv, e)}
+                          className="w-12 h-12 flex items-center justify-center bg-charcoal-mid/80 backdrop-blur-xl border border-gold-premium/20 rounded-2xl text-gold-premium hover:bg-gold-premium hover:text-charcoal-deep transition-all duration-300 shadow-2xl"
+                          title="Arquivar"
+                        >
+                          <Archive size={20} />
+                        </button>
+                      </>
+                    )}
                     {activeTab === 'arquivadas' && (
                       <button 
                         onClick={(e) => handleUnarchive(conv.itemId, e)} 

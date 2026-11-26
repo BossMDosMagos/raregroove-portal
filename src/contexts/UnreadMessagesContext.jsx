@@ -26,6 +26,13 @@ export const UnreadMessagesProvider = ({ children }) => {
 
       setCurrentUserId(user.id);
 
+      // Conversas arquivadas não devem manter o badge do sino aceso.
+      const { data: archived } = await supabase
+        .from('archived_conversations')
+        .select('item_id')
+        .eq('user_id', user.id);
+      const archivedItemIds = new Set((archived || []).map(a => a.item_id));
+
       // Contar mensagens não lidas (com read_at NULL)
       const { data: messages, error } = await supabase
         .from('messages')
@@ -38,8 +45,7 @@ export const UnreadMessagesProvider = ({ children }) => {
       }
 
       if (messages) {
-        // Contar TOTAL de mensagens não lidas (não apenas conversas)
-        const newCount = messages.length;
+        const newCount = messages.filter(m => !archivedItemIds.has(m.item_id)).length;
         setUnreadCount(newCount);
       }
     } catch {

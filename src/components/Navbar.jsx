@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Search, ShoppingCart, LogOut, User, Settings, Wallet, Home, Bell, Globe } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, LogOut, User, Settings, Wallet, Home, Bell, Globe, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext';
@@ -230,6 +230,20 @@ export default function Navbar() {
 
               {notificationsOpen && (
                 <div className="absolute right-0 mt-2 w-72 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[99999]">
+                  {/* Atalho para o centro de mensagens: o badge do sino também conta mensagens não lidas */}
+                  <button
+                    onClick={() => { setNotificationsOpen(false); navigate('/mensagens'); }}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 text-left hover:bg-white/5 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium text-white/85">
+                      <MessageSquare size={15} className="text-gold-premium" /> Central de Mensagens
+                    </span>
+                    {unreadMessagesCount > 0 && (
+                      <span className="bg-gold-premium text-charcoal-deep text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                  </button>
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-white text-sm font-medium">Notificações</p>
                   </div>
