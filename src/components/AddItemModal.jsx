@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Upload, Loader2, TrendingUp, ChevronDown, Check } from 'lucide-react';
+import { X, Upload, Loader2, TrendingUp, ChevronDown, Check, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -14,6 +14,7 @@ const emptyFormData = {
   genre: '',
   price: '',
   condition: 'MINT',
+  sealed: false,
   image_url: '',
   coverUrlThumbnail: '',
   allow_sale: true,
@@ -67,6 +68,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         genre: itemToEdit.genre || '',
         price: itemToEdit.price != null ? String(itemToEdit.price) : '',
         condition: itemToEdit.condition || 'MINT',
+        sealed: Boolean(itemToEdit.metadata?.sealed),
         image_url: itemToEdit.image_url || '',
         coverUrlThumbnail: itemToEdit.metadata?.coverUrlThumbnail || '',
         allow_sale: Boolean(itemToEdit.allow_sale),
@@ -205,6 +207,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
           },
           coverUrlThumbnail: formData.coverUrlThumbnail || null,
           description: formData.description || null,
+          sealed: Boolean(formData.sealed),
         }
       };
 
@@ -482,6 +485,21 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   </div>
                 )}
               </div>
+
+              {/* Selo de lacrado — fica logo abaixo do estado */}
+              <label className="col-span-2 relative z-10 flex items-center gap-3 mt-1 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={Boolean(formData.sealed)}
+                  onChange={e => setFormData(prev => ({ ...prev, sealed: e.target.checked }))}
+                  className="accent-[#D4AF37] w-4 h-4 shrink-0"
+                />
+                <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#D4AF37]/80 group-hover:text-[#D4AF37] transition-colors">
+                  <Lock size={12} /> Lacrado
+                </span>
+                <span className="text-[9px] text-white/30 normal-case tracking-normal">Lacre de fábrica intacto</span>
+              </label>
+
               <div className="col-span-2">
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Código de Barras</label>
                 <div className="mt-1">

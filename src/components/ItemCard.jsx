@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Disc, Music, Clock, Tag, ArrowLeftRight, ShieldCheck } from 'lucide-react';
+import { Disc, Music, Clock, Tag, ArrowLeftRight, ShieldCheck, Lock } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext.jsx';
 import { supabase } from '../lib/supabase';
 import { formatRemaining } from '../utils/time.js';
@@ -136,6 +136,18 @@ export const ItemCard = ({ item, onPlay }) => {
             onError={() => setImageError(true)}
             className="w-full h-full object-cover"
           />
+        )}
+
+        {/* Selo LACRADO dourado com glow pulsante */}
+        {Boolean(item?.metadata?.sealed) && (
+          <div className="absolute bottom-3 right-3 z-20 animate-sealed-glow rounded-full">
+            <div className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-gold-light via-gold-premium to-gold-dark border-2 border-gold-light/80 text-charcoal-deep">
+              <Lock size={13} strokeWidth={3} />
+              <span className="mt-0.5 text-[8px] font-black uppercase leading-none tracking-[0.08em]">
+                Lacrado
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Selo redondo de reserva (visível já no catálogo) */}

@@ -26,6 +26,22 @@
   animation: fade-in 0.2s ease-out forwards;
 }
 
+/* Selo LACRADO: brilho dourado pulsante para chamar atenção na vitrine */
+@keyframes sealed-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.35), 0 0 18px rgba(212, 175, 55, 0.15);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.95), 0 0 42px rgba(212, 175, 55, 0.55);
+    filter: brightness(1.22);
+  }
+}
+
+@utility animate-sealed-glow {
+  animation: sealed-glow 1.8s ease-in-out infinite;
+}
+
 @theme {
 	/* Palette: LUXURY DARK GOLD */
 	--color-gold-premium: #D4AF37;
