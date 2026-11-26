@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Disc, Music, Clock, Tag, ArrowLeftRight, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext.jsx';
+import { supabase } from '../lib/supabase';
+import { formatRemaining } from '../utils/time.js';
 import BarcodeTag from './BarcodeTag.jsx';
 
 const DiscPlaceholder = () => (
@@ -40,6 +42,28 @@ export const ItemCard = ({ item, onPlay }) => {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data?.user?.id || null));
+    const id = setInterval(() => setTick(v => v + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Reserva ativa: status 'reservado' com prazo ainda vigente.
+  const reservedUntilMs = item?.reserved_until ? new Date(item.reserved_until).getTime() : null;
+  const reserveActive = Boolean(item?.status === 'reservado' && reservedUntilMs && reservedUntilMs > Date.now());
+
+  let localCart = null;
+  try { localCart = JSON.parse(localStorage.getItem('rg_cart_v2') || 'null'); } catch { localCart = null; }
+  const localReserveForThis = Boolean(
+    Array.isArray(localCart) && localCart.some(c => c.itemId === item?.id && Number(c.reservedUntilMs || 0) > Date.now())
+  );
+  const reservedByMe = Boolean(reserveActive && currentUserId && item?.reserved_by === currentUserId);
+  // Carimbo aparece para todos exceto quem fez a reserva (que já sabe que é sua).
+  const showReservedStamp = Boolean(reserveActive && !reservedByMe && !localReserveForThis);
+  const reserveRemaining = showReservedStamp ? formatRemaining(reservedUntilMs - Date.now()) : null;
 
   const coverUrl = item.cover_url || item.image_url;
   const showPlaceholder = !coverUrl || imageError;
@@ -110,6 +134,24 @@ export const ItemCard = ({ item, onPlay }) => {
             onError={() => setImageError(true)}
             className="w-full h-full object-cover"
           />
+        )}
+
+        {/* Carimbo transversal de reserva (visível já no catálogo) */}
+        {showReservedStamp && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 bg-amber-950/25" />
+            <div
+              className="relative -rotate-[28deg] px-8 py-2 border-y-4 border-red-500/90 bg-red-950/70 shadow-[0_0_30px_rgba(239,68,68,0.4)]"
+              style={{ transform: 'rotate(-28deg)' }}
+            >
+              <span className="block text-center text-red-300 font-black text-lg uppercase tracking-[0.3em] drop-shadow-lg">
+                Reservado
+              </span>
+              <span className="block text-center text-red-200/80 font-bold text-[10px] uppercase tracking-widest">
+                {reserveRemaining}
+              </span>
+            </div>
+          </div>
         )}
       </div>
 
