@@ -240,16 +240,21 @@ export default function ItemDetails() {
 
   let localCart = null;
   try {
-    localCart = JSON.parse(localStorage.getItem('rg_cart_v1') || 'null');
+    localCart = JSON.parse(localStorage.getItem('rg_cart_v2') || localStorage.getItem('rg_cart_v1') || 'null');
   } catch {
     localCart = null;
   }
 
-  const localReserveForThis = Boolean(localCart?.itemId === item?.id && Number(localCart?.reservedUntilMs || 0) > Date.now());
-  const reservedByMe = reserveActive && item?.reserved_by && currentUser?.id && item.reserved_by === currentUser.id;
-  const reservedByOther = reserveActive && item?.reserved_by && currentUser?.id && item.reserved_by !== currentUser.id;
-  const reservedUnknown = reserveActive && !item?.reserved_by;
-  const blockedByReserve = item?.allow_sale && item?.status === 'reservado' && !reservedByMe && !localReserveForThis && (reservedByOther || reservedUnknown);
+  const localReserveForThis = Boolean(
+    (Array.isArray(localCart)
+      ? localCart.some(c => c.itemId === item?.id && Number(c.reservedUntilMs || 0) > Date.now())
+      : localCart?.itemId === item?.id && Number(localCart?.reservedUntilMs || 0) > Date.now())
+  );
+  const reservedByMe = Boolean(reserveActive && currentUser?.id && item?.reserved_by && item.reserved_by === currentUser.id);
+  // Qualquer outro (inclusive visitante anônimo) deve ver como reservado.
+  const blockedByReserve = Boolean(
+    item?.allow_sale && reserveActive && !reservedByMe && !localReserveForThis
+  );
 
   return (
     <div className="min-h-screen bg-charcoal-deep text-white py-12 px-4 md:px-8 pt-28 selection:bg-gold-premium/30 selection:text-gold-light">
