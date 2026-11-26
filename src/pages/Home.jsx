@@ -44,7 +44,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-gold-premium/30 selection:text-gold-light">
-      {/* ===== HEADER PÚBLICO (Entrar / Admin) ===== */}
+      {/* ===== HEADER PÚBLICO (acesso único para todos) ===== */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function Home() {
               to={'/login?redirect=' + encodeURIComponent('/portal')}
               className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-gold-premium border border-gold-premium/30 rounded-xl hover:bg-gold-premium/10 transition-colors"
             >
-              Entrar / Admin
+              Entrar
             </Link>
           </div>
         </div>
