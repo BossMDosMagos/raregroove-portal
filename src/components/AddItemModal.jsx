@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, Upload, Loader2, TrendingUp, ChevronDown, Check, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const [applyingPrice, setApplyingPrice] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [conditionOpen, setConditionOpen] = useState(false);
+  const priceInputRef = useRef(null);
 
   useEffect(() => {
     getExchangeRates().then(setExchangeRates);
@@ -103,6 +104,14 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const handlePriceUpdate = (suggestions) => {
     setPriceSuggestions(suggestions);
   };
+
+  // Foca o campo de preço apenas quando uma nova sugestão sem dado de preço chega.
+  // (Antes isso era feito num ref inline, que voltava a focar a cada tecla digitada.)
+  useEffect(() => {
+    if (priceSuggestions && !priceSuggestions.hasPriceData) {
+      priceInputRef.current?.focus();
+    }
+  }, [priceSuggestions]);
 
   const handleApplyMedianPrice = async () => {
     if (!priceSuggestions?.lowestPriceUSD || !exchangeRates) return;
@@ -307,12 +316,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                     required 
                     type="number" 
                     step="0.01" 
-                    ref={(el) => {
-                      if (el && priceSuggestions && !priceSuggestions.hasPriceData) {
-                        el.focus();
-                        setTimeout(() => el.classList.add('ring-2', 'ring-amber-500/50'), 100);
-                      }
-                    }}
+                    ref={priceInputRef}
                     className={`w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all ${priceSuggestions && !priceSuggestions.hasPriceData ? 'border-amber-500/50' : ''}`}
                     value={formData.price}
                     onChange={e => setFormData({...formData, price: e.target.value})} 
