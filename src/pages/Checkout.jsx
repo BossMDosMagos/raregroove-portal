@@ -49,6 +49,14 @@ export default function Checkout() {
         let itemsData = [];
         let itemsToProcess = [];
 
+        // 🔒 Verificação de reserva: só o reservista pode finalizar a compra.
+        const bloqueadoPorReserva = (item) => {
+          if (!item || item.status !== 'reservado' || !item.reserved_until) return false;
+          const ate = new Date(item.reserved_until).getTime();
+          if (!Number.isFinite(ate) || ate <= Date.now()) return false;
+          return !item.reserved_by || item.reserved_by !== authUser.id;
+        };
+
         // Se temos itemId, verificar se está no carrinho ou buscar direto
         if (itemId) {
           const cartItem = cartItems.find(ci => ci.itemId === itemId);
@@ -66,6 +74,14 @@ export default function Checkout() {
               navigate('/catalogo');
               return;
             }
+            if (bloqueadoPorReserva(data)) {
+              toast.error('ITEM RESERVADO', {
+                description: 'Este item está reservado por outro colecionador.',
+                style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+              });
+              navigate('/catalogo');
+              return;
+            }
             itemsData = [data];
             itemsToProcess = [cartItem];
           } else {
@@ -78,6 +94,14 @@ export default function Checkout() {
             
             if (itemError || !itemData) {
               toast.error('Item não encontrado');
+              navigate('/catalogo');
+              return;
+            }
+            if (bloqueadoPorReserva(itemData)) {
+              toast.error('ITEM RESERVADO', {
+                description: 'Este item está reservado por outro colecionador.',
+                style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+              });
               navigate('/catalogo');
               return;
             }
@@ -134,19 +158,13 @@ export default function Checkout() {
             return;
           }
 
-          if (itemData.status === 'reservado') {
-            const cartItem = itemsToProcess.find(ci => ci.itemId === itemData.id);
-            const reservedUntilMs = cartItem?.reservedUntilMs || null;
-            const hasActiveReserve = Boolean(reservedUntilMs && reservedUntilMs > Date.now());
-            const isReservedByMe = itemData.reserved_by && itemData.reserved_by === authUser.id;
-
-            if (hasActiveReserve && !isReservedByMe) {
-              toast.error('ITEM RESERVADO', {
-                description: `"${itemData.title}" está reservado por outro colecionador.`,
-              });
-              navigate('/catalogo');
-              return;
-            }
+          if (bloqueadoPorReserva(itemData)) {
+            toast.error('ITEM RESERVADO', {
+              description: `"${itemData.title}" está reservado por outro colecionador.`,
+              style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+            });
+            navigate('/catalogo');
+            return;
           }
         }
 

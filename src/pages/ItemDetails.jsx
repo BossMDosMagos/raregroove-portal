@@ -78,6 +78,31 @@ export default function ItemDetails() {
         }
       }
 
+      // 🔒 Bloqueio de acesso: somente o reservista pode abrir o detalhe do item.
+      // Qualquer outro (inclusive visitante anônimo ou admin) é devolvido ao catálogo.
+      const untilMs = itemData?.reserved_until ? new Date(itemData.reserved_until).getTime() : null;
+      const reserveAtiva = Boolean(
+        itemData?.status === 'reservado' &&
+        Number.isFinite(untilMs) &&
+        untilMs > Date.now()
+      );
+      const souReservista = Boolean(
+        reserveAtiva &&
+        user?.id &&
+        itemData?.reserved_by &&
+        itemData.reserved_by === user.id
+      );
+      // Reserva sem dono identificado também bloqueia (não há como provar ser o reservista).
+      if (reserveAtiva && !souReservista) {
+        toast.error('ITEM RESERVADO', {
+          description: 'Este item está reservado e só pode ser acessado por quem fez a reserva.',
+          style: { background: '#050505', border: '1px solid #ef4444', color: '#FFF' },
+        });
+        navigate('/catalogo');
+        setLoading(false);
+        return;
+      }
+
       if (itemData?.metadata?.description) {
         itemData.description = itemData.metadata.description;
       }
