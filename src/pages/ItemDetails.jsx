@@ -208,6 +208,10 @@ export default function ItemDetails() {
 
   const handleSendProposal = async () => {
     if (!item) return;
+    if (!item.allow_swap) {
+      toast.error('Este item não está disponível para negociação');
+      return;
+    }
 
     try {
       setSending(true);
@@ -574,30 +578,32 @@ export default function ItemDetails() {
               </p>
             </div>
 
-            {/* Chat Proposal Section */}
-            <div className="glass-card border-white/5 rounded-3xl p-1">
-              <div className="bg-charcoal-deep/50 rounded-[1.3rem] p-6">
-                <label className="text-[10px] text-gold-premium/60 uppercase font-black tracking-[0.2em] flex items-center gap-2 mb-4">
-                  <MessageSquare size={12} /> {t('item.chatTitle') || 'NEGOCIAÇÃO DIRETA'}
-                </label>
-                <div className="relative">
-                  <textarea
-                    rows={2}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="w-full bg-charcoal-mid/50 border border-white/5 rounded-xl px-5 py-4 text-sm text-white focus:border-gold-premium/30 focus:bg-charcoal-mid focus:ring-1 focus:ring-gold-premium/10 outline-none transition-all resize-none placeholder:text-white/10"
-                    placeholder={t('item.chatPlaceholder') || "Olá, tenho interesse nessa relíquia..."}
-                  />
-                  <button
-                    onClick={handleSendProposal}
-                    disabled={sending}
-                    className="absolute right-2 bottom-2 p-2 bg-gold-premium text-charcoal-deep rounded-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-                  >
-                    {sending ? <Loader2 className="animate-spin" size={16} /> : <ArrowLeft size={16} className="rotate-180" />}
-                  </button>
+            {/* Chat Proposal Section — somente quando o vendedor habilitou troca */}
+            {item?.allow_swap && (
+              <div className="glass-card border-white/5 rounded-3xl p-1">
+                <div className="bg-charcoal-deep/50 rounded-[1.3rem] p-6">
+                  <label className="text-[10px] text-gold-premium/60 uppercase font-black tracking-[0.2em] flex items-center gap-2 mb-4">
+                    <MessageSquare size={12} /> {t('item.chatTitle') || 'NEGOCIAÇÃO DIRETA'}
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      rows={2}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      className="w-full bg-charcoal-mid/50 border border-white/5 rounded-xl px-5 py-4 text-sm text-white focus:border-gold-premium/30 focus:bg-charcoal-mid focus:ring-1 focus:ring-gold-premium/10 outline-none transition-all resize-none placeholder:text-white/10"
+                      placeholder={t('item.chatPlaceholder') || "Olá, tenho interesse nessa relíquia..."}
+                    />
+                    <button
+                      onClick={handleSendProposal}
+                      disabled={sending}
+                      className="absolute right-2 bottom-2 p-2 bg-gold-premium text-charcoal-deep rounded-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                    >
+                      {sending ? <Loader2 className="animate-spin" size={16} /> : <ArrowLeft size={16} className="rotate-180" />}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -16,10 +16,10 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
   const [websiteUrl, setWebsiteUrl] = useState('');
 
   useEffect(() => {
-    if (isOpen && currentUserId) {
+    if (isOpen && currentUserId && item?.allow_swap) {
       loadMyItems();
     }
-  }, [isOpen, currentUserId]);
+  }, [isOpen, currentUserId, item?.allow_swap]);
 
   const loadMyItems = async () => {
     try {
@@ -47,6 +47,10 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
   };
 
   const handleCreateSwapProposal = async () => {
+    if (!item?.allow_swap) {
+      toast.error('Este item não está disponível para troca');
+      return;
+    }
     if (!selectedItemId) {
       toast.error('Selecione um item para trocar');
       return;
@@ -121,7 +125,7 @@ export default function SwapProposalModal({ isOpen, onClose, item, currentUserId
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !item?.allow_swap) return null;
 
   const selectedItem = myItems.find(i => i.id === selectedItemId);
 
