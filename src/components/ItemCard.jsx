@@ -35,6 +35,8 @@ const getConditionColor = (condition) => {
   const c = (condition || '').toUpperCase();
   if (c === 'MINT' || c === 'NM') return 'text-emerald-400';
   if (c === 'VG+' || c === 'VG') return 'text-yellow-400';
+  if (c === 'G') return 'text-orange-400';
+  if (c === 'F') return 'text-red-400';
   return 'text-orange-400';
 };
 

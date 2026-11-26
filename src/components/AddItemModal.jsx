@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Upload, Loader2, TrendingUp } from 'lucide-react';
+import { X, Upload, Loader2, TrendingUp, ChevronDown, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useI18n } from '../contexts/I18nContext.jsx';
@@ -25,6 +25,15 @@ const emptyFormData = {
   barcode: '',
 };
 
+const CONDITION_OPTIONS = [
+  { value: 'MINT', labelKey: 'addItem.condition.MINT' },
+  { value: 'NM', labelKey: 'addItem.condition.NM' },
+  { value: 'VG+', labelKey: 'addItem.condition.VG_PLUS' },
+  { value: 'VG', labelKey: 'addItem.condition.VG' },
+  { value: 'G', labelKey: 'addItem.condition.G' },
+  { value: 'F', labelKey: 'addItem.condition.F' },
+];
+
 export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit }) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
@@ -33,10 +42,21 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
   const [exchangeRates, setExchangeRates] = useState(null);
   const [applyingPrice, setApplyingPrice] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [conditionOpen, setConditionOpen] = useState(false);
 
   useEffect(() => {
     getExchangeRates().then(setExchangeRates);
   }, []);
+
+  // Fecha o dropdown de condição ao clicar fora dele.
+  useEffect(() => {
+    if (!conditionOpen) return;
+    const onDown = (e) => {
+      if (!e.target.closest('[data-condition-dropdown]')) setConditionOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [conditionOpen]);
 
   useEffect(() => {
     if (itemToEdit) {
@@ -97,6 +117,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
       'NM': { label: 'Near Mint', increase: 0.2 },
       'VG+': { label: 'Very Good Plus', increase: 0.1 },
       'VG': { label: 'Very Good', increase: 0 },
+      'G': { label: 'Good', increase: -0.15 },
+      'F': { label: 'Fair', increase: -0.3 },
     };
     
     const condition = conditionMultipliers[formData.condition] || conditionMultipliers['VG'];
@@ -328,7 +350,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                       
                       <div className="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
                         <select
-                          className="bg-white/5 border border-white/20 rounded px-2 py-1.5 text-[10px] text-white/80 focus:border-amber-500/50 outline-none cursor-pointer"
+                          className="bg-[#141414] border border-white/20 rounded px-2 py-1.5 text-[10px] text-white/80 focus:border-amber-500/50 outline-none cursor-pointer [&>option]:bg-[#141414] [&>option]:text-white"
                           value={formData.condition}
                           onChange={e => setFormData({...formData, condition: e.target.value})}
                         >
@@ -336,6 +358,8 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                           <option value="NM">Near Mint (+20%)</option>
                           <option value="VG+">VG+ (+10%)</option>
                           <option value="VG">VG (base)</option>
+                          <option value="G">Good (−15%)</option>
+                          <option value="F">Fair (−30%)</option>
                         </select>
                         <a
                           href={`https://www.discogs.com/sell/history/${priceSuggestions.releaseId}`}
@@ -425,16 +449,38 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   </div>
                 )}
               </div>
-              <div>
+              <div className="relative" data-condition-dropdown>
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.condition')}</label>
-                <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#D4AF37]/50 outline-none transition-all appearance-none"
-                  value={formData.condition}
-                  onChange={e => setFormData({...formData, condition: e.target.value})}>
-                  <option value="MINT">{t('addItem.condition.MINT')}</option>
-                  <option value="NM">{t('addItem.condition.NM')}</option>
-                  <option value="VG+">{t('addItem.condition.VG_PLUS')}</option>
-                  <option value="VG">{t('addItem.condition.VG')}</option>
-                </select>
+                <button
+                  type="button"
+                  onClick={() => setConditionOpen(v => !v)}
+                  className="mt-1 w-full flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm text-left hover:border-[#D4AF37]/40 focus:border-[#D4AF37]/50 outline-none transition-all"
+                >
+                  <span>{t(CONDITION_OPTIONS.find(o => o.value === formData.condition)?.labelKey || 'addItem.condition.MINT')}</span>
+                  <ChevronDown size={15} className={`shrink-0 text-white/50 transition-transform ${conditionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {conditionOpen && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-[#141414] border border-white/15 rounded-xl overflow-hidden shadow-2xl shadow-black/70 max-h-64 overflow-y-auto">
+                    {CONDITION_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({...prev, condition: opt.value}));
+                          setConditionOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                          formData.condition === opt.value
+                            ? 'bg-[#D4AF37]/15 text-[#D4AF37] font-bold'
+                            : 'text-white/80 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <span>{t(opt.labelKey)}</span>
+                        {formData.condition === opt.value && <Check size={14} className="shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Código de Barras</label>
