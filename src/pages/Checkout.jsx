@@ -210,23 +210,16 @@ export default function Checkout() {
           sale_fee_pct: 10,
           processing_fee_fixed: 2.0,
           swap_guarantee_fee_fixed: 5.0,
-          gateway_provider: 'stripe',
+          gateway_provider: 'mercado_pago',
           gateway_mode: 'sandbox' // Default seguro
         };
-        
+
         setSettings(finalSettings);
 
-        // FORÇA TODOS OS 4 MÉTODOS DE PAGAMENTO - CATÁLOGO DE CDs
+        // Métodos de pagamento disponíveis (cartão de crédito é via Mercado Pago)
         const available = [];
-        
-        // Stripe - Cartão de Crédito
-        available.push({ 
-          id: 'stripe', 
-          name: 'Cartão de Crédito', 
-          icon: CreditCard 
-        });
 
-        // Mercado Pago
+        // Mercado Pago (aceita cartão de crédito, Pix e boleto)
         available.push({ 
           id: 'mercado_pago', 
           name: 'Mercado Pago', 
@@ -565,7 +558,6 @@ const handlePaymentSuccess = async (paymentData) => {
                       
                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-all duration-500
                         ${selectedGateway === gateway.id ? 'bg-gold-premium text-charcoal-deep shadow-xl' : 'bg-charcoal-deep text-gold-premium/40 group-hover:text-gold-premium'}`}>
-                        {gateway.id === 'stripe' && <CreditCard size={32} />}
                         {gateway.id === 'mercado_pago' && <Disc size={32} />}
                         {gateway.id === 'paypal' && <Shield size={32} />}
                         {gateway.id === 'pix_portal' && <QrCode size={32} />}
@@ -573,10 +565,10 @@ const handlePaymentSuccess = async (paymentData) => {
 
                       <div className="space-y-1">
                         <p className={`font-black uppercase tracking-widest text-[10px] ${selectedGateway === gateway.id ? 'text-gold-premium' : 'text-silver-premium/40'}`}>
-                          {gateway.id === 'stripe' ? t('checkout.payment.creditCard') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPago') : gateway.id === 'pix_portal' ? 'PIX do Portal' : t('checkout.payment.paypal')}
+                          {gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPago') : gateway.id === 'pix_portal' ? 'PIX do Portal' : t('checkout.payment.paypal')}
                         </p>
                         <p className="text-white font-bold text-xs tracking-tight">
-                          {gateway.id === 'stripe' ? t('checkout.payment.creditCardDesc') : gateway.id === 'mercado_pago' ? t('checkout.payment.mercadoPagoDesc') : gateway.id === 'pix_portal' ? 'PIX processado via PSP licenciado pelo Banco Central' : t('checkout.payment.paypalDesc')}
+                          {gateway.id === 'mercado_pago' ? 'Cartão de crédito, Pix e boleto' : gateway.id === 'pix_portal' ? 'PIX processado via PSP licenciado pelo Banco Central' : t('checkout.payment.paypalDesc')}
                         </p>
                       </div>
                     </button>

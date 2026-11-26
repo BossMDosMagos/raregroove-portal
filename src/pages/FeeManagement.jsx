@@ -9,7 +9,7 @@ const defaultSettings = {
   processing_fee_fixed: '2.00',
   swap_guarantee_fee_fixed: '10.00',
   swap_guarantee_portal_pct: '100.00',
-  gateway_provider: 'stripe',
+  gateway_provider: 'mercado_pago',
   gateway_mode: 'sandbox',
   base_portal_url: 'https://raregroove.com',
   pix_enabled: false,

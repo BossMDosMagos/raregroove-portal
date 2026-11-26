@@ -122,18 +122,11 @@ export default function CheckoutDynamic() {
             .single();
 
           const finalSettings = settingsData || {
-            gateway_provider: 'stripe',
+            gateway_provider: 'mercado_pago',
             gateway_mode: 'sandbox'
           };
 
           const available = [];
-          const isSandbox = finalSettings.gateway_mode !== 'production';
-
-          available.push({
-            id: 'stripe',
-            name: isSandbox ? 'Stripe (Teste)' : 'Cartão de Crédito',
-            icon: CreditCard
-          });
 
           available.push({
             id: 'mercado_pago',
@@ -198,7 +191,7 @@ export default function CheckoutDynamic() {
       const params = new URLSearchParams({
         mode: 'subscription',
         plan: plan.id,
-        payment_provider: paymentData.provider || 'stripe',
+        payment_provider: paymentData.provider || 'mercado_pago',
         payment_id: paymentData.paymentId || '',
         external_reference: transactionId || ''
       });
@@ -339,13 +332,11 @@ export default function CheckoutDynamic() {
                 <div className="bg-gradient-to-r from-white/5 to-transparent border border-white/10 rounded-2xl p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {selectedGateway === 'stripe' && <CreditCard className="text-amber-400" size={20} />}
                       {selectedGateway === 'mercado_pago' && <Disc className="text-amber-400" size={20} />}
                       {selectedGateway === 'paypal' && <Shield className="text-amber-400" size={20} />}
                       {selectedGateway === 'pix_portal' && <QrCode className="text-amber-400" size={20} />}
                       <div>
                         <p className="text-white text-sm font-bold">
-                          {selectedGateway === 'stripe' && 'Cartão de Crédito via Stripe'}
                           {selectedGateway === 'mercado_pago' && 'Mercado Pago'}
                           {selectedGateway === 'paypal' && 'PayPal'}
                           {selectedGateway === 'pix_portal' && 'PIX - Transferência Instantânea'}
@@ -367,7 +358,6 @@ export default function CheckoutDynamic() {
                 onClick={() => setShowPayment(true)}
                 className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.22em] text-xs border transition bg-gradient-to-r ${plan.accent} hover:opacity-95 disabled:opacity-30 flex items-center justify-center gap-2`}
               >
-                {selectedGateway === 'stripe' && <CreditCard className="w-5 h-5" />}
                 {selectedGateway === 'mercado_pago' && <Disc className="w-5 h-5" />}
                 {selectedGateway === 'paypal' && <Shield className="w-5 h-5" />}
                 {selectedGateway === 'pix_portal' && <QrCode className="w-5 h-5" />}
