@@ -136,18 +136,20 @@ export const ItemCard = ({ item, onPlay }) => {
           />
         )}
 
-        {/* Carimbo transversal de reserva (visível já no catálogo) */}
+        {/* Selo redondo de reserva (visível já no catálogo) */}
         {showReservedStamp && (
           <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-hidden">
             <div className="absolute inset-0 bg-amber-950/25" />
             <div
-              className="relative -rotate-[28deg] px-8 py-2 border-y-4 border-red-500/90 bg-red-950/70 shadow-[0_0_30px_rgba(239,68,68,0.4)]"
-              style={{ transform: 'rotate(-28deg)' }}
+              className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center rotate-[-14deg] bg-red-950/80 border-[3px] border-red-500/90 shadow-[0_0_28px_rgba(239,68,68,0.45)]"
+              style={{ transform: 'rotate(-14deg)' }}
             >
-              <span className="block text-center text-red-300 font-black text-lg uppercase tracking-[0.3em] drop-shadow-lg">
+              {/* anel interno do lacre */}
+              <div className="absolute inset-[6px] rounded-full border border-dashed border-red-400/60" />
+              <span className="relative text-red-200 font-black text-[15px] uppercase tracking-[0.12em] leading-none drop-shadow-lg">
                 Reservado
               </span>
-              <span className="block text-center text-red-200/80 font-bold text-[10px] uppercase tracking-widest">
+              <span className="relative mt-1 text-red-300/80 font-bold text-[10px] uppercase tracking-widest tabular-nums">
                 {reserveRemaining}
               </span>
             </div>
