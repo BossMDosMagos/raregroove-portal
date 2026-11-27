@@ -78,7 +78,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <Pill color="gold">Marketplace de Mídias Físicas Raras</Pill>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-tight text-luxury">
-            Compre e venda CDs raros e vinis<br />
+            Compre e venda CDs raros, vinis e DVDs musicais<br />
             com pagamento protegido até a entrega
           </h1>
           <p className="text-silver-premium/70 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
@@ -288,7 +288,7 @@ export default function Home() {
                     <span>O que é o RareGroove?</span>
                     <span>+</span>
                   </summary>
-                  <p className="text-silver-premium/60 text-sm py-4 border-b border-white/5 last:border-0">Marketplace especializado em CDs raros e discos de vinil (LPs), com pagamento protegido por PSP licenciado pelo Banco Central.</p>
+                  <p className="text-silver-premium/60 text-sm py-4 border-b border-white/5 last:border-0">Marketplace especializado em CDs raros, discos de vinil (LPs) e DVDs musicais, com pagamento protegido por PSP licenciado pelo Banco Central.</p>
                 </details>
                 <details className="group">
                   <summary className="cursor-pointer list-none text-sm font-bold text-gold-premium/90 flex justify-between py-4 border-b border-white/5 hover:text-gold-premium transition-colors">

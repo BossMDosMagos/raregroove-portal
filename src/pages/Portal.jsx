@@ -159,7 +159,7 @@ export default function Portal() {
             <SubSection title={t('portal.about.compare.title')}>
               <div className="glass-card p-6 rounded-3xl">
                 <p className="text-silver-premium/60 text-sm leading-relaxed">
-                  RareGroove opera como marketplace especializado em mídias físicas raras (CDs e vinis/LPs), com processamento de pagamentos exclusivamente via parceiro PSP licenciado pelo Banco Central. Não comparamos nossos serviços com concorrentes diretos.
+                  RareGroove opera como marketplace especializado em mídias físicas raras (CDs, vinis/LPs e DVDs musicais), com processamento de pagamentos exclusivamente via parceiro PSP licenciado pelo Banco Central. Não comparamos nossos serviços com concorrentes diretos.
                 </p>
               </div>
             </SubSection>

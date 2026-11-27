@@ -14,6 +14,7 @@ const emptyFormData = {
   genre: '',
   price: '',
   condition: 'MINT',
+  mediaType: 'CD',
   sealed: false,
   image_url: '',
   coverUrlThumbnail: '',
@@ -69,6 +70,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
         genre: itemToEdit.genre || '',
         price: itemToEdit.price != null ? String(itemToEdit.price) : '',
         condition: itemToEdit.condition || 'MINT',
+        mediaType: itemToEdit.metadata?.mediaType || 'CD',
         sealed: Boolean(itemToEdit.metadata?.sealed),
         image_url: itemToEdit.image_url || '',
         coverUrlThumbnail: itemToEdit.metadata?.coverUrlThumbnail || '',
@@ -216,6 +218,7 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
           },
           coverUrlThumbnail: formData.coverUrlThumbnail || null,
           description: formData.description || null,
+          mediaType: formData.mediaType || 'CD',
           sealed: Boolean(formData.sealed),
         }
       };
@@ -456,6 +459,30 @@ export default function AddItemModal({ isOpen, onClose, onRefresh, itemToEdit })
                   </div>
                 )}
               </div>
+              {/* Tipo de mídia — usado para separar DVDs Musicais no catálogo */}
+              <div className="col-span-2">
+                <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">Tipo de Mídia</label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'CD', label: 'CD / Vinil' },
+                    { value: 'DVD', label: 'DVD Musical' },
+                  ].map(tipo => (
+                    <button
+                      key={tipo.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, mediaType: tipo.value }))}
+                      className={`py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                        (formData.mediaType || 'CD') === tipo.value
+                          ? 'bg-gold-premium text-charcoal-deep border-gold-premium'
+                          : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:border-gold-premium/40'
+                      }`}
+                    >
+                      {tipo.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="relative" data-condition-dropdown>
                 <label className="text-[10px] text-white/40 uppercase font-bold tracking-widest ml-1">{t('addItem.fields.condition')}</label>
                 <button

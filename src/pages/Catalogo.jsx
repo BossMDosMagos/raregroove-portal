@@ -15,6 +15,7 @@ export default function Catalogo() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentlyPlaying] = useState(null);
+  const [mediaTab, setMediaTab] = useState('todos');
   const [filters, setFilters] = useState({
     search: '',
     genre: '',
@@ -58,7 +59,14 @@ export default function Catalogo() {
     return () => clearTimeout(id);
   }, []);
 
+  // Tipo de mídia fica no metadata (JSONB) — padrão CD/Vinil para itens antigos.
+  const getMediaType = (item) => (item?.metadata?.mediaType || 'CD').toUpperCase();
+  const dvdCount = items.filter(i => getMediaType(i) === 'DVD').length;
+  const cdCount = items.length - dvdCount;
+
   const filteredProducts = items.filter(product => {
+    if (mediaTab === 'dvd' && getMediaType(product) !== 'DVD') return false;
+    if (mediaTab === 'cd' && getMediaType(product) === 'DVD') return false;
     if (filters.search) {
       const search = filters.search.toLowerCase();
       if (!product.title?.toLowerCase().includes(search) && 
@@ -164,6 +172,35 @@ export default function Catalogo() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Abas de tipo de mídia — DVDs Musicais separados dos CDs/Vinis */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { id: 'todos', label: 'Todos', count: items.length, icon: Library },
+            { id: 'cd', label: 'CDs & Vinis', count: cdCount, icon: Disc },
+            { id: 'dvd', label: 'DVDs Musicais', count: dvdCount, icon: Music },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const ativa = mediaTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setMediaTab(tab.id)}
+                className={`group flex items-center gap-2 px-5 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                  ativa
+                    ? 'bg-gold-premium text-charcoal-deep border-gold-premium shadow-[0_0_24px_rgba(212,175,55,0.25)]'
+                    : 'bg-charcoal-mid/40 text-white/45 border-white/10 hover:text-gold-premium hover:border-gold-premium/40'
+                }`}
+              >
+                <Icon size={14} />
+                {tab.label}
+                <span className={`px-2 py-0.5 rounded-full text-[9px] ${ativa ? 'bg-charcoal-deep/20' : 'bg-white/5'}`}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative rounded-[2.5rem] p-1 bg-gradient-to-br from-gold-premium/20 via-charcoal-deep to-transparent">

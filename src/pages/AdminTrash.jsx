@@ -15,7 +15,7 @@ const toastErrorStyle = { background: '#050505', border: '1px solid #ef4444', co
 const TABLES = [
   { 
     id: 'items', 
-    label: 'Itens/CDs', 
+    label: 'Itens',
     icon: Package, 
     primary: 'title',
     secondary: 'artist',

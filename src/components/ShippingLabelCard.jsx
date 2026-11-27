@@ -539,7 +539,7 @@ export default function ShippingLabelCard({ transactionId: propTransactionId, on
             }}>
               <Disc size={10} style={{ color: '#111', flexShrink: 0 }} />
               <span style={{ fontSize: '6.5pt', fontWeight: '700', letterSpacing: '0.3px' }}>
-                CONTEÚDO FRÁGIL: DISCOS/CDs
+                CONTEÚDO FRÁGIL: DISCOS/CDs/DVDs
               </span>
             </div>
           </div>

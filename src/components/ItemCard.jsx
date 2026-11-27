@@ -118,6 +118,15 @@ export const ItemCard = ({ item, onPlay }) => {
           </div>
         )}
 
+        {/* Badge de DVD Musical */}
+        {String(item?.metadata?.mediaType || '').toUpperCase() === 'DVD' && (
+          <div className="absolute top-12 left-3 z-20">
+            <span className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider bg-sky-500/20 border border-sky-400/40 text-sky-300 backdrop-blur-md">
+              DVD Musical
+            </span>
+          </div>
+        )}
+
         {/* Barcode Diamond Badge */}
         {(item.barcode || item.metadata?.grooveflix?.barcode) && (
           <div className="absolute top-3 right-3 z-20">

@@ -747,7 +747,7 @@ export default function Profile() {
 
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
                 <StatCard label={t('profile.reputation.title')} value={ratingStats?.avg_rating?.toFixed(1) || '0.0'} icon={Star} />
-                <StatCard label="CDs Listados" value={items.length} icon={Disc} />
+                <StatCard label="Itens Listados" value={items.length} icon={Disc} />
                 <StatCard label="Conversas" value={messages.length} icon={MessageSquare} />
                 <StatCard label="Saldo" value={`R$ ${userBalance.toFixed(2)}`} icon={DollarSign} color="bg-green-900/30 border-green-500/30" />
               </div>
