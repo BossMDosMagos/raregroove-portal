@@ -95,6 +95,7 @@ serve(async (req) => {
     const userAgent = 'RareGroovePortal/1.0 (+https://portalraregroove.com)'
 
     let apiUrl = ''
+    let fallbackApiUrl = ''
 
     if (type === 'search') {
       const params = new URLSearchParams({
@@ -121,6 +122,17 @@ serve(async (req) => {
         page: '1',
       })
       apiUrl = `${baseUrl}/database/search?${params}`
+
+      // Releases recém-criadas (ex.: DVDs novos) podem ainda não aparecer na
+      // busca exata por barcode. Guarda uma busca textual pelo número como
+      // fallback — ela encontra DVDs e CDs que o índice de barcode não pegou.
+      const textParams = new URLSearchParams({
+        q: cleanBarcode,
+        type: 'release',
+        per_page: limit.toString(),
+        page: '1',
+      })
+      fallbackApiUrl = `${baseUrl}/database/search?${textParams}`
     } else if (type === 'release' && releaseId) {
       apiUrl = `${baseUrl}/releases/${releaseId}`
     } else if (type === 'master' && releaseId) {
@@ -160,10 +172,37 @@ serve(async (req) => {
       })
     }
 
-    const data = await response.json()
+    let data = await response.json()
     // Tanto 'search' quanto 'barcode' usam /database/search, cuja resposta
     // contém `results`; os demais tipos retornam o objeto diretamente.
-    const results = (type === 'search' || type === 'barcode') ? (data.results || []) : data
+    let results = (type === 'search' || type === 'barcode') ? (data.results || []) : data
+
+    // Fallback: busca exata por barcode vazia -> tenta o número como texto.
+    // Isso inclui DVDs recém-cadastrados, que podem não estar no índice de barcode.
+    if (type === 'barcode' && Array.isArray(results) && results.length === 0 && fallbackApiUrl) {
+      console.log('[Discogs] Barcode exact search empty, retrying as text query')
+      try {
+        const fallbackResponse = await fetch(fallbackApiUrl, {
+          headers: {
+            'User-Agent': userAgent,
+            'Authorization': `Discogs token=${discogsToken}`,
+            'Accept': 'application/json',
+          },
+        })
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json()
+          const fallbackResults = fallbackData.results || []
+          if (fallbackResults.length > 0) {
+            results = fallbackResults
+            data = fallbackData
+          }
+        } else {
+          console.warn('[Discogs] Barcode text fallback failed:', fallbackResponse.status)
+        }
+      } catch (fallbackError) {
+        console.warn('[Discogs] Barcode text fallback error:', fallbackError.message)
+      }
+    }
 
     console.log(`[Discogs] Success: found ${Array.isArray(results) ? results.length : 1} items`)
 

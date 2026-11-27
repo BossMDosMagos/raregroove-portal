@@ -199,6 +199,7 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
         
         const formats = fullDetails?.formats || [];
         const formatDescriptions = formats.flatMap(f => f.descriptions || []);
+        const isDVD = formats.some(f => /DVD/i.test(f.name || ''));
         const isBoxSet = formatDescriptions.some(d => 
           ['Box Set', 'Boxset', 'Deluxe Edition', 'Limited Edition'].includes(d)
         ) || (fullDetails?.formats?.length && fullDetails.formats.length > 1);
@@ -206,8 +207,14 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
           ['Double', '2xCD', '2xLP', 'Digipack'].includes(d)
         );
         
-        suggestions.fallbackPrice = isBoxSet ? 85 : isDouble ? 45 : 25;
-        suggestions.fallbackType = isBoxSet ? 'Box Set / Edição de Luxo' : isDouble ? 'CD Duplo / Digipack' : 'CD Simples';
+        suggestions.fallbackPrice = isDVD ? 60 : isBoxSet ? 85 : isDouble ? 45 : 25;
+        suggestions.fallbackType = isDVD
+          ? 'DVD Musical'
+          : isBoxSet
+            ? 'Box Set / Edição de Luxo'
+            : isDouble
+              ? 'CD Duplo / Digipack'
+              : 'CD Simples';
       }
       
       suggestions.albumTitle = fullDetails?.title || selected?.title || '';
@@ -441,8 +448,10 @@ export function DiscogsSearch({ onImport, onPriceUpdate }) {
                     const artist = priceSuggestions.artistName || '';
                     const album = priceSuggestions.albumTitle || selected?.title || '';
                     const rawTerm = `${artist} ${album}`.trim();
-                    const cleanTerm = rawTerm.replace(/cd/gi, '').trim().replace(/\s+/g, ' ');
-                    const finalQuery = cleanTerm ? `${cleanTerm} cd` : 'cd';
+                    const isDVD = (fullDetails?.formats || []).some(f => /DVD/i.test(f.name || ''));
+                    const sufixo = isDVD ? 'dvd musical' : 'cd';
+                    const cleanTerm = rawTerm.replace(/\b(cd|dvd)\b/gi, '').trim().replace(/\s+/g, ' ');
+                    const finalQuery = cleanTerm ? `${cleanTerm} ${sufixo}` : sufixo;
                     return (
                       <>
                         <a
