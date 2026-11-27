@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Command Soluções Tecnologia">
+  <!-- Fundo profundo -->
+  <rect width="512" height="512" rx="96" fill="#0A0E17"/>
+
+  <!-- Arco orbital sutil (uma única linha, sem neon) -->
+  <ellipse cx="256" cy="256" rx="182" ry="82"
+           transform="rotate(-24 256 256)"
+           fill="none" stroke="#00B4FF" stroke-width="7" stroke-linecap="round"
+           opacity="0.95"/>
+
+  <!-- C geométrico: anel aberto à direita -->
+  <path d="M 362 150 A 150 150 0 1 0 362 362 L 323 323 A 95 95 0 1 1 323 189 Z"
+        fill="#FFFFFF"/>
+
+  <!-- Traços de circuito minimalistas integrados ao C -->
+  <g stroke="#00B4FF" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 330 205 H 392 L 408 189 H 436"/>
+    <path d="M 344 244 H 402 L 418 260 H 448"/>
+    <path d="M 330 283 H 392 L 408 299 H 436"/>
+  </g>
+  <g fill="#00B4FF">
+    <circle cx="440" cy="189" r="7"/>
+    <circle cx="452" cy="260" r="7"/>
+    <circle cx="440" cy="299" r="7"/>
+  </g>
+</svg>

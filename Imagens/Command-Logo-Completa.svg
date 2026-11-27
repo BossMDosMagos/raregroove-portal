@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="Command Soluções Tecnologia">
+  <!-- Fundo profundo -->
+  <rect width="1200" height="360" rx="40" fill="#0A0E17"/>
+
+  <!-- Símbolo (mesmo desenho do avatar, escalado) -->
+  <g transform="translate(28 22) scale(0.63)">
+    <ellipse cx="256" cy="256" rx="182" ry="82"
+             transform="rotate(-24 256 256)"
+             fill="none" stroke="#00B4FF" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 362 150 A 150 150 0 1 0 362 362 L 323 323 A 95 95 0 1 1 323 189 Z"
+          fill="#FFFFFF"/>
+    <g stroke="#00B4FF" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 330 205 H 392 L 408 189 H 436"/>
+      <path d="M 344 244 H 402 L 418 260 H 448"/>
+      <path d="M 330 283 H 392 L 408 299 H 436"/>
+    </g>
+    <g fill="#00B4FF">
+      <circle cx="440" cy="189" r="8"/>
+      <circle cx="452" cy="260" r="8"/>
+      <circle cx="440" cy="299" r="8"/>
+    </g>
+  </g>
+
+  <!-- Tipografia -->
+  <g transform="translate(430 0)">
+    <text x="0" y="168" fill="#FFFFFF"
+          font-family="'Inter','Helvetica Neue',Arial,sans-serif"
+          font-size="118" font-weight="800" letter-spacing="6">COMMAND</text>
+    <text x="4" y="228" fill="#00B4FF"
+          font-family="'Inter','Helvetica Neue',Arial,sans-serif"
+          font-size="32" font-weight="500" letter-spacing="9">SOLUÇÕES TECNOLOGIA</text>
+    <rect x="4" y="258" width="118" height="4" rx="2" fill="#00B4FF"/>
+  </g>
+</svg>
