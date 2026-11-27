@@ -26,6 +26,8 @@ export default function Checkout() {
   const [sellers, setSellers] = useState({});
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [shippingCost, setShippingCost] = useState(0);
+  const [shippingDays, setShippingDays] = useState(null);
   
   // Pagamento
   const [paying, setPaying] = useState(false);
@@ -234,6 +236,40 @@ export default function Checkout() {
 
         setSettings(finalSettings);
 
+        // 🚚 Calcular frete por CEP do destinatário e embutir no pagamento.
+        try {
+          const fromCep = itemsData[0]?.shipping_from_cep || finalSettings.default_shipping_from_cep || '';
+          const toCep = buyerProfile?.cep || '';
+          const weightKg = itemsData.reduce(
+            (sum, i) => sum + Number(i.shipping_weight_kg || 1),
+            0
+          ) || 1;
+          const itemPriceForShipping = itemsData.reduce(
+            (sum, i) => sum + Number(i.price || 0),
+            0
+          );
+
+          const { data: shippingData, error: shippingError } = await supabase.functions.invoke('calculate-shipping', {
+            body: {
+              fromCep,
+              toCep,
+              weightKg,
+              itemPrice: itemPriceForShipping,
+            },
+          });
+
+          if (shippingError) throw shippingError;
+
+          if (shippingData?.data?.cost != null) {
+            setShippingCost(Number(shippingData.data.cost));
+            setShippingDays(shippingData.data.estimatedDays);
+          } else if (shippingData?.error) {
+            console.warn('[Checkout] Frete não calculado:', shippingData.error);
+          }
+        } catch (shippingErr) {
+          console.warn('[Checkout] Erro ao calcular frete:', shippingErr);
+        }
+
         // Métodos de pagamento disponíveis (cartão de crédito é via Mercado Pago)
         const available = [];
 
@@ -285,7 +321,8 @@ const handlePaymentSuccess = async (paymentData) => {
         const itemPrice = parseFloat(item.price);
         const itemPlatformFee = settings ? parseFloat((itemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
         const itemProcessingFee = settings?.processing_fee_fixed || 2.0;
-        const itemTotal = itemPrice + itemPlatformFee + itemProcessingFee;
+        const itemShipping = shippingCost; // frete calculado pelo CEP do destinatário
+        const itemTotal = itemPrice + itemPlatformFee + itemProcessingFee + itemShipping;
         
         let transactionId = null;
         
@@ -298,7 +335,7 @@ const handlePaymentSuccess = async (paymentData) => {
               sellerId: item.seller_id,
               itemId: item.id,
               itemPrice: itemPrice,
-              shippingCost: 0,
+              shippingCost: itemShipping,
               insuranceCost: 0,
               platformFee: itemPlatformFee,
               processingFee: itemProcessingFee,
@@ -440,7 +477,7 @@ const handlePaymentSuccess = async (paymentData) => {
   const baseItemPrice = items.reduce((sum, item) => sum + parseFloat(item?.price || 0), 0);
   const basePlatformFee = settings ? parseFloat((baseItemPrice * settings.sale_fee_pct / 100).toFixed(2)) : 0;
   const baseProcessingFee = (settings?.processing_fee_fixed || 2.0) * items.length;
-  const baseTotal = baseItemPrice + basePlatformFee + baseProcessingFee;
+  const baseTotal = baseItemPrice + basePlatformFee + baseProcessingFee + shippingCost;
 
   // Usar valores base - a conversão BRL->USD é feita pelo formatCurrency quando locale é en-US
   const itemPrice = baseItemPrice;
@@ -638,6 +675,15 @@ const handlePaymentSuccess = async (paymentData) => {
                   <span className="text-silver-premium/40 text-[10px] font-black uppercase tracking-widest group-hover:text-silver-premium/60 transition-colors">{t('checkout.labels.fee')}</span>
                   <span className="text-white font-bold">{formatCurrency(platformFee, currency)}</span>
                 </div>
+                <div className="flex justify-between items-center group">
+                  <span className="text-silver-premium/40 text-[10px] font-black uppercase tracking-widest group-hover:text-silver-premium/60 transition-colors">
+                    Frete{shippingDays ? ` · até ${shippingDays} dias` : ''}
+                  </span>
+                  <span className="text-white font-bold">
+                    {shippingCost > 0 ? formatCurrency(shippingCost, currency) : t('checkout.labels.shippingPending') || 'A calcular'}
+                  </span>
+                </div>
+
                 <div className="flex justify-between items-center group pb-4 border-b border-gold-premium/10">
                   <span className="text-silver-premium/40 text-[10px] font-black uppercase tracking-widest group-hover:text-silver-premium/60 transition-colors">{t('checkout.labels.processing')}</span>
                   <span className="text-white font-bold">{formatCurrency(processingFee, currency)}</span>
@@ -683,6 +729,8 @@ const handlePaymentSuccess = async (paymentData) => {
                         totalItemsPrice: baseItemPrice,
                         platformFee,
                         processingFee,
+                        shippingCost,
+                        shippingDays,
                         totalAmount: totalBuyer,
                         transactionId: `TRX-${user.id}-${Date.now()}`,
                         currency
