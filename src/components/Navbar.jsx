@@ -27,7 +27,8 @@ export default function Navbar() {
   const notificationsRef = useRef(null);
 
   const cartCount = cartItems.length;
-  const unreadNotificationsCount = notifications.filter(n => !n.is_read).length;
+  const unreadNotifications = notifications.filter(n => !n.is_read);
+  const unreadNotificationsCount = unreadNotifications.length;
   const totalUnreadCount = unreadNotificationsCount + unreadMessagesCount;
 
   const loadNotifications = async (userId) => {
@@ -107,6 +108,17 @@ export default function Navbar() {
     setNotifications(prev => 
       prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
     );
+  };
+
+  // Marca todas como lidas de uma vez — some do sino e do histórico.
+  const clearAllNotifications = async () => {
+    if (!user?.id) return;
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
   useEffect(() => {
@@ -272,12 +284,12 @@ export default function Navbar() {
                     <p className="text-white text-sm font-medium">Notificações</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {unreadNotifications.length === 0 ? (
                       <div className="px-4 py-6 text-center text-white/30 text-sm">
                         Nenhuma notificação
                       </div>
                     ) : (
-                      notifications.slice(0, 5).map((notif) => (
+                      unreadNotifications.slice(0, 5).map((notif) => (
                         <div
                           key={notif.id}
                           onClick={() => {
@@ -299,6 +311,14 @@ export default function Navbar() {
                       ))
                     )}
                   </div>
+                  {unreadNotifications.length > 0 && (
+                    <button
+                      onClick={clearAllNotifications}
+                      className="w-full px-4 py-3 border-t border-white/10 text-left text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-gold-premium hover:bg-white/5 transition-colors"
+                    >
+                      Limpar todas as notificações
+                    </button>
+                  )}
                 </div>
               )}
             </div>
