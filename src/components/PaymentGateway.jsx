@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+// Stripe é carregado SOMENTE se selecionado (lazy) — evita script na home.
+const StripeElementsForm = lazy(() => import('./StripeElementsForm'));
 import { Disc, CreditCard, CheckCircle, Lock, QrCode } from 'lucide-react';
 import { getGatewayConfig, createStripePaymentIntent } from '../utils/paymentGateway';
 import { supabase } from '../lib/supabase';
@@ -11,210 +11,6 @@ import { QRCodeSVG } from 'qrcode.react';
 /**
  * COMPONENTE DE PAGAMENTO REAL - STRIPE
  */
-function StripePaymentForm({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [config, setConfig] = useState(null);
-
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
-  const loadConfig = async () => {
-    const cfg = await getGatewayConfig(selectedGateway);
-    setConfig(cfg);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!stripe || !elements || !config) {
-      console.error('❌ [Stripe] Faltam dependências:', { stripe: !!stripe, elements: !!elements, config: !!config });
-      return;
-    }
-
-    try {
-      setProcessing(true);
-
-      console.log('📤 [Stripe] Enviando requisição com config:', {
-        secretKey: config.secretKey ? '✅ Presente' : '❌ Faltando',
-        secretKeyLength: config.secretKey?.length,
-        publishableKey: config.publishableKey ? '✅ Presente' : '❌ Faltando',
-        amount: Math.round(amount * 100),
-        currency
-      });
-
-      // 1. Criar Payment Intent
-      const { clientSecret, paymentIntentId } = await createStripePaymentIntent(
-        amount,
-        metadata,
-        config,
-        currency
-      );
-
-      console.log('📥 [Stripe] Payment Intent criado:', { paymentIntentId, hasClientSecret: !!clientSecret });
-
-      // 2. Confirmar pagamento com card
-      const cardNumberElement = elements.getElement(CardNumberElement);
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardNumberElement,
-        },
-        // Adicionar return_url para redirecionamento 3D Secure se necessário
-        return_url: `${window.location.origin.includes('localhost') ? 'https://portalraregroove.com' : window.location.origin}/payment/success`,
-      });
-
-      if (error) {
-        console.error('❌ [Stripe] Erro na confirmação do pagamento:', error);
-        throw new Error(error.message);
-      }
-
-      console.log('✅ [Stripe] Pagamento confirmado:', paymentIntent);
-
-      if (paymentIntent.status === 'succeeded') {
-        onSuccess({
-          paymentId: paymentIntent.id,
-          provider: 'stripe',
-          status: 'succeeded'
-        });
-      } else {
-        throw new Error('Pagamento não foi aprovado');
-      }
-    } catch (error) {
-      console.error('❌ [Stripe] Erro completo no pagamento:', error);
-      onError(error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard size={20} className="text-[#D4AF37]" />
-          <label className="text-sm text-white/80 font-semibold">
-            Dados do Cartão
-          </label>
-          <Lock size={14} className="text-green-400 ml-auto" />
-          <span className="text-xs text-green-400">Criptografado</span>
-        </div>
-
-        {/* Campo Número do Cartão */}
-        <div>
-          <label className="text-xs text-white/60 uppercase font-bold tracking-widest block mb-2">
-            Número do Cartão
-          </label>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-4 focus-within:border-[#D4AF37] focus-within:shadow-lg focus-within:shadow-[#D4AF37]/20 transition-all">
-            <CardNumberElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: '16px',
-                    color: '#fff',
-                    fontFamily: "'Inter', sans-serif",
-                    '::placeholder': {
-                      color: '#6b7280',
-                    },
-                  },
-                  invalid: {
-                    color: '#ef4444',
-                  },
-                },
-                placeholder: '1234 5678 9012 3456',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Grid Validade e CVC */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Validade */}
-          <div>
-            <label className="text-xs text-white/60 uppercase font-bold tracking-widest block mb-2">
-              Validade
-            </label>
-            <div className="bg-gray-900 border border-white/10 rounded-lg p-4 focus-within:border-[#D4AF37] focus-within:shadow-lg focus-within:shadow-[#D4AF37]/20 transition-all">
-              <CardExpiryElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#fff',
-                      fontFamily: "'Inter', sans-serif",
-                      '::placeholder': {
-                        color: '#6b7280',
-                      },
-                    },
-                    invalid: {
-                      color: '#ef4444',
-                    },
-                  },
-                  placeholder: 'MM / YY',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* CVC */}
-          <div>
-            <label className="text-xs text-white/60 uppercase font-bold tracking-widest block mb-2">
-              CVC
-            </label>
-            <div className="bg-gray-900 border border-white/10 rounded-lg p-4 focus-within:border-[#D4AF37] focus-within:shadow-lg focus-within:shadow-[#D4AF37]/20 transition-all">
-              <CardCvcElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#fff',
-                      fontFamily: "'Inter', sans-serif",
-                      '::placeholder': {
-                        color: '#6b7280',
-                      },
-                    },
-                    invalid: {
-                      color: '#ef4444',
-                    },
-                  },
-                  placeholder: '123',
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-white/40 text-center pt-2">
-          Seus dados são processados de forma segura pelo Stripe
-        </p>
-      </div>
-
-      <button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full bg-[#D4AF37] text-black py-4 rounded-2xl font-black uppercase text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {processing ? (
-          <>
-            <Disc className="animate-spin" size={18} />
-            Processando...
-          </>
-        ) : (
-          <>
-            <CreditCard size={18} />
-            Pagar R$ {amount.toFixed(2)}
-          </>
-        )}
-      </button>
-
-      <p className="text-xs text-white/40 text-center">
-        🔒 Pagamento processado de forma segura pelo Stripe
-      </p>
-    </form>
-  );
-}
-
 /**
  * COMPONENTE DE PAGAMENTO REAL - PAYPAL
  */
@@ -940,7 +736,6 @@ function PixPortalPaymentForm({ amount, selectedGateway, metadata, onSuccess, on
 export default function PaymentGateway({ amount, selectedGateway, metadata, onSuccess, onError, currency = 'BRL' }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [stripePromise, setStripePromise] = useState(null);
 
   useEffect(() => {
     init();
@@ -960,10 +755,6 @@ export default function PaymentGateway({ amount, selectedGateway, metadata, onSu
       });
       setConfig(cfg);
 
-      if (selectedGateway === 'stripe' && cfg.publishableKey) {
-        const stripe = await loadStripe(cfg.publishableKey);
-        setStripePromise(stripe);
-      }
     } catch (error) {
       console.error('❌ [PaymentGateway] Erro ao carregar config:', error);
       toast.error('Erro ao carregar método de pagamento: ' + error.message);
@@ -991,9 +782,9 @@ export default function PaymentGateway({ amount, selectedGateway, metadata, onSu
 
   return (
     <div>
-      {selectedGateway === 'stripe' && stripePromise && (
-        <Elements stripe={stripePromise}>
-          <StripePaymentForm
+      {selectedGateway === 'stripe' && (
+        <Suspense fallback={<div className="py-8 text-center text-white/50">Carregando Stripe...</div>}>
+          <StripeElementsForm
             amount={amount}
             selectedGateway={selectedGateway}
             metadata={metadata}
@@ -1001,13 +792,7 @@ export default function PaymentGateway({ amount, selectedGateway, metadata, onSu
             onError={onError}
             currency={currency}
           />
-        </Elements>
-      )}
-
-      {selectedGateway === 'stripe' && !stripePromise && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">
-          Stripe não está disponível no momento. Verifique a chave pública configurada para este ambiente.
-        </div>
+        </Suspense>
       )}
 
       {selectedGateway === 'mercado_pago' && (

@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { loadStripe } from '@stripe/stripe-js';
 
 /**
  * SERVIÇO DE INTEGRAÇÃO COM GATEWAYS DE PAGAMENTO
@@ -90,6 +89,7 @@ let stripeInstance = null;
 
 export const initStripe = async (publishableKey) => {
   if (!stripeInstance) {
+    const { loadStripe } = await import('@stripe/stripe-js');
     stripeInstance = await loadStripe(publishableKey);
   }
   return stripeInstance;

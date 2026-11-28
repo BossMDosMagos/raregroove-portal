@@ -14,7 +14,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          stripe: ['@stripe/stripe-js', '@stripe/react-stripe-js'],
+          // Stripe é carregado dinamicamente (lazy) apenas se selecionado —
+          // sem chunk pré-carregado, o script js.stripe.com não carrega na home.
           supabase: ['@supabase/supabase-js'],
         },
       },
