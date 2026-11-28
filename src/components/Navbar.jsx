@@ -77,6 +77,27 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Realtime para notificações: evita que o badge do sino fique "agarrado"
+  // quando a notificação é marcada como lida em outra aba/página.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`navbar-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => loadNotifications(user.id)
+      )
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [user?.id]);
+
   const markAsRead = async (notificationId) => {
     await supabase
       .from('notifications')
@@ -217,7 +238,10 @@ export default function Navbar() {
             {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                onClick={() => {
+                  if (!notificationsOpen && user?.id) loadNotifications(user.id);
+                  setNotificationsOpen(!notificationsOpen);
+                }}
                 className="relative p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-all"
               >
                 <Bell size={18} />
